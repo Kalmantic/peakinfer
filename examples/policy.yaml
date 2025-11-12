@@ -1,0 +1,43 @@
+# TokenOp Optimization Policy
+# Based on PRD v0.7 - Organizational Constraints
+
+# Quality Requirements
+quality_threshold: 0.95          # 95% minimum quality preservation
+                                 # No optimization should degrade quality below this
+
+# Performance Requirements
+latency_sla_ms: 1000            # 1 second maximum latency SLA
+                                # Reject optimizations that violate this
+
+# Budget Constraints
+budget_monthly: 50000           # $50,000 monthly optimization budget
+                                # Total spend limit for infrastructure
+
+# Risk Management
+allowed_risk_levels:            # Which risk levels are acceptable
+  - low                         # Always allowed
+  - medium                      # Allowed with review
+# - high                        # Uncomment to allow high-risk optimizations
+                                # High-risk requires explicit approval
+
+# Approval Requirements
+required_approvals: []          # Empty = auto-approve low/medium risk
+                                # Add email addresses for manual approval:
+                                # - "tech-lead@company.com"
+                                # - "infra-team@company.com"
+
+# Technique Exclusions
+excluded_techniques: []         # Techniques to never use
+                                # Examples:
+                                # - "aggressive_quantization"
+                                # - "experimental_serving"
+                                # - "spot_instances"
+
+# Organization Context
+org_context:
+  team_size: "10-50"           # Team size for effort estimation
+  engineering_capacity: "medium" # low/medium/high
+  downtime_cost: 5000          # Cost per hour of downtime
+  compliance_requirements:      # Any compliance needs
+    - "data_residency"
+    - "audit_trail"

@@ -1,19 +1,16 @@
-"use strict";
 /**
  * Template Execution Agent - Executes optimization templates
  * Simplified version without Claude Code SDK integration
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.TemplateExecutionAgent = void 0;
-const economics_calculator_js_1 = require("../core/economics-calculator.js");
-const child_process_1 = require("child_process");
-const util_1 = require("util");
-const execAsync = (0, util_1.promisify)(child_process_1.exec);
-class TemplateExecutionAgent {
+import { EconomicsCalculator } from '../core/economics-calculator.js';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+const execAsync = promisify(exec);
+export class TemplateExecutionAgent {
     economicsCalculator;
     executionHistory = new Map();
     constructor() {
-        this.economicsCalculator = new economics_calculator_js_1.EconomicsCalculator();
+        this.economicsCalculator = new EconomicsCalculator();
     }
     /**
      * Stage 3: Template Execution ⏳
@@ -214,4 +211,3 @@ class TemplateExecutionAgent {
         return this.executionHistory.get(executionId);
     }
 }
-exports.TemplateExecutionAgent = TemplateExecutionAgent;

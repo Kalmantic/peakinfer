@@ -1,14 +1,11 @@
-"use strict";
 /**
  * Monitoring System - Track template execution and trigger rollbacks
  * Simplified version without Claude Code SDK integration
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.MonitoringSystem = void 0;
-const child_process_1 = require("child_process");
-const util_1 = require("util");
-const execAsync = (0, util_1.promisify)(child_process_1.exec);
-class MonitoringSystem {
+import { exec } from 'child_process';
+import { promisify } from 'util';
+const execAsync = promisify(exec);
+export class MonitoringSystem {
     activeMonitors = new Map();
     metricsHistory = new Map();
     /**
@@ -223,4 +220,3 @@ class MonitoringSystem {
         return Array.from(this.activeMonitors.values());
     }
 }
-exports.MonitoringSystem = MonitoringSystem;

@@ -4,11 +4,16 @@
  */
 
 import * as yaml from 'yaml';
-import * as fs from 'fs-extra';
+import fs from 'fs-extra';
 import * as path from 'path';
 import { glob } from 'glob';
 import { OptimizationTemplate, EnvironmentProfile, TemplateExecutionResult } from '../types/template.js';
 import https from 'https';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export class TemplateEngine {
   private templates: Map<string, OptimizationTemplate> = new Map();
@@ -16,7 +21,7 @@ export class TemplateEngine {
 
   constructor(private templatesDirectory?: string) {
     // Default to design/templates or look for templates in standard locations
-    this.templatesDirectory = templatesDirectory || this.findTemplatesDirectory();
+    // findTemplatesDirectory is async, so it will be called lazily in loadTemplates
   }
 
   /**
@@ -25,6 +30,11 @@ export class TemplateEngine {
    */
   async loadTemplates(): Promise<void> {
     console.log("Stage 1: Template Loading ⏳");
+
+    // Initialize templates directory if not set
+    if (!this.templatesDirectory) {
+      this.templatesDirectory = await this.findTemplatesDirectory();
+    }
 
     try {
       // Try local templates first
@@ -282,7 +292,7 @@ export class TemplateEngine {
   /**
    * Find templates directory
    */
-  private findTemplatesDirectory(): string {
+  private async findTemplatesDirectory(): Promise<string> {
     const possiblePaths = [
       path.join(process.cwd(), 'design'),
       path.join(process.cwd(), 'design', 'templates'),
@@ -292,8 +302,11 @@ export class TemplateEngine {
     ];
 
     for (const possiblePath of possiblePaths) {
-      if (fs.pathExistsSync(possiblePath)) {
+      try {
+        await fs.access(possiblePath);
         return possiblePath;
+      } catch {
+        // Continue to next path
       }
     }
 

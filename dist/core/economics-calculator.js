@@ -1,11 +1,8 @@
-"use strict";
 /**
  * Economics Calculator - Implements TokenSqueeze economic principles in template formulas
  * Calculates baseline costs, projected savings, and ROI using template economics models
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.EconomicsCalculator = void 0;
-class EconomicsCalculator {
+export class EconomicsCalculator {
     environmentVars = new Map();
     /**
      * Calculate template impact on economics
@@ -256,4 +253,3 @@ class EconomicsCalculator {
 `;
     }
 }
-exports.EconomicsCalculator = EconomicsCalculator;

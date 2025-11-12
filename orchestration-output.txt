@@ -1,0 +1,302 @@
+
+🤖 TokenOp: Multi-Agent Orchestration
+
+Powered by Claude Code SDK
+
+- Initializing multi-agent system...
+
+🚀 TokenOp Multi-Agent Orchestration Starting...
+
+Stage 1️⃣: Environment Discovery
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🔍 Claude Discovery Agent analyzing your infrastructure...
+
+  ⚠️  Could not parse Claude response as JSON
+  ✓ Runtimes: None
+  ✓ Frameworks: None
+  ✓ GPUs: 0
+  ✓ Monthly Cost: $2,000
+✅ Environment discovery complete
+
+Stage 2️⃣: Workload Profiling
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  📊 Analyzing workload patterns...
+
+  ⚠️  No workload data found, using synthetic profile
+
+✅ Workload profiling complete
+
+Stage 3️⃣: Policy Loading
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  📋 Loading optimization policy...
+
+  ℹ️  No policy file found, using default policy
+  ┌─ Policy Configuration
+  │  Quality Threshold: 95%
+  │  Latency SLA: 1000ms
+  │  Monthly Budget: $50,000
+  │  Allowed Risk: low, medium
+  └─
+✅ Policy loaded
+
+Stage 4️⃣: Optimization Planning
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🎯 Planning optimization strategy...
+
+Stage 1: Template Loading ⏳
+Found 27 YAML templates in design document
+  ⚠️  Failed to parse template YAML: Invalid escape sequence \. at line 46, column 57:
+
+      validation_command: "python --version | grep -E '3\.[8-9]|3\.1[0-9]'"
+                                                        ^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 97, column 1:
+
+      implementation_days: 8
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 110, column 1:
+
+      implementation_days: 5
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 113, column 1:
+
+      implementation_days: 18
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 114, column 1:
+
+      implementation_days: 9
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 65, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 70, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 66, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 65, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 67, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 68, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 66, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 68, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 66, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 66, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 66, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 66, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 66, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 68, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 68, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 66, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 68, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 68, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 67, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 66, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Source contains multiple documents; please use YAML.parseAllDocuments() at line 66, column 1:
+
+      action: "automatic_rollback"
+---
+^^^
+
+  ⚠️  Failed to parse template YAML: Missing closing "quote at line 36, column 1:
+
+    new_monthly_waste: "${new_wasted_capacity} * ${gpu_hourly_cost} * 24
+
+^
+
+  ✅ Loaded standalone template: semantic-caching-demo
+  ✅ Loaded standalone template: batch-optimization-demo
+Stage 1: Template Loading ✅ - Loaded 2 templates
+  ✓ Loaded 2 templates
+Stage 2: Template Matching ⏳
+Stage 2: Template Matching ✅ - Found 0 matching templates
+  ✓ Found 0 matching templates
+  ✓ 0 templates pass policy constraints
+  ✓ Strategy: exhaustive
+  ✓ Execution order determined (0 templates)
+  ✓ Estimated duration: 0 minutes
+
+✅ Optimization plan created
+
+Stage 5️⃣: Execution & Evaluation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🚀 Executing optimization candidates...
+
+  Strategy: exhaustive
+  Max candidates: 0
+  Min improvement: 5.0%
+
+  ✅ Execution complete. Tested 0 candidates
+
+✅ Execution complete
+
+Stage 6️⃣: Auditing & Reporting
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  📝 Generating audit report...
+
+  ✓ 0/0 optimizations succeeded
+  ✓ Monthly savings: $0
+  ✓ Annual savings: $0
+  ✓ Implementation cost: $0
+  ✓ ROI: 0.0%
+  ✓ Payback period: 0.0 months
+  ✓ Quality impact: 0.00%
+
+  🔧 Generating implementation patches...
+  ✓ Generated 0 patches
+
+✅ Audit complete
+
+🎉 Multi-Agent Orchestration Complete!
+
+✔ Multi-agent orchestration complete!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🎯 TokenOp Optimization Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 Environment Discovered:
+  • Runtime: None
+  • Serving: None
+  • GPUs: 0
+  • Monthly Cost: $2,000
+
+📈 Workload Analysis:
+  • Total Requests: 1,000
+  • Intent Clusters: 3
+  • Representative Samples: 9
+
+🎯 Optimization Results:
+  • Templates Applied: 0
+  • Successful: 0
+  • Failed: 0
+
+💰 Economic Impact:
+  • Monthly Savings: $0
+  • Annual Savings: $0
+  • Implementation Cost: $0
+  • ROI: 0.0%
+  • Payback Period: 0.0 months
+
+🔧 Patches Generated: 0
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 Recommendations:
+
+  • GPU infrastructure not detected - consider adding GPU acceleration
+  • No serving frameworks detected - consider implementing vLLM or SGLang
+  • Savings below 10% of total cost - explore additional optimization layers
+  • Monitor quality metrics closely after implementation
+  • Consider A/B testing optimizations in production
+
+✖ Multi-agent orchestration failed
+
+❌ Error: fs.writeJson is not a function
+
+Stack trace:
+TypeError: fs.writeJson is not a function
+    at Command.<anonymous> (file:///Users/badhraajazahmad/Ajaz/Kalmantic/tokenop/dist/cli.js:68:22)

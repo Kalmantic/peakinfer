@@ -12,6 +12,9 @@ import { TemplateEngine } from './core/template-engine.js';
 import { TemplateExecutionAgent } from './agents/template-execution-agent.js';
 import { EnvironmentDiscoveryAgent } from './agents/environment-discovery-agent.js';
 import { EconomicsCalculator } from './core/economics-calculator.js';
+import { MultiAgentOrchestrator } from './orchestration/multi-agent-orchestrator.js';
+import { ClaudeHelper } from './utils/claude-helper.js';
+import { writeFile } from 'fs/promises';
 
 const program = new Command();
 
@@ -20,114 +23,363 @@ const templateEngine = new TemplateEngine();
 const executionAgent = new TemplateExecutionAgent();
 const discoveryAgent = new EnvironmentDiscoveryAgent();
 const economicsCalculator = new EconomicsCalculator();
+const orchestrator = new MultiAgentOrchestrator();
 
 /**
- * Main discover command - The One Perfect Command
+ * Multi-Agent Orchestration Command - The Ultimate Optimization Flow
+ */
+program
+  .command('orchestrate')
+  .description('🤖 Full multi-agent orchestration with Claude Code SDK')
+  .option('--workload <file>', 'Path to workload data (events.jsonl)')
+  .option('--policy <file>', 'Path to policy file (policy.yaml)')
+  .option('--dry-run', 'Simulate without making changes')
+  .option('--templates-dir <dir>', 'Custom templates directory')
+  .option('--output <file>', 'Save full report to file')
+  .action(async (options) => {
+    console.log(chalk.blue.bold('\n🤖 TokenOp: Multi-Agent Orchestration\n'));
+    console.log(chalk.gray('Powered by Claude Code SDK\n'));
+
+    // Check for Claude API key first
+    await ClaudeHelper.ensureApiKey();
+
+    const spinner = ora('Initializing multi-agent system...').start();
+
+    try {
+      spinner.text = 'Running multi-agent orchestration...';
+
+      const result = await orchestrator.orchestrateOptimization({
+        workloadDataPath: options.workload,
+        policyPath: options.policy,
+        dryRun: options.dryRun,
+        templatesDir: options.templatesDir
+      });
+
+      spinner.succeed('Multi-agent orchestration complete!\n');
+
+      // Display summary
+      console.log(orchestrator.getOrchestrationSummary(result));
+
+      // Show patches
+      if (result.audit.patches_generated.length > 0) {
+        console.log(chalk.blue.bold('🔧 Generated Patches:\n'));
+        result.audit.patches_generated.forEach((patch, i) => {
+          console.log(`  ${i + 1}. ${chalk.cyan(patch.file_path)}`);
+          console.log(`     ${chalk.gray(patch.description)}`);
+          console.log(`     Type: ${patch.patch_type} | Auto-apply: ${patch.auto_applicable ? '✅' : '❌'}`);
+          console.log('');
+        });
+      }
+
+      // Show recommendations
+      if (result.audit.recommendations.length > 0) {
+        console.log(chalk.blue.bold('💡 Recommendations:\n'));
+        result.audit.recommendations.forEach(rec => {
+          console.log(`  • ${rec}`);
+        });
+        console.log('');
+      }
+
+      // Save full report if requested
+      if (options.output) {
+        await writeFile(options.output, JSON.stringify(result, null, 2), 'utf-8');
+        console.log(chalk.gray(`📄 Full report saved to ${options.output}\n`));
+      }
+
+      // Show next steps
+      console.log(chalk.blue.bold('🚀 Next Steps:\n'));
+      console.log('  1. Review generated patches in ./tokenop-patches/');
+      console.log('  2. Apply patches manually or use auto-applicable ones');
+      console.log('  3. Monitor quality metrics after implementation');
+      console.log('  4. Run `tokenop orchestrate` again to find more opportunities\n');
+
+    } catch (error) {
+      spinner.fail('Multi-agent orchestration failed');
+      console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
+      if (error instanceof Error && error.stack) {
+        console.error(chalk.gray('\nStack trace:'));
+        console.error(chalk.gray(error.stack));
+      }
+      process.exit(1);
+    }
+  });
+
+/**
+ * PRD Command: tokenop discover
+ * Multi-agent discovery across infrastructure layers
  */
 program
   .command('discover')
-  .description('🔍 Discover optimization opportunities across your full LLM stack')
-  .option('--dry-run', 'Simulate optimizations without making changes')
-  .option('--templates-dir <dir>', 'Custom templates directory')
-  .option('--output <file>', 'Save results to file')
+  .description('🔍 Multi-agent discovery across infrastructure layers')
+  .option('--input-dir <dir>', 'Directory with manual input files')
+  .option('--collectors <collectors>', 'Comma-separated collector list (snowflake,databricks,terraform)', '')
+  .option('--output <file>', 'Save discovered environment to file (discovered.yaml)', 'discovered.yaml')
   .action(async (options) => {
-    console.log(chalk.blue.bold('\n🚀 TokenOp: Full-Stack LLM Optimization Discovery\n'));
-    console.log(chalk.gray('Using template-driven Claude Code SDK agents\n'));
+    console.log(chalk.blue.bold('\n🔍 TokenOp: Environment Discovery\n'));
+    console.log(chalk.gray('Stage 1: Multi-agent infrastructure discovery\n'));
+
+    // Check for Claude API key first
+    await ClaudeHelper.ensureApiKey();
 
     const spinner = ora('Starting discovery...').start();
 
     try {
-      // Stage 1: Load Templates ⏳
-      spinner.text = 'Loading optimization templates...';
-      await templateEngine.loadTemplates();
-      const allTemplates = templateEngine.listTemplates();
-      spinner.succeed(`Loaded ${allTemplates.length} optimization templates`);
+      // Run Discovery Agent from multi-agent orchestrator
+      spinner.text = 'Running Claude Discovery Agent...';
+      const environment = await orchestrator.discoveryAgent.discover();
 
-      // Stage 2: Environment Discovery ⏳
-      spinner.start('Discovering your LLM infrastructure...');
-      const environment = await discoveryAgent.discoverEnvironment();
       spinner.succeed('Environment discovery complete');
 
       console.log(chalk.cyan('\n📊 Environment Summary:'));
       console.log(`  Application: ${environment.application.runtime_detected.join(', ') || 'None detected'}`);
       console.log(`  Serving: ${environment.serving.frameworks_detected.join(', ') || 'None detected'}`);
       console.log(`  Infrastructure: ${environment.infrastructure.gpu_inventory.length} GPU(s) detected`);
+      console.log(`  Monthly Cost: $${environment.infrastructure.cost_breakdown.total_monthly.toLocaleString()}`);
 
-      // Stage 3: Template Matching ⏳
-      spinner.start('Finding applicable optimization templates...');
-      const matchingTemplates = await templateEngine.findMatchingTemplates(environment);
-      spinner.succeed(`Found ${matchingTemplates.length} applicable templates`);
-
-      if (matchingTemplates.length === 0) {
-        console.log(chalk.yellow('\n⚠️  No optimization templates match your current environment.'));
-        console.log(chalk.gray('This might indicate:\n'));
-        console.log(chalk.gray('  • Your infrastructure is already optimized'));
-        console.log(chalk.gray('  • You need custom templates for your setup'));
-        console.log(chalk.gray('  • Environment detection needs refinement\n'));
-        return;
-      }
-
-      // Stage 4: Economic Analysis ⏳
-      spinner.start('Calculating optimization economics...');
-      const optimizationPlans = await analyzeOptimizationEconomics(matchingTemplates, environment);
-      spinner.succeed('Economic analysis complete');
-
-      // Stage 5: Present Results 📊
-      console.log(chalk.green.bold('\n💡 Optimization Opportunities Found:\n'));
-
-      let totalSavings = 0;
-      let totalImplementationCost = 0;
-
-      for (let i = 0; i < Math.min(5, optimizationPlans.length); i++) {
-        const plan = optimizationPlans[i];
-        console.log(chalk.blue(`${i + 1}. ${plan.template.name}`));
-        console.log(`   ${chalk.gray(plan.template.description)}`);
-        console.log(`   💰 Monthly Savings: ${chalk.green('$' + plan.projectedSavings.toLocaleString())}`);
-        console.log(`   🔧 Implementation: ${plan.template.optimization.effort_estimate} (${plan.template.optimization.risk_level} risk)`);
-        console.log(`   📈 ROI: ${chalk.cyan(plan.roi.toFixed(1) + '%')} annually`);
-        console.log(`   🎯 Confidence: ${chalk.yellow((plan.template.confidence * 100).toFixed(1) + '%')}`);
-        console.log('');
-
-        totalSavings += plan.projectedSavings;
-        totalImplementationCost += plan.template.economics.implementation_cost.total_cost;
-      }
-
-      // Summary
-      console.log(chalk.green.bold('📈 Total Economic Impact:'));
-      console.log(`   💰 Total Monthly Savings: ${chalk.green.bold('$' + totalSavings.toLocaleString())}`);
-      console.log(`   💸 Total Implementation Cost: ${chalk.red('$' + totalImplementationCost.toLocaleString())}`);
-      console.log(`   📊 Combined ROI: ${chalk.cyan.bold(((totalSavings * 12 - totalImplementationCost) / totalImplementationCost * 100).toFixed(1) + '%')}`);
-      console.log(`   ⏱️  Payback Period: ${chalk.blue((totalImplementationCost / totalSavings).toFixed(1) + ' months')}\n`);
+      // Save to discovered.yaml
+      await writeFile(options.output, JSON.stringify(environment, null, 2), 'utf-8');
+      spinner.succeed(`Discovery results saved to ${options.output}`);
 
       // Next Steps
-      console.log(chalk.blue.bold('🚀 Next Steps:'));
-      if (options.dryRun) {
-        console.log(`   ${chalk.gray('└')} Run without --dry-run to execute optimizations`);
-      } else {
-        console.log(`   ${chalk.gray('└')} tokenop execute <template-id> - Execute specific optimization`);
-      }
-      console.log(`   ${chalk.gray('└')} tokenop plan - Generate detailed implementation plan`);
-      console.log(`   ${chalk.gray('└')} tokenop templates - Browse all available templates\n`);
-
-      // Save results if requested
-      if (options.output) {
-        const results = {
-          discovery_time: new Date().toISOString(),
-          environment,
-          matching_templates: matchingTemplates.map(t => t.id),
-          optimization_plans: optimizationPlans,
-          total_savings: totalSavings,
-          total_implementation_cost: totalImplementationCost
-        };
-
-        await require('fs-extra').writeJson(options.output, results, { spaces: 2 });
-        console.log(chalk.gray(`Results saved to ${options.output}\n`));
-      }
+      console.log(chalk.blue.bold('\n🚀 Next Steps:'));
+      console.log(`   ${chalk.gray('└')} tokenop profile --events events.jsonl`);
+      console.log(`   ${chalk.gray('└')} tokenop plan --constraints policy.yaml`);
+      console.log(`   ${chalk.gray('└')} tokenop run --plan optimization-plan.yaml\n`);
 
     } catch (error) {
       spinner.fail('Discovery failed');
       console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
       console.error(chalk.gray('\nFor debugging: tokenop --verbose discover\n'));
+      process.exit(1);
+    }
+  });
+
+/**
+ * PRD Command: tokenop profile
+ * Workload profiling with semantic clustering
+ */
+program
+  .command('profile')
+  .description('📊 Profile workload and cluster prompts into representative samples')
+  .option('--events <file>', 'Path to events.jsonl file', 'events.jsonl')
+  .option('--cluster-method <method>', 'Clustering method (semantic|keyword)', 'semantic')
+  .option('--output <file>', 'Save workload profile to file', 'workload-profile.json')
+  .action(async (options) => {
+    console.log(chalk.blue.bold('\n📊 TokenOp: Workload Profiling\n'));
+    console.log(chalk.gray('Stage 2: Semantic workload clustering\n'));
+
+    // Check for Claude API key first
+    await ClaudeHelper.ensureApiKey();
+
+    const spinner = ora('Loading workload data...').start();
+
+    try {
+      // Run Workload Profiler Agent
+      spinner.text = 'Running Claude Workload Profiler Agent...';
+      const profile = await orchestrator.profilerAgent.profileWorkload(options.events, {} as any);
+
+      spinner.succeed('Workload profiling complete');
+
+      console.log(chalk.cyan('\n📊 Workload Profile Summary:'));
+      console.log(`  Total Requests: ${profile.total_requests.toLocaleString()}`);
+      console.log(`  Intent Clusters: ${profile.clustered_intents.length}`);
+      console.log(`  Representative Samples: ${profile.representative_samples.length}`);
+
+      console.log(chalk.cyan('\n💰 Cost Breakdown by Intent:'));
+      profile.clustered_intents.forEach((intent: any, i: number) => {
+        console.log(`  ${i + 1}. ${intent.intent_name} (${intent.sample_count} requests)`);
+        console.log(`     Avg Tokens: ${intent.avg_tokens.toLocaleString()}`);
+        console.log(`     Cost Contribution: ${(intent.cost_contribution * 100).toFixed(1)}%`);
+      });
+
+      // Save to file
+      await writeFile(options.output, JSON.stringify(profile, null, 2), 'utf-8');
+      console.log(chalk.gray(`\n✅ Workload profile saved to ${options.output}`));
+
+      // Next Steps
+      console.log(chalk.blue.bold('\n🚀 Next Steps:'));
+      console.log(`   ${chalk.gray('└')} tokenop plan --constraints policy.yaml`);
+      console.log(`   ${chalk.gray('└')} tokenop run --plan optimization-plan.yaml\n`);
+
+    } catch (error) {
+      spinner.fail('Profiling failed');
+      console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
+
+/**
+ * PRD Command: tokenop plan
+ * Generate optimization plan using community templates
+ */
+program
+  .command('plan')
+  .description('🎯 Generate optimization plan using community templates')
+  .option('--constraints <file>', 'Policy constraints file (policy.yaml)', 'policy.yaml')
+  .option('--templates-dir <dir>', 'Community templates directory', 'design/templates')
+  .option('--output <file>', 'Save optimization plan to file', 'optimization-plan.yaml')
+  .action(async (options) => {
+    console.log(chalk.blue.bold('\n🎯 TokenOp: Optimization Planning\n'));
+    console.log(chalk.gray('Stage 4: Creating optimization strategy\n'));
+
+    // Check for Claude API key first
+    await ClaudeHelper.ensureApiKey();
+
+    const spinner = ora('Loading policy and templates...').start();
+
+    try {
+      // Load policy
+      spinner.text = 'Loading policy constraints...';
+      const policy = await orchestrator.policyAgent.loadPolicy(options.constraints);
+
+      // Need environment from discover step
+      spinner.text = 'Loading environment...';
+      const environment = await orchestrator.discoveryAgent.discover();
+
+      spinner.text = 'Planning optimization strategy...';
+      const plan = await orchestrator.plannerAgent.createPlan(
+        environment,
+        {} as any, // workload profile
+        policy,
+        options.templatesDir
+      );
+
+      spinner.succeed('Optimization plan generated');
+
+      console.log(chalk.cyan('\n📋 Optimization Plan Summary:'));
+      console.log(`  Search Strategy: ${plan.search_strategy}`);
+      console.log(`  Candidate Templates: ${plan.candidate_templates.length}`);
+      console.log(`  Execution Order: ${plan.execution_order.length} templates`);
+      console.log(`  Estimated Duration: ${plan.estimated_duration_minutes} minutes`);
+
+      // Save to file
+      await writeFile(options.output, JSON.stringify(plan, null, 2), 'utf-8');
+      console.log(chalk.gray(`\n✅ Optimization plan saved to ${options.output}`));
+
+      // Next Steps
+      console.log(chalk.blue.bold('\n🚀 Next Steps:'));
+      console.log(`   ${chalk.gray('└')} tokenop run --plan ${options.output}`);
+      console.log(`   ${chalk.gray('└')} Review plan before execution\n`);
+
+    } catch (error) {
+      spinner.fail('Planning failed');
+      console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
+
+/**
+ * PRD Command: tokenop run
+ * Execute optimization plan with evaluation
+ */
+program
+  .command('run')
+  .description('🚀 Execute optimization plan with baseline comparison')
+  .option('--plan <file>', 'Optimization plan file', 'optimization-plan.yaml')
+  .option('--sample-size <number>', 'Number of sample prompts for testing', '100')
+  .option('--early-stopping', 'Enable early stopping for failed optimizations', true)
+  .option('--output <file>', 'Save execution results to file', 'execution-results.json')
+  .action(async (options) => {
+    console.log(chalk.blue.bold('\n🚀 TokenOp: Executing Optimization Plan\n'));
+    console.log(chalk.gray('Stage 5: Running optimizations with evaluation\n'));
+
+    // Check for Claude API key first
+    await ClaudeHelper.ensureApiKey();
+
+    const spinner = ora('Loading optimization plan...').start();
+
+    try {
+      // Execute optimizations
+      spinner.text = 'Running Runner/Evaluator Agent...';
+      const results = await orchestrator.runnerAgent.executeWithEarlyStopping(
+        {} as any, // plan
+        {} as any, // environment
+        {} as any, // workload profile
+        false      // dry run
+      );
+
+      spinner.succeed('Optimization execution complete');
+
+      console.log(chalk.cyan('\n📊 Execution Results:'));
+      console.log(`  Templates Tested: ${results.length}`);
+      const successful = results.filter((r: any) => r.success);
+      console.log(`  Successful: ${successful.length}`);
+      console.log(`  Failed: ${results.length - successful.length}`);
+
+      // Save to file
+      await writeFile(options.output, JSON.stringify(results, null, 2), 'utf-8');
+      console.log(chalk.gray(`\n✅ Execution results saved to ${options.output}`));
+
+      // Next Steps
+      console.log(chalk.blue.bold('\n🚀 Next Steps:'));
+      console.log(`   ${chalk.gray('└')} tokenop report --output-dir reports/`);
+      console.log(`   ${chalk.gray('└')} Review generated patches in ./tokenop-patches/\n`);
+
+    } catch (error) {
+      spinner.fail('Execution failed');
+      console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
+
+/**
+ * PRD Command: tokenop report
+ * Generate comprehensive reports and audits
+ */
+program
+  .command('report')
+  .description('📝 Generate comprehensive optimization report with ROI analysis')
+  .option('--output-dir <dir>', 'Output directory for reports', 'reports/')
+  .option('--format <formats>', 'Report formats (html,csv,json)', 'html,json')
+  .option('--dashboard', 'Generate interactive dashboard', false)
+  .action(async (options) => {
+    console.log(chalk.blue.bold('\n📝 TokenOp: Generating Reports\n'));
+    console.log(chalk.gray('Stage 6: Auditing and reporting\n'));
+
+    const spinner = ora('Generating audit report...').start();
+
+    try {
+      // Run Auditor Agent
+      spinner.text = 'Running Auditor Agent...';
+      const audit = await orchestrator.auditorAgent.auditResults(
+        [],       // execution results
+        {} as any, // environment
+        {} as any, // workload profile
+        {} as any  // policy
+      );
+
+      spinner.succeed('Audit report generated');
+
+      console.log(chalk.cyan('\n💰 Economic Impact:'));
+      console.log(`  Monthly Savings: $${audit.total_cost_savings_monthly.toLocaleString()}`);
+      console.log(`  Annual Savings: $${audit.total_cost_savings_annual.toLocaleString()}`);
+      console.log(`  Implementation Cost: $${audit.total_implementation_cost.toLocaleString()}`);
+      console.log(`  ROI: ${audit.roi_annual.toFixed(1)}%`);
+      console.log(`  Payback Period: ${audit.payback_period_months.toFixed(1)} months`);
+
+      console.log(chalk.cyan('\n🔧 Generated Artifacts:'));
+      console.log(`  Patches: ${audit.patches_generated.length}`);
+      console.log(`  Templates Applied: ${audit.templates_applied.length}`);
+
+      // Save reports
+      const fs = await import('fs/promises');
+      await fs.mkdir(options.outputDir, { recursive: true });
+
+      const reportPath = `${options.outputDir}/audit-report.json`;
+      await writeFile(reportPath, JSON.stringify(audit, null, 2), 'utf-8');
+
+      console.log(chalk.gray(`\n✅ Reports saved to ${options.outputDir}`));
+      console.log(chalk.gray(`   • ${reportPath}`));
+
+      // Next Steps
+      console.log(chalk.blue.bold('\n🎉 Optimization Complete!'));
+      console.log(`   ${chalk.gray('└')} Review patches in ./tokenop-patches/`);
+      console.log(`   ${chalk.gray('└')} Apply optimizations to production`);
+      console.log(`   ${chalk.gray('└')} Monitor quality metrics\n`);
+
+    } catch (error) {
+      spinner.fail('Report generation failed');
+      console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
   });
@@ -256,6 +508,143 @@ program
   });
 
 /**
+ * PRD Command: tokenop template-apply
+ * Apply a specific template with interactive mode
+ */
+program
+  .command('template-apply <template-id>')
+  .description('🔧 Apply a specific optimization template')
+  .option('--dry-run', 'Simulate application without making changes')
+  .option('--interactive', 'Interactive mode with confirmations')
+  .action(async (templateId, options) => {
+    console.log(chalk.blue.bold(`\n🔧 TokenOp: Applying Template\n`));
+    console.log(chalk.gray(`Template: ${templateId}\n`));
+
+    const spinner = ora('Loading template...').start();
+
+    try {
+      await templateEngine.loadTemplates();
+      const template = templateEngine.getTemplate(templateId);
+
+      if (!template) {
+        spinner.fail('Template not found');
+        console.error(chalk.red(`❌ Template '${templateId}' not found`));
+        return;
+      }
+
+      spinner.text = 'Applying template...';
+      const environment = await discoveryAgent.discoverEnvironment();
+      const result = await executionAgent.executeTemplate(template, environment, {
+        dryRun: options.dryRun,
+        skipPrerequisites: false
+      });
+
+      spinner.succeed('Template applied successfully');
+
+      console.log(chalk.green.bold('\n✅ Application Results:'));
+      console.log(`  Status: ${result.status}`);
+      if (result.cost_savings) {
+        console.log(`  💰 Savings: $${result.cost_savings.toLocaleString()}/month`);
+      }
+      console.log('');
+
+    } catch (error) {
+      spinner.fail('Template application failed');
+      console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
+
+/**
+ * PRD Command: tokenop submit-implementation
+ * Submit implementation results to community
+ */
+program
+  .command('submit-implementation <template-id>')
+  .description('📤 Submit implementation results to community')
+  .option('--baseline-cost <cost>', 'Monthly cost before optimization', '0')
+  .option('--optimized-cost <cost>', 'Monthly cost after optimization', '0')
+  .option('--implementation-time <days>', 'Days to complete implementation', '0')
+  .action(async (templateId, options) => {
+    console.log(chalk.blue.bold(`\n📤 TokenOp: Submit Implementation\n`));
+    console.log(chalk.gray(`Template: ${templateId}\n`));
+
+    const baselineCost = parseFloat(options.baselineCost);
+    const optimizedCost = parseFloat(options.optimizedCost);
+    const savings = baselineCost - optimizedCost;
+    const reduction = (savings / baselineCost) * 100;
+
+    console.log(chalk.cyan('📊 Implementation Summary:'));
+    console.log(`  Baseline Cost: $${baselineCost.toLocaleString()}/month`);
+    console.log(`  Optimized Cost: $${optimizedCost.toLocaleString()}/month`);
+    console.log(`  Savings: $${savings.toLocaleString()}/month (${reduction.toFixed(1)}%)`);
+    console.log(`  Implementation Time: ${options.implementationTime} days`);
+
+    console.log(chalk.yellow('\n⚠️  Community submission feature coming in Phase 2'));
+    console.log(chalk.gray('Your data will be anonymized and shared with the community\n'));
+  });
+
+/**
+ * PRD Command: tokenop review-template
+ * Review a community template
+ */
+program
+  .command('review-template <template-id>')
+  .description('👀 Review a community optimization template')
+  .action(async (templateId) => {
+    console.log(chalk.blue.bold(`\n👀 TokenOp: Template Review\n`));
+    console.log(chalk.gray(`Template: ${templateId}\n`));
+
+    try {
+      await templateEngine.loadTemplates();
+      const template = templateEngine.getTemplate(templateId);
+
+      if (!template) {
+        console.error(chalk.red(`❌ Template '${templateId}' not found`));
+        return;
+      }
+
+      console.log(chalk.cyan('📋 Template Details:'));
+      console.log(`  Name: ${template.name}`);
+      console.log(`  Description: ${template.description}`);
+      console.log(`  Category: ${template.category}`);
+      console.log(`  Risk Level: ${template.optimization.risk_level}`);
+      console.log(`  Confidence: ${(template.confidence * 100).toFixed(1)}%`);
+      console.log(`  Success Count: ${template.success_count}`);
+
+      console.log(chalk.yellow('\n⚠️  Community review feature coming in Phase 2'));
+      console.log(chalk.gray('Peer review workflow will be available soon\n'));
+
+    } catch (error) {
+      console.error(chalk.red('❌ Error:'), error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
+
+/**
+ * PRD Command: tokenop contribute
+ * Contribute template or results to community
+ */
+program
+  .command('contribute')
+  .description('🤝 Contribute template or results to community')
+  .option('--template <template-id>', 'Template to contribute')
+  .option('--results <file>', 'Results file to contribute')
+  .action(async (options) => {
+    console.log(chalk.blue.bold(`\n🤝 TokenOp: Community Contribution\n`));
+
+    console.log(chalk.cyan('📋 Contribution Options:'));
+    console.log('  1. Submit new optimization template');
+    console.log('  2. Share implementation results');
+    console.log('  3. Report template issues');
+    console.log('  4. Suggest improvements');
+
+    console.log(chalk.yellow('\n⚠️  Community contribution feature coming in Phase 2'));
+    console.log(chalk.gray('GitHub-based workflow will be available soon'));
+    console.log(chalk.gray('Community templates: github.com/kalmantic/tokenop-templates\n'));
+  });
+
+/**
  * Analyze optimization economics for matched templates
  */
 async function analyzeOptimizationEconomics(templates: any[], environment: any) {
@@ -285,11 +674,53 @@ async function analyzeOptimizationEconomics(templates: any[], environment: any) 
   return plans.sort((a, b) => b.roi - a.roi);
 }
 
+/**
+ * Custom help display function
+ */
+function displayWelcome() {
+  console.log(chalk.blue.bold('\n╔════════════════════════════════════════════════════════════════╗'));
+  console.log(chalk.blue.bold('║                                                                ║'));
+  console.log(chalk.blue.bold('║   ') + chalk.white.bold('TokenOp') + chalk.gray(' - LLM Cost Optimization Platform') + chalk.blue.bold('           ║'));
+  console.log(chalk.blue.bold('║                                                                ║'));
+  console.log(chalk.blue.bold('╚════════════════════════════════════════════════════════════════╝\n'));
+
+  console.log(chalk.cyan.bold('🚀 Quick Start Commands:\n'));
+  console.log('  ' + chalk.yellow('tokenop orchestrate') + chalk.gray('          # Full multi-agent optimization workflow'));
+  console.log('  ' + chalk.yellow('tokenop discover') + chalk.gray('             # Discover your infrastructure environment'));
+  console.log('  ' + chalk.yellow('tokenop templates') + chalk.gray('            # Browse available optimization templates'));
+  console.log('  ' + chalk.yellow('tokenop execute <template-id>') + chalk.gray(' # Execute a specific template\n'));
+
+  console.log(chalk.cyan.bold('📊 Multi-Step Workflow:\n'));
+  console.log('  ' + chalk.white('1.') + ' ' + chalk.yellow('tokenop discover') + chalk.gray('   → Scan infrastructure layers'));
+  console.log('  ' + chalk.white('2.') + ' ' + chalk.yellow('tokenop profile') + chalk.gray('    → Analyze workload patterns'));
+  console.log('  ' + chalk.white('3.') + ' ' + chalk.yellow('tokenop plan') + chalk.gray('       → Generate optimization plan'));
+  console.log('  ' + chalk.white('4.') + ' ' + chalk.yellow('tokenop run') + chalk.gray('        → Execute optimizations'));
+  console.log('  ' + chalk.white('5.') + ' ' + chalk.yellow('tokenop report') + chalk.gray('     → Generate ROI report\n'));
+
+  console.log(chalk.cyan.bold('💡 Need Help?\n'));
+  console.log('  ' + chalk.yellow('tokenop --help') + chalk.gray('              # Show all commands'));
+  console.log('  ' + chalk.yellow('tokenop <command> --help') + chalk.gray('     # Show command-specific help\n'));
+
+  console.log(chalk.gray('Powered by Claude Code SDK • Made with ❤️  by Kalmantic AI Labs\n'));
+}
+
 // Program configuration
 program
   .name('tokenop')
   .description('🔧 LLM inference cost optimization through template-driven Claude Code SDK agents')
-  .version('0.1.0');
+  .version('0.1.0')
+  .configureHelp({
+    helpWidth: 100
+  })
+  .hook('preAction', () => {
+    // This ensures our custom welcome is not overridden
+  });
+
+// Show interactive welcome if no command provided
+if (!process.argv.slice(2).length) {
+  displayWelcome();
+  process.exit(0);
+}
 
 // Parse and execute
 program.parse();

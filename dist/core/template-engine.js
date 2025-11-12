@@ -1,59 +1,24 @@
-"use strict";
 /**
  * Template Engine - Loads and executes optimization templates
  * This is the core system that turns TokenSqueeze insights into actionable optimizations
  */
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.TemplateEngine = void 0;
-const yaml = __importStar(require("yaml"));
-const fs = __importStar(require("fs-extra"));
-const path = __importStar(require("path"));
-const glob_1 = require("glob");
-const https_1 = __importDefault(require("https"));
-class TemplateEngine {
+import * as yaml from 'yaml';
+import fs from 'fs-extra';
+import * as path from 'path';
+import { glob } from 'glob';
+import https from 'https';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+export class TemplateEngine {
     templatesDirectory;
     templates = new Map();
     templatesLoaded = false;
     constructor(templatesDirectory) {
         this.templatesDirectory = templatesDirectory;
         // Default to design/templates or look for templates in standard locations
-        this.templatesDirectory = templatesDirectory || this.findTemplatesDirectory();
+        // findTemplatesDirectory is async, so it will be called lazily in loadTemplates
     }
     /**
      * Stage 1: Configuration ⏳
@@ -61,6 +26,10 @@ class TemplateEngine {
      */
     async loadTemplates() {
         console.log("Stage 1: Template Loading ⏳");
+        // Initialize templates directory if not set
+        if (!this.templatesDirectory) {
+            this.templatesDirectory = await this.findTemplatesDirectory();
+        }
         try {
             // Try local templates first
             await this.extractTemplatesFromDesignDoc();
@@ -149,7 +118,7 @@ class TemplateEngine {
         if (!await fs.pathExists(this.templatesDirectory || '.')) {
             return;
         }
-        const templateFiles = await (0, glob_1.glob)('**/*.{yaml,yml}', {
+        const templateFiles = await glob('**/*.{yaml,yml}', {
             cwd: this.templatesDirectory || '.',
             absolute: true
         });
@@ -290,7 +259,7 @@ class TemplateEngine {
     /**
      * Find templates directory
      */
-    findTemplatesDirectory() {
+    async findTemplatesDirectory() {
         const possiblePaths = [
             path.join(process.cwd(), 'design'),
             path.join(process.cwd(), 'design', 'templates'),
@@ -299,8 +268,12 @@ class TemplateEngine {
             path.join(__dirname, '..', '..', 'design', 'templates')
         ];
         for (const possiblePath of possiblePaths) {
-            if (fs.pathExistsSync(possiblePath)) {
+            try {
+                await fs.access(possiblePath);
                 return possiblePath;
+            }
+            catch {
+                // Continue to next path
             }
         }
         // Default to design directory
@@ -349,7 +322,7 @@ class TemplateEngine {
      * Load templates from GitHub repository
      */
     async loadTemplatesFromGitHub() {
-        const githubUrl = 'https://raw.githubusercontent.com/Kalmantic/tokenop/main/design/TokenOp%20Template%20v0.2.md';
+        const githubUrl = 'https://raw.githubusercontent.com/Kalmantic/tokenop/main/tokenop/design/TokenOp%20Template%20v0.2.md';
         try {
             const content = await this.fetchFromGitHub(githubUrl);
             console.log("  ✅ Downloaded template document from GitHub");
@@ -379,7 +352,7 @@ class TemplateEngine {
      */
     async fetchFromGitHub(url) {
         return new Promise((resolve, reject) => {
-            https_1.default.get(url, (response) => {
+            https.get(url, (response) => {
                 if (response.statusCode !== 200) {
                     reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
                     return;
@@ -397,4 +370,3 @@ class TemplateEngine {
         });
     }
 }
-exports.TemplateEngine = TemplateEngine;
