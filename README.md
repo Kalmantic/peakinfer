@@ -1,25 +1,22 @@
-# TokenOp
+# PeakInfer
 
-> LLM inference cost optimization through template-driven Claude Code SDK agents
+> Inference peak performance  through template-driven Claude Code SDK agents
 
-TokenOp is a **Simple, Lovable, Complete** tool that discovers optimization opportunities across your full LLM stack using intelligent template matching and Claude Code SDK execution.
+PeakInfer is a **Simple, Lovable, Complete** tool that discovers optimization opportunities across your full LLM stack application using intelligent template matching and Claude Code SDK execution.
 
 ## 🎯 Core Philosophy
 
-**Templates > Code**: Instead of hardcoding optimizations, TokenOp uses 27+ community-validated templates that encode TokenSqueeze economic insights. Claude Code SDK agents intelligently load, match, and execute these templates for your specific environment.
+**Templates > Code**: Instead of hardcoding optimizations, PeakInfer uses 27+ community-validated templates that encode PeakInfer book economic insights. Claude Code SDK agents intelligently load, match, and execute these templates for your specific environment.
 
 ## 🚀 The One Perfect Command
 
 ```bash
 # Discover and analyze optimization opportunities across your full stack
-tokenop discover
+peakinfer discover
 
-# Execute specific optimizations
-tokenop execute pytorch-to-onnx-migration --dry-run
-tokenop execute vllm-high-throughput-optimization
 
 # Browse available templates
-tokenop templates --category runtime_optimization
+peakinfer templates --category runtime_optimization
 ```
 
 ## 🏗️ Architecture
@@ -32,7 +29,7 @@ TokenOp performs **full-stack analysis** across three layers:
 
 The key innovation is **cross-layer coordination** where optimizations span multiple layers for compound savings (20-70% total).
 
-## 📊 TokenSqueeze Economics Integration
+## 📊 PeakInfer Economics Integration
 
 Based on the TokenSqueeze book, TokenOp focuses on:
 
@@ -74,37 +71,37 @@ TokenOp includes 27+ optimization templates covering:
 ### Discovery and Analysis
 ```bash
 # Full stack discovery
-tokenop discover
+peakinfer discover
 
 # Save results for analysis
-tokenop discover --output results.json
+peakinfer discover --output results.json
 
 # Dry run to see what would be optimized
-tokenop discover --dry-run
+peakinfer discover --dry-run
 ```
 
 ### Template Execution
 ```bash
 # Execute with dry run first
-tokenop execute vllm-migration-memory-bound --dry-run
+peakinfer execute vllm-migration-memory-bound --dry-run
 
 # Live execution
-tokenop execute vllm-migration-memory-bound
+peakinfer execute vllm-migration-memory-bound
 
 # Skip prerequisites (not recommended)
-tokenop execute pytorch-to-onnx-migration --skip-prerequisites
+peakinfer execute pytorch-to-onnx-migration --skip-prerequisites
 ```
 
 ### Template Management
 ```bash
 # List all templates
-tokenop templates
+peakinfer templates
 
 # Filter by category
-tokenop templates --category quantization
+peakinfer templates --category quantization
 
 # Detailed template information
-tokenop templates --detailed
+peakinfer templates --detailed
 ```
 
 ## 🔬 Under the Hood
@@ -166,5 +163,3 @@ TokenOp is built on community-validated templates. Contribute by:
 Apache 2.0 - Open source core with community templates
 
 ---
-
-**TokenOp**: Turn TokenSqueeze insights into automated optimizations across your full LLM stack.
