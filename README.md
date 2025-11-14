@@ -21,7 +21,7 @@ peakinfer templates --category runtime_optimization
 
 ## 🏗️ Architecture
 
-TokenOp performs **full-stack analysis** across three layers:
+PeakInfer performs **full-stack analysis** across three layers:
 
 1. **📱 Application Layer**: Source code analysis for LLM usage patterns, API calls, prompts
 2. **🚀 Serving Layer**: Runtime infrastructure (vLLM, TensorRT, SGLang, model serving)
@@ -31,7 +31,7 @@ The key innovation is **cross-layer coordination** where optimizations span mult
 
 ## 📊 PeakInfer Economics Integration
 
-Based on the TokenSqueeze book, TokenOp focuses on:
+Based on the TokenSqueeze book, PeakInfer focuses on:
 
 - **Memory Bandwidth Optimization**: Address the universal constraint (3-6% GPU utilization)
 - **Context Length Tax**: Manage KV cache economics (~1MB per token)
@@ -41,12 +41,12 @@ Based on the TokenSqueeze book, TokenOp focuses on:
 ## 🔧 Installation
 
 ```bash
-npm install -g @kalmantic/tokenop
+npm install -g @kalmantic/PeakInfer
 ```
 
 ## 📋 Templates
 
-TokenOp includes 27+ optimization templates covering:
+PeakInfer includes 27+ optimization templates covering:
 
 ### Core Infrastructure
 - `pytorch-to-onnx-migration` - 50-70% cost reduction through runtime optimization
@@ -145,7 +145,7 @@ Based on TokenSqueeze principles and community validation:
 
 ## 🤝 Contributing
 
-TokenOp is built on community-validated templates. Contribute by:
+PeakInfer is built on community-validated templates. Contribute by:
 
 1. **Sharing Results**: Submit implementation reports for template validation
 2. **Creating Templates**: Add new optimization strategies as templates
@@ -155,8 +155,8 @@ TokenOp is built on community-validated templates. Contribute by:
 ## 📚 Learn More
 
 - [TokenSqueeze Book](./design/Token%20Squeeze%20-%20Guide%20to%20viable%20AI%20economics%20v0.52.md) - Economic foundations
-- [Template Specifications](./design/TokenOp%20Template%20v0.2.md) - All 27+ templates
-- [Product Requirements](./design/TokenOp%20Product%20Requirements%20Document%20(PRD)%20v0.7.md) - Technical architecture
+- [Template Specifications](./design/PeakInfer%20Template%20v0.2.md) - All 27+ templates
+- [Product Requirements](./design/PeakInfer%20Product%20Requirements%20Document%20(PRD)%20v0.7.md) - Technical architecture
 
 ## 📄 License
 
