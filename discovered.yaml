@@ -1,0 +1,55 @@
+{
+  "application": {
+    "runtime_detected": [],
+    "model_usage_patterns": [],
+    "api_call_patterns": [],
+    "context_analysis": {
+      "average_length": 2048,
+      "distribution": [
+        512,
+        1024,
+        2048,
+        4096
+      ],
+      "memory_impact": 0.5,
+      "batching_opportunities": []
+    }
+  },
+  "serving": {
+    "frameworks_detected": [],
+    "model_formats": [],
+    "serving_configs": [],
+    "performance_metrics": {
+      "throughput": 25,
+      "latency_p95": 200,
+      "gpu_utilization": 35,
+      "memory_utilization": 60,
+      "batch_efficiency": 4
+    }
+  },
+  "infrastructure": {
+    "gpu_inventory": [],
+    "memory_analysis": {
+      "total_capacity": 24,
+      "utilization": 60,
+      "bandwidth_efficiency": 0.15,
+      "bottlenecks": [
+        "memory_bandwidth",
+        "sequential_generation"
+      ]
+    },
+    "network_topology": {
+      "bandwidth": 1000,
+      "latency": 100,
+      "multi_gpu_setup": false,
+      "communication_overhead": 0
+    },
+    "cost_breakdown": {
+      "compute_cost": 0,
+      "storage_cost": 0,
+      "network_cost": 0,
+      "total_monthly": 0,
+      "optimization_potential": 0
+    }
+  }
+}

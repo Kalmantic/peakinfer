@@ -3,7 +3,7 @@
  * Creates optimization search plans with candidate templates
  */
 
-import { query, type Query } from '@anthropic-ai/claude-code';
+import Anthropic from '@anthropic-ai/sdk';
 import { EnvironmentProfile, OptimizationTemplate } from '../../types/template.js';
 import { WorkloadProfile, OptimizationPolicy, OptimizationPlan, StoppingCriteria } from '../multi-agent-orchestrator.js';
 import { TemplateEngine } from '../../core/template-engine.js';

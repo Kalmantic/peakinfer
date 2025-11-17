@@ -3,7 +3,7 @@
  * Summarizes optimization results and generates patches
  */
 
-import { query, type Query } from '@anthropic-ai/claude-code';
+import Anthropic from '@anthropic-ai/sdk';
 import { EnvironmentProfile, TemplateExecutionResult, OptimizationTemplate } from '../../types/template.js';
 import { WorkloadProfile, OptimizationPolicy, AuditReport, Patch } from '../multi-agent-orchestrator.js';
 import * as fs from 'fs-extra';
@@ -145,24 +145,26 @@ Based on this optimization, generate configuration patches in JSON format:
 
 Generate practical patches that implement this optimization. Return only JSON.`;
 
-        let claudeResponse = '';
-
-        const claudeQuery: Query = query({
-          prompt: patchPrompt,
-          options: {
-            model: 'claude-sonnet-4-5-20250929',
-            maxTurns: 3,
-          }
+        // Use Anthropic SDK to generate patches
+        const client = new Anthropic({
+          apiKey: process.env.ANTHROPIC_API_KEY
         });
 
-        for await (const message of claudeQuery) {
-          if (message.type === 'assistant') {
-            const content = message.message.content;
-            for (const block of content) {
-              if (block.type === 'text') {
-                claudeResponse += block.text;
-              }
+        const message = await client.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 2048,
+          messages: [
+            {
+              role: 'user',
+              content: patchPrompt
             }
+          ]
+        });
+
+        let claudeResponse = '';
+        for (const block of message.content) {
+          if (block.type === 'text') {
+            claudeResponse += block.text;
           }
         }
 
@@ -234,7 +236,7 @@ Generate practical patches that implement this optimization. Return only JSON.`;
    * Save patches to disk
    */
   private async savePatches(patches: Patch[]): Promise<void> {
-    const patchesDir = path.join(process.cwd(), 'tokenop-patches');
+    const patchesDir = path.join(process.cwd(), 'peakinfer-patches');
     await fs.ensureDir(patchesDir);
 
     for (const patch of patches) {

@@ -354,7 +354,7 @@ export class TemplateEngine {
    * Load templates from GitHub repository
    */
   private async loadTemplatesFromGitHub(): Promise<void> {
-    const githubUrl = 'https://raw.githubusercontent.com/Kalmantic/tokenop/main/tokenop/design/TokenOp%20Template%20v0.2.md';
+    const githubUrl = 'https://raw.githubusercontent.com/Kalmantic/peakinfer/main/peakinfer/design/TokenOp%20Template%20v0.2.md';
 
     try {
       const content = await this.fetchFromGitHub(githubUrl);

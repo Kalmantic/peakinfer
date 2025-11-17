@@ -1,0 +1,12 @@
+{
+  "search_strategy": "exhaustive",
+  "candidate_templates": [],
+  "execution_order": [],
+  "early_stopping_criteria": {
+    "min_improvement_threshold": 0.05,
+    "max_candidates_to_test": 0,
+    "quality_degradation_threshold": 0.050000000000000044,
+    "max_execution_time_minutes": 60
+  },
+  "estimated_duration_minutes": 0
+}

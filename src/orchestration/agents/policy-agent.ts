@@ -28,8 +28,8 @@ export class PolicyAgent {
     const defaultPaths = [
       'policy.yaml',
       'policy.yml',
-      'tokenop-policy.yaml',
-      '.tokenop/policy.yaml',
+      'peakinfer-policy.yaml',
+      '.peakinfer/policy.yaml',
       'config/policy.yaml'
     ];
 

@@ -10,7 +10,7 @@
  * - AuditorAgent: Savings summary and patches
  */
 
-import { query, type Query, type SDKMessage } from '@anthropic-ai/claude-code';
+import Anthropic from '@anthropic-ai/sdk';
 import { EnvironmentProfile, OptimizationTemplate, TemplateExecutionResult } from '../types/template.js';
 import { ClaudeDiscoveryAgent } from './agents/claude-discovery-agent.js';
 import { WorkloadProfilerAgent } from './agents/workload-profiler-agent.js';
@@ -220,24 +220,25 @@ export class MultiAgentOrchestrator {
     let response = '';
 
     try {
-      const claudeQuery: Query = query({
-        prompt: fullPrompt,
-        options: {
-          model: 'claude-sonnet-4-5-20250929',
-          maxTurns: 10,
-          maxThinkingTokens: 2000,
-        }
+      // Use Anthropic SDK for agent query
+      const client = new Anthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY
       });
 
-      for await (const message of claudeQuery) {
-        if (message.type === 'assistant') {
-          // Extract text from assistant message
-          const content = message.message.content;
-          for (const block of content) {
-            if (block.type === 'text') {
-              response += block.text;
-            }
+      const message = await client.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        messages: [
+          {
+            role: 'user',
+            content: fullPrompt
           }
+        ]
+      });
+
+      for (const block of message.content) {
+        if (block.type === 'text') {
+          response += block.text;
         }
       }
 

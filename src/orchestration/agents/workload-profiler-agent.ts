@@ -3,7 +3,7 @@
  * Clusters prompts semantically and creates representative samples
  */
 
-import { query, type Query } from '@anthropic-ai/claude-code';
+import Anthropic from '@anthropic-ai/sdk';
 import { EnvironmentProfile } from '../../types/template.js';
 import { WorkloadProfile, ClusteredIntent, RepresentativeSample } from '../multi-agent-orchestrator.js';
 import * as fs from 'fs-extra';
@@ -134,24 +134,26 @@ Provide a JSON response with cluster analysis:
 Return only the JSON, no explanation.`;
 
     try {
-      let claudeResponse = '';
-
-      const claudeQuery: Query = query({
-        prompt: clusteringPrompt,
-        options: {
-          model: 'claude-sonnet-4-5-20250929',
-          maxTurns: 3,
-        }
+      // Use Anthropic SDK for clustering
+      const client = new Anthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY
       });
 
-      for await (const message of claudeQuery) {
-        if (message.type === 'assistant') {
-          const content = message.message.content;
-          for (const block of content) {
-            if (block.type === 'text') {
-              claudeResponse += block.text;
-            }
+      const message = await client.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        messages: [
+          {
+            role: 'user',
+            content: clusteringPrompt
           }
+        ]
+      });
+
+      let claudeResponse = '';
+      for (const block of message.content) {
+        if (block.type === 'text') {
+          claudeResponse += block.text;
         }
       }
 

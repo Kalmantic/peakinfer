@@ -88,10 +88,10 @@ program
 
       // Show next steps
       console.log(chalk.blue.bold('🚀 Next Steps:\n'));
-      console.log('  1. Review generated patches in ./tokenop-patches/');
+      console.log('  1. Review generated patches in ./peakinfer-patches/');
       console.log('  2. Apply patches manually or use auto-applicable ones');
       console.log('  3. Monitor quality metrics after implementation');
-      console.log('  4. Run `tokenop orchestrate` again to find more opportunities\n');
+      console.log('  4. Run `peakinfer orchestrate` again to find more opportunities\n');
 
     } catch (error) {
       spinner.fail('Multi-agent orchestration failed');
@@ -105,7 +105,7 @@ program
   });
 
 /**
- * PRD Command: tokenop discover
+ * PRD Command: peakinfer discover
  * Multi-agent discovery across infrastructure layers
  */
 program
@@ -142,20 +142,20 @@ program
 
       // Next Steps
       console.log(chalk.blue.bold('\n🚀 Next Steps:'));
-      console.log(`   ${chalk.gray('└')} tokenop profile --events events.jsonl`);
-      console.log(`   ${chalk.gray('└')} tokenop plan --constraints policy.yaml`);
-      console.log(`   ${chalk.gray('└')} tokenop run --plan optimization-plan.yaml\n`);
+      console.log(`   ${chalk.gray('└')} peakinfer profile --events events.jsonl`);
+      console.log(`   ${chalk.gray('└')} peakinfer plan --constraints policy.yaml`);
+      console.log(`   ${chalk.gray('└')} peakinfer run --plan optimization-plan.yaml\n`);
 
     } catch (error) {
       spinner.fail('Discovery failed');
       console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
-      console.error(chalk.gray('\nFor debugging: tokenop --verbose discover\n'));
+      console.error(chalk.gray('\nFor debugging: peakinfer --verbose discover\n'));
       process.exit(1);
     }
   });
 
 /**
- * PRD Command: tokenop profile
+ * PRD Command: peakinfer profile
  * Workload profiling with semantic clustering
  */
 program
@@ -198,8 +198,8 @@ program
 
       // Next Steps
       console.log(chalk.blue.bold('\n🚀 Next Steps:'));
-      console.log(`   ${chalk.gray('└')} tokenop plan --constraints policy.yaml`);
-      console.log(`   ${chalk.gray('└')} tokenop run --plan optimization-plan.yaml\n`);
+      console.log(`   ${chalk.gray('└')} peakinfer plan --constraints policy.yaml`);
+      console.log(`   ${chalk.gray('└')} peakinfer run --plan optimization-plan.yaml\n`);
 
     } catch (error) {
       spinner.fail('Profiling failed');
@@ -209,7 +209,7 @@ program
   });
 
 /**
- * PRD Command: tokenop plan
+ * PRD Command: peakinfer plan
  * Generate optimization plan using community templates
  */
 program
@@ -258,7 +258,7 @@ program
 
       // Next Steps
       console.log(chalk.blue.bold('\n🚀 Next Steps:'));
-      console.log(`   ${chalk.gray('└')} tokenop run --plan ${options.output}`);
+      console.log(`   ${chalk.gray('└')} peakinfer run --plan ${options.output}`);
       console.log(`   ${chalk.gray('└')} Review plan before execution\n`);
 
     } catch (error) {
@@ -269,7 +269,7 @@ program
   });
 
 /**
- * PRD Command: tokenop run
+ * PRD Command: peakinfer run
  * Execute optimization plan with evaluation
  */
 program
@@ -312,8 +312,8 @@ program
 
       // Next Steps
       console.log(chalk.blue.bold('\n🚀 Next Steps:'));
-      console.log(`   ${chalk.gray('└')} tokenop report --output-dir reports/`);
-      console.log(`   ${chalk.gray('└')} Review generated patches in ./tokenop-patches/\n`);
+      console.log(`   ${chalk.gray('└')} peakinfer report --output-dir reports/`);
+      console.log(`   ${chalk.gray('└')} Review generated patches in ./peakinfer-patches/\n`);
 
     } catch (error) {
       spinner.fail('Execution failed');
@@ -323,7 +323,7 @@ program
   });
 
 /**
- * PRD Command: tokenop report
+ * PRD Command: peakinfer report
  * Generate comprehensive reports and audits
  */
 program
@@ -373,7 +373,7 @@ program
 
       // Next Steps
       console.log(chalk.blue.bold('\n🎉 Optimization Complete!'));
-      console.log(`   ${chalk.gray('└')} Review patches in ./tokenop-patches/`);
+      console.log(`   ${chalk.gray('└')} Review patches in ./peakinfer-patches/`);
       console.log(`   ${chalk.gray('└')} Apply optimizations to production`);
       console.log(`   ${chalk.gray('└')} Monitor quality metrics\n`);
 
@@ -508,7 +508,7 @@ program
   });
 
 /**
- * PRD Command: tokenop template-apply
+ * PRD Command: peakinfer template-apply
  * Apply a specific template with interactive mode
  */
 program
@@ -556,7 +556,7 @@ program
   });
 
 /**
- * PRD Command: tokenop submit-implementation
+ * PRD Command: peakinfer submit-implementation
  * Submit implementation results to community
  */
 program
@@ -585,7 +585,7 @@ program
   });
 
 /**
- * PRD Command: tokenop review-template
+ * PRD Command: peakinfer review-template
  * Review a community template
  */
 program
@@ -622,7 +622,7 @@ program
   });
 
 /**
- * PRD Command: tokenop contribute
+ * PRD Command: peakinfer contribute
  * Contribute template or results to community
  */
 program
@@ -641,14 +641,21 @@ program
 
     console.log(chalk.yellow('\n⚠️  Community contribution feature coming in Phase 2'));
     console.log(chalk.gray('GitHub-based workflow will be available soon'));
-    console.log(chalk.gray('Community templates: github.com/kalmantic/tokenop-templates\n'));
+    console.log(chalk.gray('Community templates: github.com/kalmantic/peakinfer-templates\n'));
   });
 
 /**
  * Analyze optimization economics for matched templates
  */
 async function analyzeOptimizationEconomics(templates: any[], environment: any) {
-  const plans = [];
+  const plans: Array<{
+    template: any;
+    baseline: Record<string, number>;
+    projected: Record<string, number>;
+    projectedSavings: number;
+    roi: number;
+    implementationCost: any;
+  }> = [];
 
   for (const template of templates) {
     try {
@@ -685,28 +692,28 @@ function displayWelcome() {
   console.log(chalk.blue.bold('╚════════════════════════════════════════════════════════════════╝\n'));
 
   console.log(chalk.cyan.bold('🚀 Quick Start Commands:\n'));
-  console.log('  ' + chalk.yellow('tokenop orchestrate') + chalk.gray('          # Full multi-agent optimization workflow'));
-  console.log('  ' + chalk.yellow('tokenop discover') + chalk.gray('             # Discover your infrastructure environment'));
-  console.log('  ' + chalk.yellow('tokenop templates') + chalk.gray('            # Browse available optimization templates'));
-  console.log('  ' + chalk.yellow('tokenop execute <template-id>') + chalk.gray(' # Execute a specific template\n'));
+  console.log('  ' + chalk.yellow('peakinfer orchestrate') + chalk.gray('          # Full multi-agent optimization workflow'));
+  console.log('  ' + chalk.yellow('peakinfer discover') + chalk.gray('             # Discover your infrastructure environment'));
+  console.log('  ' + chalk.yellow('peakinfer templates') + chalk.gray('            # Browse available optimization templates'));
+  console.log('  ' + chalk.yellow('peakinfer execute <template-id>') + chalk.gray(' # Execute a specific template\n'));
 
   console.log(chalk.cyan.bold('📊 Multi-Step Workflow:\n'));
-  console.log('  ' + chalk.white('1.') + ' ' + chalk.yellow('tokenop discover') + chalk.gray('   → Scan infrastructure layers'));
-  console.log('  ' + chalk.white('2.') + ' ' + chalk.yellow('tokenop profile') + chalk.gray('    → Analyze workload patterns'));
-  console.log('  ' + chalk.white('3.') + ' ' + chalk.yellow('tokenop plan') + chalk.gray('       → Generate optimization plan'));
-  console.log('  ' + chalk.white('4.') + ' ' + chalk.yellow('tokenop run') + chalk.gray('        → Execute optimizations'));
-  console.log('  ' + chalk.white('5.') + ' ' + chalk.yellow('tokenop report') + chalk.gray('     → Generate ROI report\n'));
+  console.log('  ' + chalk.white('1.') + ' ' + chalk.yellow('peakinfer discover') + chalk.gray('   → Scan infrastructure layers'));
+  console.log('  ' + chalk.white('2.') + ' ' + chalk.yellow('peakinfer profile') + chalk.gray('    → Analyze workload patterns'));
+  console.log('  ' + chalk.white('3.') + ' ' + chalk.yellow('peakinfer plan') + chalk.gray('       → Generate optimization plan'));
+  console.log('  ' + chalk.white('4.') + ' ' + chalk.yellow('peakinfer run') + chalk.gray('        → Execute optimizations'));
+  console.log('  ' + chalk.white('5.') + ' ' + chalk.yellow('peakinfer report') + chalk.gray('     → Generate ROI report\n'));
 
   console.log(chalk.cyan.bold('💡 Need Help?\n'));
-  console.log('  ' + chalk.yellow('tokenop --help') + chalk.gray('              # Show all commands'));
-  console.log('  ' + chalk.yellow('tokenop <command> --help') + chalk.gray('     # Show command-specific help\n'));
+  console.log('  ' + chalk.yellow('peakinfer --help') + chalk.gray('              # Show all commands'));
+  console.log('  ' + chalk.yellow('peakinfer <command> --help') + chalk.gray('     # Show command-specific help\n'));
 
   console.log(chalk.gray('Powered by Claude Code SDK • Made with ❤️  by Kalmantic AI Labs\n'));
 }
 
 // Program configuration
 program
-  .name('tokenop')
+  .name('peakinfer')
   .description('🔧 LLM inference cost optimization through template-driven Claude Code SDK agents')
   .version('0.1.0')
   .configureHelp({

@@ -2,7 +2,7 @@
 
 # **Product Requirements Document (PRD) — v0.7 Technical**
 
-**Product:** TokenOp CLI & Community Platform  
+**Product:** Peakinfer CLI & Community Platform  
  **Organization:** Kalmantic AI Labs  
  **Date:** December 2025  
  **Author:** Thiyagarajan Maruthavanan  
@@ -10,11 +10,11 @@
 
 ## **1\. Vision & Technical North Star**
 
-**TokenOp is the trusted orchestration layer for LLM inference cost optimization, built on Claude Code SDK with community-validated templates and file-based validation.**
+**Peakinfer is the trusted orchestration layer for LLM inference cost optimization, built on Claude Code SDK with community-validated templates and file-based validation.**
 
 ### **Core Technical Innovation**
 
-TokenOp combines Claude's multi-agent reasoning capabilities with community-validated optimization templates to discover, profile, and optimize workloads across the messy ecosystem of Databricks, Snowflake, Terraform, hosted inference platforms (Together, Baseten, Modal), and serving stacks (vLLM, TensorRT-LLM, SGLang).
+Peakinfer combines Claude's multi-agent reasoning capabilities with community-validated optimization templates to discover, profile, and optimize workloads across the messy ecosystem of Databricks, Snowflake, Terraform, hosted inference platforms (Together, Baseten, Modal), and serving stacks (vLLM, TensorRT-LLM, SGLang).
 
 ### **Technical Architecture Pillars**
 
@@ -43,7 +43,7 @@ Kalmantic's positioning: be the **technical authority** in LLM cost efficiency. 
 * **Point optimizations only**: vLLM focuses on Serving; Cloud vendors focus on Infra; API startups focus on App-level. Nobody orchestrates across all layers  
 * **Trust barrier**: Security-conscious enterprises won't insert closed-source interceptors or give away PII. Without **open-source, auditable collectors**, adoption is blocked
 
-### **Technical Gaps TokenOp Addresses**
+### **Technical Gaps Peakinfer Addresses**
 
 1. **Fragmented Knowledge**: Optimization expertise trapped in individual teams across different layers  
 2. **No Unified Orchestration**: Technical optimizations siloed by layer without cross-layer coordination  
@@ -67,12 +67,12 @@ Create the first community-driven optimization orchestration platform where:
 
 ```ts
 // System Architecture Overview
-const tokenopSystem = {
+const peakinferSystem = {
   cliInterface: {
     technology: "Claude Code SDK + TypeScript Commander",
     multiAgentOrchestration: "Claude Sonnet 4 reasoning",
     commands: ["discover", "profile", "plan", "run", "report", "templates", "contribute"],
-    installation: "npm install -g @kalmantic/tokenop"
+    installation: "npm install -g @kalmantic/peakinfer"
   },
   
   inputConnectors: {
@@ -91,9 +91,9 @@ const tokenopSystem = {
   },
   
   templateSystem: {
-    storage: "GitHub repository flat files (github.com/kalmantic/tokenop-templates)",
+    storage: "GitHub repository flat files (github.com/kalmantic/peakinfer-templates)",
     format: "Markdown with YAML frontmatter",
-    caching: "Local ~/.tokenop/templates cache",
+    caching: "Local ~/.peakinfer/templates cache",
     validation: "File-based peer review + Claude analysis"
   },
   
@@ -147,7 +147,7 @@ interface InferenceEvent {
 ### **File-Based Repository Structure**
 
 ```
-github.com/kalmantic/tokenop-templates/
+github.com/kalmantic/peakinfer-templates/
 ├── templates/
 │   ├── cross-layer/
 │   │   ├── databricks-vllm-optimization.md
@@ -193,7 +193,7 @@ github.com/kalmantic/tokenop-templates/
 ### **Multi-Agent Claude Integration**
 
 ```ts
-// tokenop/core/multi_agent_orchestration.ts
+// peakinfer/core/multi_agent_orchestration.ts
 import { query } from "@anthropic-ai/claude-code";
 import { readFileSync, writeFileSync } from 'fs';
 
@@ -230,7 +230,7 @@ Generate:
 
 Format output as discovered.yaml with structured findings.`,
       options: {
-        systemPrompt: "You are the Discovery Agent in TokenOp's multi-agent system. Focus on comprehensive infrastructure analysis across all layers.",
+        systemPrompt: "You are the Discovery Agent in Peakinfer's multi-agent system. Focus on comprehensive infrastructure analysis across all layers.",
         allowedTools: ["Read", "Write"],
         maxTurns: 3
       }
@@ -337,7 +337,7 @@ Format outputs for both technical implementation and business reporting.`,
 ### **OSS Collectors Architecture**
 
 ```ts
-// tokenop/collectors/base_collector.ts
+// peakinfer/collectors/base_collector.ts
 interface CollectorConfig {
   trustBoundaries: {
     noNetworkEgress: boolean;
@@ -364,7 +364,7 @@ abstract class BaseCollector {
   }
 }
 
-// tokenop/collectors/snowflake_collector.ts
+// peakinfer/collectors/snowflake_collector.ts
 class SnowflakeCollector extends BaseCollector {
   async collect(): Promise<InferenceEvent[]> {
     // SQL modules to pull cost & usage views
@@ -391,7 +391,7 @@ class SnowflakeCollector extends BaseCollector {
   }
 }
 
-// tokenop/collectors/databricks_collector.ts
+// peakinfer/collectors/databricks_collector.ts
 class DatabricksCollector extends BaseCollector {
   async collect(): Promise<InferenceEvent[]> {
     // REST APIs for jobs/runs/serving endpoints
@@ -414,31 +414,31 @@ class DatabricksCollector extends BaseCollector {
 
 ```shell
 # Multi-agent orchestration commands
-tokenop discover [--input-dir <dir>] [--collectors snowflake,databricks,terraform]
-tokenop profile [--events events.jsonl] [--cluster-method semantic]
-tokenop plan [--constraints policy.yaml] [--templates-dir templates/]
-tokenop run [--plan plan.yaml] [--sample-size 100] [--early-stopping]
-tokenop report [--output-dir reports/] [--format html,csv] [--dashboard]
+peakinfer discover [--input-dir <dir>] [--collectors snowflake,databricks,terraform]
+peakinfer profile [--events events.jsonl] [--cluster-method semantic]
+peakinfer plan [--constraints policy.yaml] [--templates-dir templates/]
+peakinfer run [--plan plan.yaml] [--sample-size 100] [--early-stopping]
+peakinfer report [--output-dir reports/] [--format html,csv] [--dashboard]
 
 # Template management
-tokenop templates [list|search|info] [--category <category>]
-tokenop template-apply <template_id> [--dry-run] [--interactive]
+peakinfer templates [list|search|info] [--category <category>]
+peakinfer template-apply <template_id> [--dry-run] [--interactive]
 
 # Community interaction (file-based)
-tokenop submit-implementation <template_id> [--baseline-cost] [--optimized-cost]
-tokenop review-template <template_id>
-tokenop contribute [--template <template_id>] [--results <file>]
+peakinfer submit-implementation <template_id> [--baseline-cost] [--optimized-cost]
+peakinfer review-template <template_id>
+peakinfer contribute [--template <template_id>] [--results <file>]
 
 # Utility commands
-tokenop sync-templates    # Pull latest from GitHub
-tokenop validate --input events.jsonl
-tokenop diff --baseline baseline.csv --optimized optimized.csv
+peakinfer sync-templates    # Pull latest from GitHub
+peakinfer validate --input events.jsonl
+peakinfer diff --baseline baseline.csv --optimized optimized.csv
 ```
 
 ### **Multi-Agent CLI Integration**
 
 ```ts
-// tokenop/cli/main.ts
+// peakinfer/cli/main.ts
 import { Command } from 'commander';
 import { MultiAgentOrchestrator } from '../core/multi_agent_orchestration.js';
 import { SnowflakeCollector, DatabricksCollector, TerraformCollector } from '../collectors/index.js';
@@ -489,9 +489,9 @@ program
     
     console.log("Discovery complete. Results saved to discovered.yaml");
     console.log("Next steps:");
-    console.log("1. tokenop profile --events events.jsonl");
-    console.log("2. tokenop plan --constraints policy.yaml");
-    console.log("3. tokenop run --plan optimization-plan.yaml");
+    console.log("1. peakinfer profile --events events.jsonl");
+    console.log("2. peakinfer plan --constraints policy.yaml");
+    console.log("3. peakinfer run --plan optimization-plan.yaml");
   });
 
 program
@@ -516,7 +516,7 @@ program
     console.log("Optimization plan generated!");
     console.log(`Estimated savings: $${plan.estimatedSavings.toLocaleString()}/month`);
     console.log(`Implementation complexity: ${plan.implementationComplexity}`);
-    console.log("Next step: tokenop run --plan optimization-plan.yaml");
+    console.log("Next step: peakinfer run --plan optimization-plan.yaml");
   });
 
 program
@@ -613,12 +613,12 @@ jobs:
         with:
           node-version: '18'
           
-      - name: Install TokenOp CLI
-        run: npm install -g @kalmantic/tokenop
+      - name: Install Peakinfer CLI
+        run: npm install -g @kalmantic/peakinfer
         
       - name: Validate Template with Claude
         run: |
-          tokenop validate-template-submission \
+          peakinfer validate-template-submission \
             --file ${{ github.event.pull_request.changed_files[0] }} \
             --output validation-report.md
         env:
@@ -626,14 +626,14 @@ jobs:
           
       - name: Assign Community Reviewers
         run: |
-          tokenop assign-reviewers \
+          peakinfer assign-reviewers \
             --template ${{ github.event.pull_request.changed_files[0] }} \
             --reviewers-file community/reviewers.md \
             --count 3
             
       - name: Test Template Implementation
         run: |
-          tokenop test-template \
+          peakinfer test-template \
             --template ${{ github.event.pull_request.changed_files[0] }} \
             --dry-run \
             --validate-economics
@@ -656,7 +656,7 @@ jobs:
 ### **File-Based Validation Tools**
 
 ```ts
-// tokenop/validation/file_validator.ts
+// peakinfer/validation/file_validator.ts
 import { query } from "@anthropic-ai/claude-code";
 import { readFileSync, writeFileSync, appendFileSync } from 'fs';
 import { join } from 'path';
@@ -770,7 +770,7 @@ Ask me specific questions to evaluate each area systematically.`,
 ### **Multi-Layer ROI Calculation**
 
 ```ts
-// tokenop/economics/multi_layer_calculator.ts
+// peakinfer/economics/multi_layer_calculator.ts
 import { readFileSync } from 'fs';
 import { query } from "@anthropic-ai/claude-code";
 
@@ -944,7 +944,7 @@ const platformMetrics = {
 1. *As a Databricks platform owner*, I want to see how rerouting jobs from GPT-4 to GPT-4-mini affects cost/latency across my ML workflows  
 2. *As a Snowflake AI lead*, I want to quantify caching thresholds for my data pipeline LLM calls without quality loss  
 3. *As an infrastructure SRE*, I want Terraform diffs showing spot instance savings for my LLM serving infrastructure  
-4. *As a startup engineer*, I want to run `tokenop run --input prompts.jsonl` to demo cost savings using community templates  
+4. *As a startup engineer*, I want to run `peakinfer run --input prompts.jsonl` to demo cost savings using community templates  
 5. *As an enterprise architect*, I want cross-layer optimization plans that coordinate application routing, serving optimization, and infrastructure scaling
 
 ## **9\. Implementation Timeline**
@@ -1006,9 +1006,9 @@ const platformMetrics = {
 
 ## **11\. Success Definition & Acquisition Path**
 
-TokenOp succeeds when it becomes the trusted orchestration layer for LLM inference optimization, with:
+Peakinfer succeeds when it becomes the trusted orchestration layer for LLM inference optimization, with:
 
-* **Technical Success**: \>90% of optimization implementations succeed using TokenOp templates  
+* **Technical Success**: \>90% of optimization implementations succeed using Peakinfer templates  
 * **Community Success**: Self-sustaining template contribution and validation ecosystem  
 * **Economic Success**: \>$100M documented cost savings across user base  
 * **Platform Success**: Path to $100M+ ARR through enterprise features and services
@@ -1020,11 +1020,11 @@ TokenOp succeeds when it becomes the trusted orchestration layer for LLM inferen
   * Book (*Token Squeeze*)  
   * OSS PRs (vLLM, SGLang, TensorRT-LLM)  
   * Research papers (with optimization insights)  
-* **Prototype TokenOp**: Proves orchestration across all 3 layers is real, not just narrative
+* **Prototype Peakinfer**: Proves orchestration across all 3 layers is real, not just narrative
 
 * **Customer path**: Approach 15 lighthouse accounts after trifecta, targeting \>60% response rate
 
 * **Acquirer angle**: Only orchestrator across Application, Serving, and Infrastructure layers → "Ubuntu for Inference"
 
-The platform transforms inference optimization from ad-hoc experimentation to systematic application of community-validated strategies across the entire stack, creating the knowledge network effects and technical authority that establish TokenOp as the definitive inference economics orchestration platform.
+The platform transforms inference optimization from ad-hoc experimentation to systematic application of community-validated strategies across the entire stack, creating the knowledge network effects and technical authority that establish Peakinfer as the definitive inference economics orchestration platform.
 

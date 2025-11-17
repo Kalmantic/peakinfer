@@ -1,4 +1,4 @@
-# **TokenOp Community Optimization Templates \- PRD Aligned**
+# **Peakinfer Community Optimization Templates \- PRD Aligned**
 
 ## **Core Infrastructure Templates**
 
@@ -2123,7 +2123,7 @@ economics:
     new_monthly_waste: "${new_wasted_capacity} * ${gpu_hourly_cost} * 24
 
 ```python
-# tokenop/core/template_executor.py
+# peakinfer/core/template_executor.py
 import yaml
 import subprocess
 import logging
@@ -2300,18 +2300,18 @@ class EconomicsEngine:
 
 ```shell
 # Core Infrastructure
-tokenop apply pytorch-to-onnx-migration
-tokenop apply vllm-high-throughput-optimization  
-tokenop apply gptq-4bit-quantization
+peakinfer apply pytorch-to-onnx-migration
+peakinfer apply vllm-high-throughput-optimization  
+peakinfer apply gptq-4bit-quantization
 
 # Application Layer
-tokenop apply smart-model-routing
-tokenop apply context-window-optimization
+peakinfer apply smart-model-routing
+peakinfer apply context-window-optimization
 
 # Economics Integration
-tokenop calculate-roi --template smart-model-routing --monthly-requests 100000 --current-cost-per-token 0.03
-tokenop monitor --template vllm-high-throughput-optimization --duration 24h
-tokenop rollback --template gptq-4bit-quantization --reason "quality_degradation"
+peakinfer calculate-roi --template smart-model-routing --monthly-requests 100000 --current-cost-per-token 0.03
+peakinfer monitor --template vllm-high-throughput-optimization --duration 24h
+peakinfer rollback --template gptq-4bit-quantization --reason "quality_degradation"
 ```
 
 ### **Automated Execution Features:**
@@ -2322,5 +2322,5 @@ tokenop rollback --template gptq-4bit-quantization --reason "quality_degradation
 * **Monitoring Integration**: Real-time metric tracking with alert thresholds  
 * **Step Validation**: Each step has success criteria and rollback commands
 
-This alignment ensures the templates work seamlessly with the TokenOp CLI and automated execution engine described in the PRD.
+This alignment ensures the templates work seamlessly with the Peakinfer CLI and automated execution engine described in the PRD.
 

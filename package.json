@@ -1,11 +1,11 @@
 {
-  "name": "@kalmantic/tokenop",
+  "name": "@kalmantic/peakinfer",
   "version": "0.1.0",
   "type": "module",
   "description": "LLM inference cost optimization through template-driven Claude Code SDK agents",
   "main": "dist/index.js",
   "bin": {
-    "tokenop": "dist/cli.js"
+    "peakinfer": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
@@ -30,7 +30,7 @@
   "author": "Kalmantic AI Labs",
   "license": "Apache-2.0",
   "dependencies": {
-    "@anthropic-ai/claude-code": "^1.0.0",
+    "@anthropic-ai/sdk": "^0.20.4",
     "chalk": "^5.3.0",
     "commander": "^11.1.0",
     "dotenv": "^17.2.3",
