@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TokenOp is an LLM inference cost optimization platform that orchestrates optimizations across Application, Serving, and Infrastructure layers. This repository is currently in the **design phase** and contains comprehensive product requirements and technical specifications.
+PeakInfer is an LLM inference cost optimization platform that orchestrates optimizations across Application, Serving, and Infrastructure layers. This repository is currently in the **design phase** and contains comprehensive product requirements and technical specifications.
 
 ## Repository Structure
 
@@ -13,8 +13,8 @@ This is a **design-only repository** with no implementation code yet. The reposi
 ```
 .
 ├── design/
-│   ├── TokenOp Product Requirements Document (PRD) v0.7.md  # Comprehensive technical PRD
-│   └── TokenOp Template v0.2.md                           # Community optimization templates
+│   ├── PeakInfer Product Requirements Document (PRD) v0.7.md  # Comprehensive technical PRD
+│   └── PeakInfer Template v0.2.md                           # Community optimization templates
 └── CLAUDE.md                                               # This file
 ```
 
@@ -23,7 +23,7 @@ This is a **design-only repository** with no implementation code yet. The reposi
 **Note: No build, lint, or test commands exist yet** - this is a design-phase repository with no code implementation.
 
 When implementation begins, the planned technology stack will include:
-- **CLI Tool**: TypeScript with Commander.js, distributed via `npm install -g @kalmantic/tokenop`
+- **CLI Tool**: TypeScript with Commander.js, distributed via `npm install -g @kalmantic/peakinfer`
 - **Multi-Agent System**: Claude Code SDK integration for optimization orchestration
 - **Collectors**: Open-source data collectors for Snowflake, Databricks, Terraform
 - **Templates**: File-based community optimization templates in GitHub repository
@@ -31,27 +31,27 @@ When implementation begins, the planned technology stack will include:
 Expected future commands (when implemented):
 ```bash
 # Installation
-npm install -g @kalmantic/tokenop
+npm install -g @kalmantic/peakinfer
 
 # Core optimization workflow
-tokenop discover [--collectors snowflake,databricks,terraform]
-tokenop profile [--events events.jsonl] [--cluster-method semantic]
-tokenop plan [--constraints policy.yaml] [--templates-dir templates/]
-tokenop run [--plan plan.yaml] [--sample-size 100] [--early-stopping]
-tokenop report [--output-dir reports/] [--format html,csv]
+peakinfer discover [--collectors snowflake,databricks,terraform]
+peakinfer profile [--events events.jsonl] [--cluster-method semantic]
+peakinfer plan [--constraints policy.yaml] [--templates-dir templates/]
+peakinfer run [--plan plan.yaml] [--sample-size 100] [--early-stopping]
+peakinfer report [--output-dir reports/] [--format html,csv]
 
 # Template management
-tokenop templates [list|search|info] [--category <category>]
-tokenop template-apply <template_id> [--dry-run] [--interactive]
+peakinfer templates [list|search|info] [--category <category>]
+peakinfer template-apply <template_id> [--dry-run] [--interactive]
 
 # Community interaction
-tokenop submit-implementation <template_id> [--baseline-cost] [--optimized-cost]
-tokenop contribute [--template <template_id>] [--results <file>]
+peakinfer submit-implementation <template_id> [--baseline-cost] [--optimized-cost]
+peakinfer contribute [--template <template_id>] [--results <file>]
 ```
 
 ## Architecture Overview
 
-TokenOp is designed as a multi-layer optimization orchestration platform:
+PeakInfer is designed as a multi-layer optimization orchestration platform:
 
 ### Core System Components
 
@@ -88,14 +88,14 @@ TokenOp is designed as a multi-layer optimization orchestration platform:
    ```
 
 4. **File-Based Template Repository**
-   - Storage: GitHub repository flat files (github.com/kalmantic/tokenop-templates)
+   - Storage: GitHub repository flat files (github.com/kalmantic/peakinfer-templates)
    - Format: Markdown with YAML frontmatter
    - Categories: cross-layer/, application-layer/, serving-layer/, infrastructure-layer/
    - Validation: File-based peer review + Claude analysis
 
 ## Optimization Layers
 
-TokenOp coordinates optimizations across three infrastructure layers:
+PeakInfer coordinates optimizations across three infrastructure layers:
 
 1. **Application Layer**: Semantic caching, prompt optimization, model routing
 2. **Serving Layer**: vLLM migration, TensorRT optimization, SGLang deployment
@@ -176,7 +176,7 @@ When implementation begins:
 ## Key Files for Future Development
 
 Reference the design documents for implementation:
-- `design/TokenOp Product Requirements Document (PRD) v0.7.md`: Complete technical architecture and implementation details
-- `design/TokenOp Template v0.2.md`: Community optimization template specifications and examples
+- `design/PeakInfer Product Requirements Document (PRD) v0.7.md`: Complete technical architecture and implementation details
+- `design/PeakInfer Template v0.2.md`: Community optimization template specifications and examples
 
 The PRD contains detailed TypeScript examples, API specifications, and implementation timelines that should guide the actual development work.

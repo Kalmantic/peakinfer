@@ -48,15 +48,15 @@ export class TemplateEngine {
 
   /**
    * Extract templates from the main design document
-   * Parses the TokenOp Template v0.2.md file to extract YAML templates
+   * Parses the PeakInfer Template v0.2.md file to extract YAML templates
    */
   private async extractTemplatesFromDesignDoc(): Promise<void> {
     // If templatesDirectory is the design folder, look directly in it
     // Otherwise, look in the parent directory (design folder)
     const templatesDir = this.templatesDirectory || '.';
     const designDocPath = templatesDir.endsWith('design')
-      ? path.join(templatesDir, 'TokenOp Template v0.2.md')
-      : path.join(templatesDir, '..', 'TokenOp Template v0.2.md');
+      ? path.join(templatesDir, 'PeakInfer Template v0.2.md')
+      : path.join(templatesDir, '..', 'PeakInfer Template v0.2.md');
 
     if (!await fs.pathExists(designDocPath)) {
       console.log("Design document not found, looking for standalone templates...");

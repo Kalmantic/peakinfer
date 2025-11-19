@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * TokenOp CLI - Template-driven LLM optimization using Claude Code SDK
+ * PeakInfer CLI - Template-driven LLM optimization using Claude Code SDK
  * Main entry point for the SLC (Simple, Lovable, Complete) implementation
  */
 
@@ -31,7 +31,7 @@ program
   .option('--templates-dir <dir>', 'Custom templates directory')
   .option('--output <file>', 'Save results to file')
   .action(async (options) => {
-    console.log(chalk.blue.bold('\n🚀 TokenOp: Full-Stack LLM Optimization Discovery\n'));
+    console.log(chalk.blue.bold('\n🚀 PeakInfer: Full-Stack LLM Optimization Discovery\n'));
     console.log(chalk.gray('Using template-driven Claude Code SDK agents\n'));
 
     const spinner = ora('Starting discovery...').start();
@@ -104,10 +104,10 @@ program
       if (options.dryRun) {
         console.log(`   ${chalk.gray('└')} Run without --dry-run to execute optimizations`);
       } else {
-        console.log(`   ${chalk.gray('└')} tokenop execute <template-id> - Execute specific optimization`);
+        console.log(`   ${chalk.gray('└')} peakinfer execute <template-id> - Execute specific optimization`);
       }
-      console.log(`   ${chalk.gray('└')} tokenop plan - Generate detailed implementation plan`);
-      console.log(`   ${chalk.gray('└')} tokenop templates - Browse all available templates\n`);
+      console.log(`   ${chalk.gray('└')} peakinfer plan - Generate detailed implementation plan`);
+      console.log(`   ${chalk.gray('└')} peakinfer templates - Browse all available templates\n`);
 
       // Save results if requested
       if (options.output) {
@@ -127,7 +127,7 @@ program
     } catch (error) {
       spinner.fail('Discovery failed');
       console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
-      console.error(chalk.gray('\nFor debugging: tokenop --verbose discover\n'));
+      console.error(chalk.gray('\nFor debugging: peakinfer --verbose discover\n'));
       process.exit(1);
     }
   });
@@ -287,7 +287,7 @@ async function analyzeOptimizationEconomics(templates: any[], environment: any) 
 
 // Program configuration
 program
-  .name('tokenop')
+  .name('peakinfer')
   .description('🔧 LLM inference cost optimization through template-driven Claude Code SDK agents')
   .version('0.1.0');
 
