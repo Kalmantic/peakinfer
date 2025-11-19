@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * TokenOp CLI - Template-driven LLM optimization using Claude Code SDK
+ * PeakInfer CLI - Template-driven LLM optimization using Claude Code SDK
  * Main entry point for the SLC (Simple, Lovable, Complete) implementation
  */
 
@@ -37,7 +37,7 @@ program
   .option('--templates-dir <dir>', 'Custom templates directory')
   .option('--output <file>', 'Save full report to file')
   .action(async (options) => {
-    console.log(chalk.blue.bold('\n🤖 TokenOp: Multi-Agent Orchestration\n'));
+    console.log(chalk.blue.bold('\n🤖 PeakInfer: Multi-Agent Orchestration\n'));
     console.log(chalk.gray('Powered by Claude Code SDK\n'));
 
     // Check for Claude API key first
@@ -115,7 +115,7 @@ program
   .option('--collectors <collectors>', 'Comma-separated collector list (snowflake,databricks,terraform)', '')
   .option('--output <file>', 'Save discovered environment to file (discovered.yaml)', 'discovered.yaml')
   .action(async (options) => {
-    console.log(chalk.blue.bold('\n🔍 TokenOp: Environment Discovery\n'));
+    console.log(chalk.blue.bold('\n🔍 PeakInfer: Environment Discovery\n'));
     console.log(chalk.gray('Stage 1: Multi-agent infrastructure discovery\n'));
 
     // Check for Claude API key first
@@ -165,7 +165,7 @@ program
   .option('--cluster-method <method>', 'Clustering method (semantic|keyword)', 'semantic')
   .option('--output <file>', 'Save workload profile to file', 'workload-profile.json')
   .action(async (options) => {
-    console.log(chalk.blue.bold('\n📊 TokenOp: Workload Profiling\n'));
+    console.log(chalk.blue.bold('\n📊 PeakInfer: Workload Profiling\n'));
     console.log(chalk.gray('Stage 2: Semantic workload clustering\n'));
 
     // Check for Claude API key first
@@ -219,7 +219,7 @@ program
   .option('--templates-dir <dir>', 'Community templates directory', 'design/templates')
   .option('--output <file>', 'Save optimization plan to file', 'optimization-plan.yaml')
   .action(async (options) => {
-    console.log(chalk.blue.bold('\n🎯 TokenOp: Optimization Planning\n'));
+    console.log(chalk.blue.bold('\n🎯 PeakInfer: Optimization Planning\n'));
     console.log(chalk.gray('Stage 4: Creating optimization strategy\n'));
 
     // Check for Claude API key first
@@ -280,7 +280,7 @@ program
   .option('--early-stopping', 'Enable early stopping for failed optimizations', true)
   .option('--output <file>', 'Save execution results to file', 'execution-results.json')
   .action(async (options) => {
-    console.log(chalk.blue.bold('\n🚀 TokenOp: Executing Optimization Plan\n'));
+    console.log(chalk.blue.bold('\n🚀 PeakInfer: Executing Optimization Plan\n'));
     console.log(chalk.gray('Stage 5: Running optimizations with evaluation\n'));
 
     // Check for Claude API key first
@@ -333,7 +333,7 @@ program
   .option('--format <formats>', 'Report formats (html,csv,json)', 'html,json')
   .option('--dashboard', 'Generate interactive dashboard', false)
   .action(async (options) => {
-    console.log(chalk.blue.bold('\n📝 TokenOp: Generating Reports\n'));
+    console.log(chalk.blue.bold('\n📝 PeakInfer: Generating Reports\n'));
     console.log(chalk.gray('Stage 6: Auditing and reporting\n'));
 
     const spinner = ora('Generating audit report...').start();
@@ -517,7 +517,7 @@ program
   .option('--dry-run', 'Simulate application without making changes')
   .option('--interactive', 'Interactive mode with confirmations')
   .action(async (templateId, options) => {
-    console.log(chalk.blue.bold(`\n🔧 TokenOp: Applying Template\n`));
+    console.log(chalk.blue.bold(`\n🔧 PeakInfer: Applying Template\n`));
     console.log(chalk.gray(`Template: ${templateId}\n`));
 
     const spinner = ora('Loading template...').start();
@@ -566,7 +566,7 @@ program
   .option('--optimized-cost <cost>', 'Monthly cost after optimization', '0')
   .option('--implementation-time <days>', 'Days to complete implementation', '0')
   .action(async (templateId, options) => {
-    console.log(chalk.blue.bold(`\n📤 TokenOp: Submit Implementation\n`));
+    console.log(chalk.blue.bold(`\n📤 PeakInfer: Submit Implementation\n`));
     console.log(chalk.gray(`Template: ${templateId}\n`));
 
     const baselineCost = parseFloat(options.baselineCost);
@@ -592,7 +592,7 @@ program
   .command('review-template <template-id>')
   .description('👀 Review a community optimization template')
   .action(async (templateId) => {
-    console.log(chalk.blue.bold(`\n👀 TokenOp: Template Review\n`));
+    console.log(chalk.blue.bold(`\n👀 PeakInfer: Template Review\n`));
     console.log(chalk.gray(`Template: ${templateId}\n`));
 
     try {
@@ -631,7 +631,7 @@ program
   .option('--template <template-id>', 'Template to contribute')
   .option('--results <file>', 'Results file to contribute')
   .action(async (options) => {
-    console.log(chalk.blue.bold(`\n🤝 TokenOp: Community Contribution\n`));
+    console.log(chalk.blue.bold(`\n🤝 PeakInfer: Community Contribution\n`));
 
     console.log(chalk.cyan('📋 Contribution Options:'));
     console.log('  1. Submit new optimization template');
@@ -687,7 +687,7 @@ async function analyzeOptimizationEconomics(templates: any[], environment: any) 
 function displayWelcome() {
   console.log(chalk.blue.bold('\n╔════════════════════════════════════════════════════════════════╗'));
   console.log(chalk.blue.bold('║                                                                ║'));
-  console.log(chalk.blue.bold('║   ') + chalk.white.bold('TokenOp') + chalk.gray(' - LLM Cost Optimization Platform') + chalk.blue.bold('           ║'));
+  console.log(chalk.blue.bold('║   ') + chalk.white.bold('PeakInfer') + chalk.gray(' - LLM Cost Optimization Platform') + chalk.blue.bold('           ║'));
   console.log(chalk.blue.bold('║                                                                ║'));
   console.log(chalk.blue.bold('╚════════════════════════════════════════════════════════════════╝\n'));
 

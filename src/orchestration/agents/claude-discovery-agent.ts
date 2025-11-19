@@ -65,7 +65,7 @@ export class ClaudeDiscoveryAgent {
    * Discover environment using intelligent Claude Code SDK analysis
    * Analyzes both canonical event data and infrastructure configurations
    */
-  async discover(): Promise<EnvironmentProfile> {
+  async discover(): Promise<EnvironmentProfile | any> {
     console.log('  🔍 Analyzing your infrastructure with Claude...\n');
 
     try {
@@ -107,12 +107,12 @@ export class ClaudeDiscoveryAgent {
 
       return environment;
 
-    } catch (error) {
+    } catch (error: any) {
       console.warn('  ⚠️  Discovery analysis encountered an issue, using fallback discovery');
       console.warn('  Error:', error instanceof Error ? error.message : String(error));
-
+      return error.message
       // Fallback to heuristic discovery
-      return await this.fallbackDiscovery();
+      // return await this.fallbackDiscovery();
     }
   }
 

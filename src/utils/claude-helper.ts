@@ -33,7 +33,7 @@ export class ClaudeHelper {
       });
 
       console.log(chalk.yellow('\n⚠️  Claude API Key Required\n'));
-      console.log(chalk.gray('TokenOp uses Claude Code SDK for intelligent optimization.'));
+      console.log(chalk.gray('PeakInfer uses Claude Code SDK for intelligent optimization.'));
       console.log(chalk.gray('Get your API key from: https://console.anthropic.com/\n'));
 
       rl.question(chalk.cyan('Enter your Anthropic API key: '), (answer) => {
@@ -68,7 +68,7 @@ export class ClaudeHelper {
     const key = await this.promptForApiKey();
 
     if (!key) {
-      console.error(chalk.red('\n❌ Claude API key is required to run TokenOp'));
+      console.error(chalk.red('\n❌ Claude API key is required to run PeakInfer'));
       console.log(chalk.gray('Get your key from: https://console.anthropic.com/\n'));
       process.exit(1);
     }

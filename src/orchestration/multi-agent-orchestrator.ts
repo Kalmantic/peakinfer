@@ -122,7 +122,7 @@ export class MultiAgentOrchestrator {
     dryRun?: boolean;
     templatesDir?: string;
   }): Promise<OrchestrationResult> {
-    console.log('\n🚀 TokenOp Multi-Agent Orchestration Starting...\n');
+    console.log('\n🚀 PeakInfer Multi-Agent Orchestration Starting...\n');
 
     // Stage 1: Discovery - Understand the environment
     console.log('Stage 1️⃣: Environment Discovery');
@@ -255,7 +255,7 @@ export class MultiAgentOrchestrator {
   getOrchestrationSummary(result: OrchestrationResult): string {
     return `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  🎯 TokenOp Optimization Summary
+  🎯 PeakInfer Optimization Summary
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📊 Environment Discovered:

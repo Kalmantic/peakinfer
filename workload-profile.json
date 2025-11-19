@@ -1,0 +1,99 @@
+{
+  "total_requests": 1000,
+  "clustered_intents": [
+    {
+      "intent_name": "conversational",
+      "sample_count": 500,
+      "avg_tokens": 1500,
+      "cost_contribution": 0.4,
+      "representative_prompts": [
+        "Help me understand this concept",
+        "What is the best approach for this problem?",
+        "Can you explain this in simple terms?"
+      ]
+    },
+    {
+      "intent_name": "document_analysis",
+      "sample_count": 300,
+      "avg_tokens": 3000,
+      "cost_contribution": 0.35,
+      "representative_prompts": [
+        "Summarize this document",
+        "Extract key information from this text",
+        "Analyze the sentiment of this document"
+      ]
+    },
+    {
+      "intent_name": "code_generation",
+      "sample_count": 200,
+      "avg_tokens": 2000,
+      "cost_contribution": 0.25,
+      "representative_prompts": [
+        "Write a function to do X",
+        "Help me debug this code",
+        "Optimize this implementation"
+      ]
+    }
+  ],
+  "representative_samples": [
+    {
+      "intent": "conversational",
+      "prompt": "Help me understand this concept",
+      "expected_output_length": 1500,
+      "frequency": 500
+    },
+    {
+      "intent": "conversational",
+      "prompt": "What is the best approach for this problem?",
+      "expected_output_length": 1500,
+      "frequency": 500
+    },
+    {
+      "intent": "conversational",
+      "prompt": "Can you explain this in simple terms?",
+      "expected_output_length": 1500,
+      "frequency": 500
+    },
+    {
+      "intent": "document_analysis",
+      "prompt": "Summarize this document",
+      "expected_output_length": 3000,
+      "frequency": 300
+    },
+    {
+      "intent": "document_analysis",
+      "prompt": "Extract key information from this text",
+      "expected_output_length": 3000,
+      "frequency": 300
+    },
+    {
+      "intent": "document_analysis",
+      "prompt": "Analyze the sentiment of this document",
+      "expected_output_length": 3000,
+      "frequency": 300
+    },
+    {
+      "intent": "code_generation",
+      "prompt": "Write a function to do X",
+      "expected_output_length": 2000,
+      "frequency": 200
+    },
+    {
+      "intent": "code_generation",
+      "prompt": "Help me debug this code",
+      "expected_output_length": 2000,
+      "frequency": 200
+    },
+    {
+      "intent": "code_generation",
+      "prompt": "Optimize this implementation",
+      "expected_output_length": 2000,
+      "frequency": 200
+    }
+  ],
+  "cost_breakdown": {
+    "conversational": 300,
+    "document_analysis": 450,
+    "code_generation": 250
+  }
+}
