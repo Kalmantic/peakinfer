@@ -41,7 +41,7 @@ Based on the TokenSqueeze book, PeakInfer focuses on:
 ## 🔧 Installation
 
 ```bash
-npm install -g @kalmantic/PeakInfer
+npm install -g @kalmantic/peakinfer
 ```
 
 ## 📋 Templates

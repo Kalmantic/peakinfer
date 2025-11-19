@@ -15,7 +15,7 @@ export declare class TemplateEngine {
     loadTemplates(): Promise<void>;
     /**
      * Extract templates from the main design document
-     * Parses the TokenOp Template v0.2.md file to extract YAML templates
+     * Parses the PeakInfer Template v0.2.md file to extract YAML templates
      */
     private extractTemplatesFromDesignDoc;
     /**

@@ -1,10 +1,10 @@
 {
-  "name": "@kalmantic/tokenop",
+  "name": "@kalmantic/peakinfer",
   "version": "0.1.0",
   "description": "LLM inference cost optimization through template-driven Claude Code SDK agents",
   "main": "dist/index.js",
   "bin": {
-    "tokenop": "dist/cli.js"
+    "peakinfer": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
