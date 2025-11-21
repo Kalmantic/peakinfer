@@ -4,7 +4,7 @@
  */
 
 import * as yaml from 'yaml';
-import * as fs from 'fs-extra';
+import fs from 'fs-extra';
 import * as path from 'path';
 import { glob } from 'glob';
 import { OptimizationTemplate, EnvironmentProfile, TemplateExecutionResult } from '../types/template.js';

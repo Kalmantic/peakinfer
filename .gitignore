@@ -51,6 +51,22 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
+# Environment and config
+.env
+.env.local
+.peakinfer/
+
+# Generated files
+discovered.yaml
+optimization-plan.yaml
+evaluation-report.yaml
+audit-report.yaml
+*-events.jsonl
+terraform-config.yaml
+reports/
+implementation-artifacts/
+community-contributions/
+
 # Runtime data
 pids/
 *.pid

@@ -10,18 +10,19 @@
 
 ## **1\. Vision & Technical North Star**
 
-**PeakInfer is the trusted orchestration layer for LLM inference peak performance, built on Claude Code SDK with community-validated templates and file-based validation.**
+**PeakInfer is the trusted orchestration layer for LLM inference peak performance, built on Claude Code SDK with community-validated templates, codebase analysis, and file-based validation.**
 
 ### **Core Technical Innovation**
 
-PeakInfer combines Claude's multi-agent reasoning capabilities with community-validated optimization templates to discover, profile, and optimize workloads across the messy ecosystem of Databricks, Snowflake, Terraform, hosted inference platforms (Together, Baseten, Modal), and serving stacks (vLLM, TensorRT-LLM, SGLang).
+PeakInfer combines Claude's multi-agent reasoning capabilities with community-validated optimization templates to discover, profile, and optimize workloads across the messy ecosystem of Databricks, Snowflake, Terraform, hosted inference platforms (Together, Baseten, Modal), and serving stacks (vLLM, TensorRT-LLM, SGLang). PeakInfer analyzes both runtime inference events (events.jsonl) and static codebase patterns to provide comprehensive optimization recommendations.
 
 ### **Technical Architecture Pillars**
 
 1. **Claude Code SDK Foundation**: Multi-agent orchestration for complex optimization decisions across Application, Serving, and Infrastructure layers  
 2. **File-Based Template Repository**: Version-controlled optimization knowledge in markdown files with community validation  
 3. **Canonical Event Schema**: Unified `events.jsonl` format across heterogeneous stacks  
-4. **OSS Trust Architecture**: Open-source collectors, least-privilege, run-in-customer-env, no PII exfiltration
+4. **Codebase Analysis**: Static code scanning to identify LLM API calls, configuration patterns, and optimization opportunities in source code  
+5. **OSS Trust Architecture**: Open-source collectors, least-privilege, run-in-customer-env, no PII exfiltration
 
 ### **Platform Economics Model**
 
@@ -79,6 +80,7 @@ const peakinferSystem = {
     snowflakeConnector: "SQL modules for cost & usage views",
     databricksConnector: "REST APIs for jobs/runs/serving endpoints", 
     terraformConnector: "Parse state or terraform show -json",
+    codebaseScanner: "Static analysis of source code for LLM API calls, configs, and patterns",
     manualInput: "JSONL/CSV/Parquet for demos/OSS users",
     postHogConnector: "Analytics event ingestion (Phase 2)",
     langSmithConnector: "LangChain observability data (Phase 2)"
@@ -105,7 +107,8 @@ const peakinferSystem = {
   },
   
   multiAgentOrchestration: {
-    discoveryAgent: "Merge configs/logs → discovered.yaml",
+    discoveryAgent: "Merge configs/logs/codebase → discovered.yaml",
+    codebaseAnalyzer: "Scan source code for LLM patterns, API calls, and optimization opportunities",
     workloadProfiler: "Cluster prompts → representative samples",
     policyAgent: "Load org constraints (quality, latency, budget)",
     plannerAgent: "Build search plan (router swaps, cache thresholds, serving options)",
@@ -183,6 +186,7 @@ github.com/kalmantic/peakinfer-templates/
 │   ├── snowflake/
 │   ├── databricks/
 │   ├── terraform/
+│   ├── codebase/
 │   └── manual/
 └── scripts/
     ├── validate-template.js
@@ -197,9 +201,19 @@ github.com/kalmantic/peakinfer-templates/
 import { query } from "@anthropic-ai/claude-code";
 import { readFileSync, writeFileSync } from 'fs';
 
+interface CodebaseAnalysis {
+  llmApiCalls: any[];
+  modelUsagePatterns: any[];
+  configurationFiles: any[];
+  cachingOpportunities: any[];
+  optimizationOpportunities: any[];
+  integrationPoints: any[];
+}
+
 interface DiscoveryResult {
   configSummary: any;
   workloadProfile: any;
+  codebaseInsights: CodebaseAnalysis | null;
   optimizationOpportunities: any[];
 }
 
@@ -213,24 +227,68 @@ interface OptimizationPlan {
 }
 
 class MultiAgentOrchestrator {
-  async runDiscoveryAgent(inputFiles: string[]): Promise<DiscoveryResult> {
-    const mergedData = await this.mergeInputData(inputFiles);
+  async runCodebaseAnalyzer(codebasePath: string): Promise<CodebaseAnalysis> {
+    const codebaseFiles = await this.scanCodebase(codebasePath);
     
     for await (const message of query({
-      prompt: `Act as the Discovery Agent. Analyze this infrastructure data and create a comprehensive discovery summary:
+      prompt: `Act as the Codebase Analyzer Agent. Analyze this codebase for LLM inference patterns and optimization opportunities:
 
-Input Data: ${JSON.stringify(mergedData, null, 2)}
+Codebase Path: ${codebasePath}
+Files Scanned: ${codebaseFiles.length}
+
+Analyze:
+1. LLM API call patterns (OpenAI, Anthropic, Together, etc.)
+2. Model usage and routing logic
+3. Configuration files (env vars, config files, infrastructure-as-code)
+4. Caching implementations and opportunities
+5. Prompt construction patterns
+6. Error handling and retry logic
+7. Unused or inefficient code patterns
+8. Integration points with Databricks, Snowflake, Terraform
+9. Potential optimization opportunities at code level
+
+Generate structured codebase analysis report.`,
+      options: {
+        systemPrompt: "You are the Codebase Analyzer Agent. Scan source code to identify LLM inference patterns, API usage, and static optimization opportunities.",
+        allowedTools: ["Read", "Write"],
+        maxTurns: 5
+      }
+    })) {
+      if (message.type === "result") {
+        const analysis = this.parseCodebaseAnalysis(message.result);
+        writeFileSync('codebase-analysis.yaml', message.result);
+        return analysis;
+      }
+    }
+  }
+
+  async runDiscoveryAgent(inputFiles: string[], codebasePath?: string): Promise<DiscoveryResult> {
+    const mergedData = await this.mergeInputData(inputFiles);
+    let codebaseAnalysis: CodebaseAnalysis | null = null;
+    
+    // Scan codebase if path provided
+    if (codebasePath) {
+      codebaseAnalysis = await this.runCodebaseAnalyzer(codebasePath);
+    }
+    
+    for await (const message of query({
+      prompt: `Act as the Discovery Agent. Analyze this infrastructure data and codebase analysis to create a comprehensive discovery summary:
+
+Runtime Event Data: ${JSON.stringify(mergedData, null, 2)}
+${codebaseAnalysis ? `Codebase Analysis: ${JSON.stringify(codebaseAnalysis, null, 2)}` : ''}
 
 Generate:
-1. Infrastructure configuration summary
-2. Workload pattern analysis  
-3. Cost driver identification
-4. Performance bottleneck analysis
+1. Infrastructure configuration summary (from events + codebase)
+2. Workload pattern analysis (runtime events + static code patterns)
+3. Cost driver identification (actual usage + code-level inefficiencies)
+4. Performance bottleneck analysis (runtime + code patterns)
 5. Optimization opportunity mapping across Application, Serving, and Infrastructure layers
+6. Code-level optimization opportunities (unused code, inefficient patterns, missing caching)
+7. Integration between runtime behavior and code implementation
 
 Format output as discovered.yaml with structured findings.`,
       options: {
-        systemPrompt: "You are the Discovery Agent in PeakInfer's multi-agent system. Focus on comprehensive infrastructure analysis across all layers.",
+        systemPrompt: "You are the Discovery Agent in PeakInfer's multi-agent system. Combine runtime event data with static codebase analysis for comprehensive infrastructure analysis across all layers.",
         allowedTools: ["Read", "Write"],
         maxTurns: 3
       }
@@ -244,22 +302,30 @@ Format output as discovered.yaml with structured findings.`,
   }
 
   async runPlannerAgent(discoveryResult: DiscoveryResult, communityTemplates: any[]): Promise<OptimizationPlan> {
+    const codebaseContext = discoveryResult.codebaseInsights 
+      ? `\n\nCodebase Analysis:\n- LLM API calls found: ${discoveryResult.codebaseInsights.llmApiCalls.length}\n- Caching opportunities: ${discoveryResult.codebaseInsights.cachingOpportunities.length}\n- Configuration files: ${discoveryResult.codebaseInsights.configurationFiles.length}\n- Code-level optimization opportunities: ${discoveryResult.codebaseInsights.optimizationOpportunities.length}`
+      : '';
+    
     for await (const message of query({
-      prompt: `Act as the Planner Agent. Create a comprehensive optimization plan using discovery results and community templates:
+      prompt: `Act as the Planner Agent. Create a comprehensive optimization plan using discovery results (runtime events + codebase analysis) and community templates:
 
 Discovery Results: ${JSON.stringify(discoveryResult, null, 2)}
+${codebaseContext}
 Available Community Templates: ${JSON.stringify(communityTemplates, null, 2)}
 
 Create optimization plan with:
 1. Application layer optimizations (caching, routing, prompt optimization)
+   - Runtime event-based opportunities
+   - Code-level refactoring opportunities (e.g., add caching, optimize API calls)
 2. Serving layer optimizations (runtime migration, quantization, batching)
 3. Infrastructure layer optimizations (spot instances, reserved capacity, auto-scaling)
-4. Cross-layer coordination strategies
-5. Implementation sequence and dependencies
-6. Risk assessment and rollback procedures
-7. Economic impact projections with confidence intervals
+4. Code-level optimizations (refactor inefficient patterns, add missing caching, optimize configurations)
+5. Cross-layer coordination strategies
+6. Implementation sequence and dependencies
+7. Risk assessment and rollback procedures
+8. Economic impact projections with confidence intervals
 
-Prioritize based on ROI, implementation complexity, and risk.`,
+Prioritize based on ROI, implementation complexity, and risk. Consider both runtime behavior and static code patterns.`,
       options: {
         systemPrompt: "You are the Planner Agent. Create comprehensive, implementable optimization strategies across all infrastructure layers.",
         allowedTools: ["Read", "Write"],
@@ -330,6 +396,201 @@ Format outputs for both technical implementation and business reporting.`,
         await this.generateCommunityContribution(message.result);
       }
     }
+  }
+}
+```
+
+### **Codebase Analysis Architecture**
+
+```ts
+// peakinfer/collectors/codebase_collector.ts
+interface CodebaseAnalysis {
+  llmApiCalls: LLMAPICall[];
+  modelUsagePatterns: ModelUsagePattern[];
+  configurationFiles: ConfigFile[];
+  cachingOpportunities: CachingOpportunity[];
+  optimizationOpportunities: CodeOptimization[];
+  integrationPoints: IntegrationPoint[];
+  codeMetrics: {
+    totalFiles: number;
+    filesWithLLMCalls: number;
+    estimatedMonthlyCalls: number;
+    potentialCacheableCalls: number;
+  };
+}
+
+interface LLMAPICall {
+  file: string;
+  lineNumber: number;
+  apiProvider: string; // "openai", "anthropic", "together", etc.
+  model: string;
+  callPattern: string;
+  context: string; // Surrounding code context
+  estimatedCost: number; // Based on typical usage
+}
+
+interface CachingOpportunity {
+  file: string;
+  lineNumber: number;
+  recommendation: string;
+  estimatedSavings: number;
+  implementationComplexity: "low" | "medium" | "high";
+}
+
+class CodebaseCollector {
+  async scanCodebase(rootPath: string, options?: ScanOptions): Promise<CodebaseAnalysis> {
+    // Respect .gitignore, .peakinferignore
+    const ignorePatterns = await this.loadIgnorePatterns(rootPath);
+    
+    // Scan for LLM API patterns
+    const llmPatterns = {
+      openai: [
+        /openai\.(chat|completions|embeddings)\.create/i,
+        /new OpenAI\(/i,
+        /OpenAI\(/i
+      ],
+      anthropic: [
+        /anthropic\.messages/i,
+        /new Anthropic\(/i,
+        /Anthropic\(/i
+      ],
+      together: [
+        /together\.ai/i,
+        /Together\(/i
+      ],
+      baseten: [
+        /baseten/i,
+        /Baseten\(/i
+      ],
+      modal: [
+        /modal\.app/i,
+        /@modal/i
+      ]
+    };
+    
+    // Scan for configuration patterns
+    const configPatterns = [
+      /\.env$/,
+      /config\.(yaml|yml|json|toml|js|ts)$/,
+      /terraform\.tf$/,
+      /docker-compose\.yml$/,
+      /kubernetes\.yaml$/,
+      /package\.json$/,
+      /requirements\.txt$/
+    ];
+    
+    // Scan for infrastructure patterns
+    const infraPatterns = [
+      /terraform/i,
+      /kubernetes/i,
+      /docker/i,
+      /cloudformation/i
+    ];
+    
+    const analysis: CodebaseAnalysis = {
+      llmApiCalls: [],
+      modelUsagePatterns: [],
+      configurationFiles: [],
+      cachingOpportunities: [],
+      optimizationOpportunities: [],
+      integrationPoints: [],
+      codeMetrics: {
+        totalFiles: 0,
+        filesWithLLMCalls: 0,
+        estimatedMonthlyCalls: 0,
+        potentialCacheableCalls: 0
+      }
+    };
+    
+    const files = await this.walkDirectory(rootPath, ignorePatterns);
+    analysis.codeMetrics.totalFiles = files.length;
+    
+    for (const file of files) {
+      const content = await readFileSync(file, 'utf8');
+      
+      // Detect LLM API calls
+      for (const [provider, patterns] of Object.entries(llmPatterns)) {
+        for (const pattern of patterns) {
+          const matches = this.findMatches(content, pattern);
+          for (const match of matches) {
+            analysis.llmApiCalls.push({
+              file,
+              lineNumber: match.line,
+              apiProvider: provider,
+              model: this.extractModel(content, match),
+              callPattern: match.text,
+              context: this.extractContext(content, match),
+              estimatedCost: this.estimateCost(provider, match)
+            });
+          }
+        }
+      }
+      
+      // Detect caching opportunities
+      if (this.hasLLMCalls(content) && !this.hasCaching(content)) {
+        analysis.cachingOpportunities.push({
+          file,
+          lineNumber: this.findLLMCallLine(content),
+          recommendation: "Add semantic caching for repeated LLM calls",
+          estimatedSavings: this.estimateCacheSavings(content),
+          implementationComplexity: "low"
+        });
+      }
+      
+      // Detect configuration files
+      if (configPatterns.some(p => p.test(file))) {
+        analysis.configurationFiles.push({
+          file,
+          type: this.detectConfigType(file),
+          content: this.sanitizeConfig(content), // Remove secrets
+          hasLLMConfig: this.hasLLMConfiguration(content)
+        });
+      }
+      
+      // Detect integration points
+      if (infraPatterns.some(p => p.test(content))) {
+        analysis.integrationPoints.push({
+          file,
+          type: this.detectIntegrationType(content),
+          platform: this.detectPlatform(content)
+        });
+      }
+    }
+    
+    analysis.codeMetrics.filesWithLLMCalls = 
+      new Set(analysis.llmApiCalls.map(c => c.file)).size;
+    analysis.codeMetrics.estimatedMonthlyCalls = 
+      this.estimateMonthlyCalls(analysis.llmApiCalls);
+    analysis.codeMetrics.potentialCacheableCalls = 
+      analysis.cachingOpportunities.length;
+    
+    return analysis;
+  }
+  
+  private async loadIgnorePatterns(rootPath: string): Promise<string[]> {
+    // Load .gitignore, .peakinferignore
+    const patterns: string[] = [
+      'node_modules/**',
+      '.git/**',
+      'dist/**',
+      'build/**',
+      '.next/**',
+      '__pycache__/**'
+    ];
+    
+    const gitignore = join(rootPath, '.gitignore');
+    if (await exists(gitignore)) {
+      const content = await readFileSync(gitignore, 'utf8');
+      patterns.push(...content.split('\n').filter(l => l.trim()));
+    }
+    
+    const peakinferIgnore = join(rootPath, '.peakinferignore');
+    if (await exists(peakinferIgnore)) {
+      const content = await readFileSync(peakinferIgnore, 'utf8');
+      patterns.push(...content.split('\n').filter(l => l.trim()));
+    }
+    
+    return patterns;
   }
 }
 ```
@@ -406,6 +667,99 @@ class DatabricksCollector extends BaseCollector {
     return events;
   }
 }
+
+// peakinfer/collectors/codebase_collector.ts
+class CodebaseCollector extends BaseCollector {
+  async scanCodebase(rootPath: string): Promise<CodebaseAnalysis> {
+    const patterns = {
+      llmApiCalls: [
+        /openai\.(chat|completions|embeddings)/i,
+        /anthropic\.messages/i,
+        /together\.ai/i,
+        /baseten/i,
+        /modal/i,
+        /client\.(chat|complete|embed)/i
+      ],
+      configFiles: [
+        /\.env$/,
+        /config\.(yaml|yml|json|toml)$/,
+        /terraform\.tf$/,
+        /docker-compose\.yml$/,
+        /kubernetes\.yaml$/
+      ],
+      inferencePatterns: [
+        /model.*inference/i,
+        /llm.*call/i,
+        /prompt.*engine/i,
+        /token.*count/i
+      ]
+    };
+    
+    const files = await this.walkDirectory(rootPath);
+    const analysis: CodebaseAnalysis = {
+      llmApiCalls: [],
+      modelUsagePatterns: [],
+      configurationFiles: [],
+      cachingOpportunities: [],
+      optimizationOpportunities: [],
+      integrationPoints: []
+    };
+    
+    for (const file of files) {
+      const content = await readFileSync(file, 'utf8');
+      
+      // Detect LLM API calls
+      for (const pattern of patterns.llmApiCalls) {
+        if (pattern.test(content)) {
+          analysis.llmApiCalls.push({
+            file,
+            pattern: pattern.toString(),
+            context: this.extractContext(content, pattern)
+          });
+        }
+      }
+      
+      // Detect configuration files
+      if (patterns.configFiles.some(p => p.test(file))) {
+        analysis.configurationFiles.push({
+          file,
+          type: this.detectConfigType(file),
+          content: this.sanitizeConfig(content)
+        });
+      }
+      
+      // Detect caching opportunities
+      if (!content.includes('cache') && patterns.llmApiCalls.some(p => p.test(content))) {
+        analysis.cachingOpportunities.push({
+          file,
+          recommendation: "Consider adding semantic caching for repeated LLM calls"
+        });
+      }
+    }
+    
+    return analysis;
+  }
+  
+  private async walkDirectory(rootPath: string): Promise<string[]> {
+    // Recursively walk directory, excluding node_modules, .git, etc.
+    // Implementation details...
+  }
+  
+  private extractContext(content: string, pattern: RegExp): string {
+    // Extract surrounding code context
+    // Implementation details...
+  }
+  
+  private detectConfigType(file: string): string {
+    // Detect configuration file type
+    // Implementation details...
+  }
+  
+  private sanitizeConfig(content: string): string {
+    // Remove sensitive data (API keys, secrets)
+    // Implementation details...
+  }
+}
 ```
 
 ## **4\. CLI Implementation**
@@ -414,7 +768,7 @@ class DatabricksCollector extends BaseCollector {
 
 ```shell
 # Multi-agent orchestration commands
-peakinfer discover [--input-dir <dir>] [--collectors snowflake,databricks,terraform]
+peakinfer discover [--input-dir <dir>] [--codebase <path>] [--collectors snowflake,databricks,terraform]
 peakinfer profile [--events events.jsonl] [--cluster-method semantic]
 peakinfer plan [--constraints policy.yaml] [--templates-dir templates/]
 peakinfer run [--plan plan.yaml] [--sample-size 100] [--early-stopping]
@@ -449,7 +803,8 @@ program
   .command('discover')
   .option('--collectors <collectors>', 'Comma-separated collector list', 'snowflake,databricks,terraform')
   .option('--input-dir <dir>', 'Directory with manual input files')
-  .description('Multi-agent discovery across infrastructure layers')
+  .option('--codebase <path>', 'Path to codebase root for static analysis')
+  .description('Multi-agent discovery across infrastructure layers and codebase')
   .action(async (options) => {
     console.log("Starting multi-agent discovery...");
     
@@ -484,10 +839,16 @@ program
       inputFiles.push(...manualFiles);
     }
     
-    // Run Discovery Agent
-    const discoveryResult = await orchestrator.runDiscoveryAgent(inputFiles);
+    // Run Discovery Agent with codebase analysis if provided
+    const discoveryResult = await orchestrator.runDiscoveryAgent(
+      inputFiles, 
+      options.codebase || undefined
+    );
     
     console.log("Discovery complete. Results saved to discovered.yaml");
+    if (options.codebase) {
+      console.log("Codebase analysis saved to codebase-analysis.yaml");
+    }
     console.log("Next steps:");
     console.log("1. peakinfer profile --events events.jsonl");
     console.log("2. peakinfer plan --constraints policy.yaml");
@@ -925,9 +1286,9 @@ const platformMetrics = {
 
 ### **Technical Goals**
 
-1. **Provide unified view** of inference cost/performance across heterogeneous stacks (Databricks, Snowflake, Terraform, serving engines)  
-2. **Deliver measurable savings** (20-40% in Phase 1; \~70% with cross-layer orchestration in Phase 3\)  
-3. **Respect trust boundaries**: OSS collectors, least-privilege, run-in-customer-env, no PII exfiltration  
+1. **Provide unified view** of inference cost/performance across heterogeneous stacks (Databricks, Snowflake, Terraform, serving engines) combining runtime events and codebase analysis  
+2. **Deliver measurable savings** (20-40% in Phase 1; \~70% with cross-layer orchestration in Phase 3\) through both runtime optimizations and code-level improvements  
+3. **Respect trust boundaries**: OSS collectors, least-privilege, run-in-customer-env, no PII exfiltration, codebase scanning respects .gitignore and privacy settings  
 4. **Create acquisition leverage**: Technical authority through templates \+ OSS contributions → $100M acquisition target
 
 ### **Acceptance Criteria**
@@ -935,7 +1296,8 @@ const platformMetrics = {
 * **Cost Reduction**: ≥20% vs baseline across any infrastructure layer  
 * **Quality Loss**: ≤1% absolute drop or within defined tolerance  
 * **Run Time**: ≤10 minutes on 10-100 sample prompts, laptop-ready  
-* **Trust**: Collectors auditable; no raw PII exfiltration  
+* **Trust**: Collectors auditable; no raw PII exfiltration; codebase scanning respects privacy  
+* **Codebase Analysis**: Successfully identifies LLM API calls, configuration patterns, and optimization opportunities in source code  
 * **Cross-Layer Coordination**: Templates spanning 2+ layers show additive benefits  
 * **Community Validation**: ≥3 peer reviews per template with \>0.85 confidence score
 
@@ -944,15 +1306,17 @@ const platformMetrics = {
 1. *As a Databricks platform owner*, I want to see how rerouting jobs from GPT-4 to GPT-4-mini affects cost/latency across my ML workflows  
 2. *As a Snowflake AI lead*, I want to quantify caching thresholds for my data pipeline LLM calls without quality loss  
 3. *As an infrastructure SRE*, I want Terraform diffs showing spot instance savings for my LLM serving infrastructure  
-4. *As a startup engineer*, I want to run `peakinfer run --input prompts.jsonl` to demo cost savings using community templates  
-5. *As an enterprise architect*, I want cross-layer optimization plans that coordinate application routing, serving optimization, and infrastructure scaling
+4. *As a startup engineer*, I want to run `peakinfer discover --codebase ./src --events events.jsonl` to get optimization suggestions based on both my code and runtime data  
+5. *As an enterprise architect*, I want cross-layer optimization plans that coordinate application routing, serving optimization, and infrastructure scaling  
+6. *As a developer*, I want PeakInfer to scan my codebase and identify where I'm making inefficient LLM API calls or missing caching opportunities
 
 ## **9\. Implementation Timeline**
 
 ### **Phase 1: Core Platform Discovery (0-3 months)**
 
 * **OSS collectors** for Snowflake, Databricks, Terraform with canonical schema  
-* **Multi-agent CLI** with discover/profile/plan/run commands  
+* **Codebase scanner** for static analysis of LLM API calls, configurations, and optimization opportunities  
+* **Multi-agent CLI** with discover/profile/plan/run commands supporting both events.jsonl and codebase analysis  
 * **File-based community templates** with 20 initial templates across all layers  
 * **Claude Code SDK integration** for natural language optimization guidance  
 * **GitHub-based validation** workflow with automated testing
@@ -987,6 +1351,7 @@ const platformMetrics = {
 
 * **Multi-layer complexity**: Mitigated by phased rollout and community validation  
 * **OSS collector maintenance**: Mitigated by community contributions and automated testing  
+* **Codebase scanning performance**: Mitigated by incremental scanning, caching, and .gitignore respect  
 * **Claude Code SDK dependencies**: Mitigated by modular architecture and fallback modes  
 * **Cross-platform integration**: Mitigated by canonical schema and provider adapters
 
