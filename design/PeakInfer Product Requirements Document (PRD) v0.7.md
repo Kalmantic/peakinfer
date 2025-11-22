@@ -32,7 +32,7 @@ PeakInfer combines Claude's multi-agent reasoning capabilities with community-va
 
 ### **Positioning Strategy**
 
-Kalmantic's positioning: be the **technical authority** in LLM cost efficiency. Not another caching library, not another hosted API — the *orchestrator of orchestrators*, reducing inference spend by **20-70%** across Application, Serving, and Infrastructure layers.
+Kalmantic's positioning: be the **technical authority** in LLM peak performance. Not another caching library, not another hosted API — the *orchestrator of orchestrators*, reducing inference spend by **20-70%** across Application, Serving, and Infrastructure layers.
 
 ## **2\. Technical Problem Statement**
 
