@@ -435,7 +435,7 @@ Format the output as a structured JSON object matching the OptimizationPlan inte
       // Save to file
       await fs.writeFile('optimization-plan.yaml', yaml.stringify(plan), 'utf-8');
       console.log('✅ Planning complete. Plan saved to optimization-plan.yaml');
-      console.log(`💰 Estimated savings: $${plan.estimatedSavings.toLocaleString()}/month`);
+      console.log(`💰 Estimated savings: $${(plan.estimatedSavings || 0).toLocaleString()}/month`);
       console.log(`🔧 Implementation complexity: ${plan.implementationComplexity}`);
       this.logVerbose('Planner output summary', {
         estimatedSavings: plan.estimatedSavings,
@@ -914,6 +914,8 @@ Format the output as a structured JSON object matching the AuditReport interface
       
       const parsed = JSON.parse(jsonText);
       
+      const economicProjections = parsed.economicProjections || {};
+      
       return {
         applicationLayer: parsed.applicationLayer || [],
         servingLayer: parsed.servingLayer || [],
@@ -923,7 +925,20 @@ Format the output as a structured JSON object matching the AuditReport interface
         implementationComplexity: parsed.implementationComplexity || 'moderate',
         implementationSequence: parsed.implementationSequence || [],
         riskAssessment: parsed.riskAssessment || {},
-        economicProjections: parsed.economicProjections || {},
+        economicProjections: {
+          baseline_monthly_cost: economicProjections.baseline_monthly_cost || 0,
+          optimized_monthly_cost: economicProjections.optimized_monthly_cost || 0,
+          monthly_savings: economicProjections.monthly_savings || 0,
+          annual_savings: economicProjections.annual_savings || 0,
+          implementation_cost: economicProjections.implementation_cost || 0,
+          payback_period_months: economicProjections.payback_period_months || 0,
+          roi_percentage: economicProjections.roi_percentage || 0,
+          confidence_interval: economicProjections.confidence_interval || {
+            lower_bound: 0,
+            upper_bound: 0,
+            confidence_level: 0.95,
+          },
+        },
         metadata: parsed.metadata || {
           created_at: new Date().toISOString(),
           discovery_id: '',
@@ -979,9 +994,22 @@ Format the output as a structured JSON object matching the AuditReport interface
       
       const parsed = JSON.parse(jsonText);
       
+      const executiveSummary = parsed.executiveSummary || {};
+      
       return {
         report_id: parsed.report_id || `report-${Date.now()}`,
-        executiveSummary: parsed.executiveSummary || {},
+        executiveSummary: {
+          total_cost_savings: executiveSummary.total_cost_savings || 0,
+          cost_reduction_percentage: executiveSummary.cost_reduction_percentage || 0,
+          payback_period_months: executiveSummary.payback_period_months || 0,
+          roi_percentage: executiveSummary.roi_percentage || 0,
+          quality_preserved: executiveSummary.quality_preserved || false,
+          optimizations_applied: executiveSummary.optimizations_applied || 0,
+          optimizations_successful: executiveSummary.optimizations_successful || 0,
+          key_achievements: executiveSummary.key_achievements || [],
+          risks_mitigated: executiveSummary.risks_mitigated || [],
+          next_steps: executiveSummary.next_steps || [],
+        },
         detailedResults: parsed.detailedResults || {},
         implementationArtifacts: parsed.implementationArtifacts || {},
         monitoringRecommendations: parsed.monitoringRecommendations || [],

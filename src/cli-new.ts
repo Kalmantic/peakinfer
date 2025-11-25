@@ -206,6 +206,7 @@ program
       }
 
       console.log(chalk.blue.bold('\n🚀 Next Steps:'));
+      console.log(`  ${chalk.gray('└')} peakinfer suggest - Generate targeted code-level actions`);
       console.log(`  ${chalk.gray('└')} peakinfer plan - Generate optimization plan`);
       console.log(`  ${chalk.gray('└')} peakinfer templates - Browse available templates\n`);
 
@@ -368,10 +369,10 @@ program
       });
 
       console.log(chalk.green.bold('\n💡 Optimization Plan Summary:\n'));
-      console.log(`  💰 Estimated Monthly Savings: ${chalk.green.bold('$' + plan.estimatedSavings.toLocaleString())}`);
+      console.log(`  💰 Estimated Monthly Savings: ${chalk.green.bold('$' + (plan.estimatedSavings || 0).toLocaleString())}`);
       console.log(`  📊 Implementation Complexity: ${chalk.yellow(plan.implementationComplexity)}`);
-      console.log(`  📈 ROI: ${chalk.cyan(plan.economicProjections.roi_percentage.toFixed(0) + '%')}`);
-      console.log(`  ⏱️  Payback Period: ${chalk.blue(plan.economicProjections.payback_period_months.toFixed(1) + ' months')}`);
+      console.log(`  📈 ROI: ${chalk.cyan((plan.economicProjections?.roi_percentage || 0).toFixed(0) + '%')}`);
+      console.log(`  ⏱️  Payback Period: ${chalk.blue((plan.economicProjections?.payback_period_months || 0).toFixed(1) + ' months')}`);
       console.log(`\n  Optimizations by Layer:`);
       console.log(`    Application: ${plan.applicationLayer.length}`);
       console.log(`    Serving: ${plan.servingLayer.length}`);
@@ -452,10 +453,14 @@ program
       });
 
       console.log(chalk.green.bold('\n✅ Execution Results:\n'));
-      console.log(`  💰 Actual Savings: $${(evaluation.baseline.total_cost - evaluation.optimized.total_cost).toLocaleString()}/month`);
-      console.log(`  📊 Cost Reduction: ${((1 - evaluation.optimized.total_cost / evaluation.baseline.total_cost) * 100).toFixed(1)}%`);
-      console.log(`  ⚡ Latency P95: ${evaluation.optimized.latency_p95}ms (baseline: ${evaluation.baseline.latency_p95}ms)`);
-      console.log(`  🎯 Quality Score: ${(evaluation.optimized.quality_score * 100).toFixed(1)}% (baseline: ${(evaluation.baseline.quality_score * 100).toFixed(1)}%)`);
+      const baselineCost = evaluation.baseline?.total_cost || 0;
+      const optimizedCost = evaluation.optimized?.total_cost || 0;
+      const baselineQuality = evaluation.baseline?.quality_score || 0;
+      const optimizedQuality = evaluation.optimized?.quality_score || 0;
+      console.log(`  💰 Actual Savings: $${(baselineCost - optimizedCost).toLocaleString()}/month`);
+      console.log(`  📊 Cost Reduction: ${baselineCost > 0 ? ((1 - optimizedCost / baselineCost) * 100).toFixed(1) : 0}%`);
+      console.log(`  ⚡ Latency P95: ${evaluation.optimized?.latency_p95 || 0}ms (baseline: ${evaluation.baseline?.latency_p95 || 0}ms)`);
+      console.log(`  🎯 Quality Score: ${(optimizedQuality * 100).toFixed(1)}% (baseline: ${(baselineQuality * 100).toFixed(1)}%)`);
       console.log(`  ✅ Quality Preserved: ${evaluation.qualityEvaluation.overall_quality_preserved ? 'Yes' : 'No'}`);
 
       console.log(chalk.blue.bold('\n🚀 Next Steps:'));
@@ -526,12 +531,12 @@ program
       }
 
       console.log(chalk.green.bold('\n✅ Audit Report Summary:\n'));
-      console.log(`  💰 Total Cost Savings: ${chalk.green.bold('$' + report.executiveSummary.total_cost_savings.toLocaleString())}/month`);
-      console.log(`  📊 Cost Reduction: ${chalk.cyan(report.executiveSummary.cost_reduction_percentage.toFixed(1) + '%')}`);
-      console.log(`  📈 ROI: ${chalk.yellow(report.executiveSummary.roi_percentage.toFixed(0) + '%')}`);
-      console.log(`  ⏱️  Payback Period: ${chalk.blue(report.executiveSummary.payback_period_months.toFixed(1) + ' months')}`);
-      console.log(`  ✅ Quality Preserved: ${report.executiveSummary.quality_preserved ? 'Yes' : 'No'}`);
-      console.log(`  🎯 Optimizations Applied: ${report.executiveSummary.optimizations_successful}/${report.executiveSummary.optimizations_applied}`);
+      console.log(`  💰 Total Cost Savings: ${chalk.green.bold('$' + (report.executiveSummary?.total_cost_savings || 0).toLocaleString())}/month`);
+      console.log(`  📊 Cost Reduction: ${chalk.cyan((report.executiveSummary?.cost_reduction_percentage || 0).toFixed(1) + '%')}`);
+      console.log(`  📈 ROI: ${chalk.yellow((report.executiveSummary?.roi_percentage || 0).toFixed(0) + '%')}`);
+      console.log(`  ⏱️  Payback Period: ${chalk.blue((report.executiveSummary?.payback_period_months || 0).toFixed(1) + ' months')}`);
+      console.log(`  ✅ Quality Preserved: ${report.executiveSummary?.quality_preserved ? 'Yes' : 'No'}`);
+      console.log(`  🎯 Optimizations Applied: ${report.executiveSummary?.optimizations_successful || 0}/${report.executiveSummary?.optimizations_applied || 0}`);
 
       console.log(chalk.gray(`\n📁 Reports saved to ${options.outputDir}/`));
       console.log(chalk.gray(`📁 Implementation artifacts saved to implementation-artifacts/\n`));
@@ -999,25 +1004,25 @@ async function generateHTMLReport(report: any): Promise<string> {
     <h2>Executive Summary</h2>
     <div class="metric">
       <h3>💰 Total Cost Savings</h3>
-      <div class="value">$${report.executiveSummary.total_cost_savings.toLocaleString()}/month</div>
+      <div class="value">$${(report.executiveSummary?.total_cost_savings || 0).toLocaleString()}/month</div>
     </div>
     <div class="metric">
       <h3>📊 Cost Reduction</h3>
-      <div class="value">${report.executiveSummary.cost_reduction_percentage.toFixed(1)}%</div>
+      <div class="value">${(report.executiveSummary?.cost_reduction_percentage || 0).toFixed(1)}%</div>
     </div>
     <div class="metric">
       <h3>📈 ROI</h3>
-      <div class="value">${report.executiveSummary.roi_percentage.toFixed(0)}%</div>
+      <div class="value">${(report.executiveSummary?.roi_percentage || 0).toFixed(0)}%</div>
     </div>
     <div class="metric">
       <h3>⏱️ Payback Period</h3>
-      <div class="value">${report.executiveSummary.payback_period_months.toFixed(1)} months</div>
+      <div class="value">${(report.executiveSummary?.payback_period_months || 0).toFixed(1)} months</div>
     </div>
   </div>
 
   <div class="section">
     <h2>Key Achievements</h2>
-    ${report.executiveSummary.key_achievements.map((achievement: string) => 
+    ${(report.executiveSummary?.key_achievements || []).map((achievement: string) => 
       `<div class="achievement">✅ ${achievement}</div>`
     ).join('')}
   </div>
@@ -1026,15 +1031,15 @@ async function generateHTMLReport(report: any): Promise<string> {
     <h2>Savings by Layer</h2>
     <div class="metric">
       <h3>Application Layer</h3>
-      <p>$${report.detailedResults.by_layer.application.cost_savings.toLocaleString()}/month (${report.detailedResults.by_layer.application.savings_percentage}%)</p>
+      <p>$${(report.detailedResults?.by_layer?.application?.cost_savings || 0).toLocaleString()}/month (${report.detailedResults?.by_layer?.application?.savings_percentage || 0}%)</p>
     </div>
     <div class="metric">
       <h3>Serving Layer</h3>
-      <p>$${report.detailedResults.by_layer.serving.cost_savings.toLocaleString()}/month (${report.detailedResults.by_layer.serving.savings_percentage}%)</p>
+      <p>$${(report.detailedResults?.by_layer?.serving?.cost_savings || 0).toLocaleString()}/month (${report.detailedResults?.by_layer?.serving?.savings_percentage || 0}%)</p>
     </div>
     <div class="metric">
       <h3>Infrastructure Layer</h3>
-      <p>$${report.detailedResults.by_layer.infrastructure.cost_savings.toLocaleString()}/month (${report.detailedResults.by_layer.infrastructure.savings_percentage}%)</p>
+      <p>$${(report.detailedResults?.by_layer?.infrastructure?.cost_savings || 0).toLocaleString()}/month (${report.detailedResults?.by_layer?.infrastructure?.savings_percentage || 0}%)</p>
     </div>
   </div>
 
