@@ -160,9 +160,9 @@ export async function analyze(targetPath: string, options: AnalyzeOptions = {}):
     renderLoadingState(root, `analyzing ${scanResult.totalFiles} files with Claude...`);
 
     // Scale maxTurns based on file count (more files = more exploration needed)
-    const baseTurns = 20;
-    const extraTurns = Math.ceil(scanResult.totalFiles / 50) * 5;
-    const maxTurns = Math.min(baseTurns + extraTurns, 50); // Cap at 50 turns
+    const baseTurns = 30;
+    const extraTurns = Math.ceil(scanResult.totalFiles / 25) * 5;
+    const maxTurns = Math.min(baseTurns + extraTurns, 100); // Cap at 100 turns
 
     const result = await analyzeWithAgent(root, {
       maxTurns,
@@ -717,6 +717,131 @@ async function templates(subCommand: string, templateId?: string): Promise<void>
 }
 
 // =============================================================================
+// RECOMMEND COMMAND - Codebase Analysis + Cost Optimization Recommendations
+// =============================================================================
+
+/**
+ * Analyze codebase and generate optimization recommendations.
+ *
+ * Uses FAST Claude Agent SDK approach (same as `analyze` command)
+ * Flow: Agent Analysis → Recommender → Report
+ */
+async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'balanced' = 'cost'): Promise<void> {
+  if (!checkApiKey()) {
+    process.exit(1);
+  }
+
+  const root = path.resolve(targetPath);
+  if (!fs.existsSync(root)) {
+    renderErrorState({
+      code: 'INVALID_PATH',
+      message: `Path does not exist: ${root}`,
+      suggestion: 'Check the path and try again',
+    });
+    process.exit(1);
+  }
+
+  console.log(`
+┌─────────────────────────────────────────────────────────────┐
+│  🏔️  peakinfer recommend — inference cost optimization       │
+└─────────────────────────────────────────────────────────────┘
+`);
+
+  try {
+    // Import modules
+    const { analyzeWithAgent } = await import('./agent-analyzer.js');
+    const { generateRecommendations, generateReport } = await import('./recommender.js');
+
+    // Phase 1: Fast agent-based analysis (same as `analyze` command)
+    console.log('  🔍 Analyzing codebase with Claude Agent SDK...');
+    console.log(`     Target: ${root}`);
+    console.log(`     Prioritize: ${prioritize}`);
+    console.log('');
+
+    // Scale maxTurns based on codebase size (same as analyze command)
+    const { scan } = await import('./scanner.js');
+    const scanResult = await scan(root);
+    const baseTurns = 30;
+    const extraTurns = Math.ceil(scanResult.totalFiles / 25) * 5;
+    const maxTurns = Math.min(baseTurns + extraTurns, 100);
+
+    const result = await analyzeWithAgent(root, {
+      maxTurns,
+      onProgress: (msg) => {
+        console.log(`     ${msg}`);
+      },
+    });
+
+    const { callsites, techStack, totalCostUsd, durationMs } = result;
+
+    console.log(`     ✓ Found ${callsites.length} LLM callsites in ${(durationMs / 1000).toFixed(1)}s`);
+    console.log(`     ✓ Analysis cost: $${totalCostUsd.toFixed(4)}`);
+
+    if (callsites.length === 0) {
+      console.log(`
+  ✅ Scan complete — no LLM callsites detected
+
+  No OpenAI, Anthropic, or other LLM API calls found in this codebase.
+
+  If you expected to find callsites, ensure:
+  • The code uses LLM SDKs (openai, anthropic, langchain, etc.)
+  • Files are not in .gitignore
+  • Source files have supported extensions (.py, .ts, .js, .go, .java)
+`);
+      process.exit(0);
+    }
+
+    // Show detected tech stack
+    if (techStack) {
+      console.log('');
+      console.log('  📊 Tech Stack Detected:');
+      if (techStack.application?.sdks?.length) {
+        console.log(`     SDKs: ${techStack.application.sdks.join(', ')}`);
+      }
+      if (techStack.application?.frameworks?.length) {
+        console.log(`     Frameworks: ${techStack.application.frameworks.join(', ')}`);
+      }
+      if (techStack.serving?.platforms?.length) {
+        console.log(`     Platforms: ${techStack.serving.platforms.join(', ')}`);
+      }
+    }
+
+    // Phase 2: Generate recommendations
+    console.log('');
+    console.log('  💡 Generating optimization recommendations...');
+
+    const summary = generateRecommendations(callsites, prioritize);
+
+    // Phase 3: Output report
+    console.log('');
+    console.log(generateReport(summary));
+
+    // Write JSON output
+    const outputPath = path.join(root, 'peakinfer-recommendations.json');
+    fs.writeFileSync(outputPath, JSON.stringify(summary, null, 2), 'utf-8');
+    console.log(`\n  📄 Full report saved to: ${outputPath}\n`);
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    // Provide context-specific suggestions
+    let suggestion = 'Check your ANTHROPIC_API_KEY and network connection';
+    if (errorMessage.includes('error_max_turns')) {
+      suggestion = 'The codebase is large. Try analyzing a subdirectory.';
+    } else if (errorMessage.includes('rate_limit')) {
+      suggestion = 'API rate limit reached. Wait a moment and try again.';
+    }
+
+    renderErrorState({
+      code: 'API_ERROR',
+      message: errorMessage,
+      suggestion,
+    });
+    process.exit(1);
+  }
+}
+
+// =============================================================================
 // CLI ENTRY POINT
 // =============================================================================
 
@@ -731,12 +856,16 @@ peakinfer — llm inference intelligence
 
 usage:
   peakinfer analyze <path>         quick codebase analysis (recommended start)
+  peakinfer recommend <path>       analyze + recommend cost optimizations
   peakinfer discover <path>        full discovery with collectors
   peakinfer profile <events.jsonl> profile inference workloads
   peakinfer plan [--constraints]   create optimization plan
   peakinfer report [--format html] generate reports
   peakinfer templates [list|info]  browse optimization templates
   peakinfer --help                 show this help
+
+recommend options:
+  --prioritize <mode>           cost (default), latency, or balanced
 
 analyze options:
   --html                      generate an html report
@@ -753,6 +882,8 @@ report options:
 examples:
   peakinfer analyze .                        # quick start - analyze current directory
   peakinfer analyze ./my-project --html      # with html report
+  peakinfer recommend ./my-project           # find cost optimization opportunities
+  peakinfer recommend . --prioritize latency # prioritize latency over cost
   peakinfer discover . --collectors codebase # full codebase discovery
   peakinfer templates list                   # list available templates
   peakinfer report --format html             # generate html report
@@ -784,6 +915,11 @@ environment:
   if (command === 'analyze') {
     const targetPath = positionalArgs[1] || '.';
     analyze(targetPath, options);
+  } else if (command === 'recommend') {
+    const targetPath = positionalArgs[1] || '.';
+    const prioritizeArg = getArgValue(args, '--prioritize') as 'cost' | 'latency' | 'balanced' | undefined;
+    const prioritize = prioritizeArg || 'cost';
+    recommend(targetPath, prioritize);
   } else if (command === 'discover') {
     const targetPath = positionalArgs[1] || '.';
     const collectors = getArgValue(args, '--collectors') || 'codebase';

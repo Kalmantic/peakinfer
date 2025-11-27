@@ -7,7 +7,11 @@
 import { BaseCollector } from './base-collector.js';
 import { InferenceEvent } from '../types/events.js';
 import { CollectorValidationResult, SnowflakeCollectorConfig } from '../types/collectors.js';
-import * as snowflake from 'snowflake-sdk';
+import { createRequire } from 'module';
+
+// snowflake-sdk is CommonJS, need to use createRequire for ESM
+const require = createRequire(import.meta.url);
+const snowflake = require('snowflake-sdk');
 
 // Connection interface for Snowflake
 interface SnowflakeConnection {
@@ -145,12 +149,34 @@ export class SnowflakeCollector extends BaseCollector {
 
       const connection = snowflake.createConnection(connectionConfig);
 
-      connection.connect((err: any, conn: any) => {
+      connection.connect(async (err: any, conn: any) => {
         if (err) {
           reject(new Error(`Snowflake connection failed: ${err.message}`));
         } else {
           this.connection = conn;
-          resolve();
+          // Explicitly set the warehouse context
+          const warehouse = connectionConfig.warehouse;
+          if (warehouse) {
+            // Try to resume the warehouse first (in case it's suspended)
+            conn.execute({
+              sqlText: `ALTER WAREHOUSE ${warehouse} RESUME IF SUSPENDED`,
+              complete: (resumeErr: any) => {
+                // Ignore resume errors (may not have permission, or already running)
+                conn.execute({
+                  sqlText: `USE WAREHOUSE ${warehouse}`,
+                  complete: (useErr: any) => {
+                    if (useErr) {
+                      reject(new Error(`Failed to set warehouse '${warehouse}': ${useErr.message}`));
+                    } else {
+                      resolve();
+                    }
+                  },
+                });
+              },
+            });
+          } else {
+            resolve();
+          }
         }
       });
     });
@@ -213,21 +239,20 @@ export class SnowflakeCollector extends BaseCollector {
     const timeFilter = timeRangeMap[qc?.timeRange || '7_days'] || timeRangeMap['7_days'];
 
     // Standard query for inference_usage table
-    // Users should have a view/table with this schema, or use customQuery
     return `
       SELECT
-        COALESCE(request_id, UUID_STRING()) as request_id,
-        COALESCE(timestamp, CURRENT_TIMESTAMP()) as timestamp,
-        COALESCE(intent, application_context, 'unknown') as intent,
-        COALESCE(provider, model_provider, 'unknown') as provider,
-        COALESCE(model, model_name, 'unknown') as model,
-        COALESCE(input_tokens, input_token_count, prompt_tokens, 0) as input_tokens,
-        COALESCE(output_tokens, output_token_count, completion_tokens, 0) as output_tokens,
-        COALESCE(latency_ms, response_time_ms, 0) as latency_ms,
-        COALESCE(cost_usd, cost, 0) as cost_usd,
-        COALESCE(endpoint, endpoint_url, 'unknown') as endpoint,
-        COALESCE(region, 'unknown') as region,
-        COALESCE(tenant, workspace, team, 'default') as tenant
+        request_id,
+        timestamp,
+        intent,
+        provider,
+        model,
+        input_tokens,
+        output_tokens,
+        latency_ms,
+        cost_usd,
+        endpoint,
+        region,
+        tenant
       FROM ${qc?.table || 'inference_usage'}
       WHERE timestamp >= ${timeFilter}
       ORDER BY timestamp DESC
