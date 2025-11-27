@@ -477,3 +477,492 @@ export function getPricingStats(): { totalModels: number; providers: string[]; c
 
   return { totalModels: models, providers, cacheAge };
 }
+
+/** Detailed pricing info for display */
+export interface PricingInfo {
+  source: 'litellm-realtime' | 'litellm-cached' | 'static-fallback';
+  sourceUrl: string;
+  cacheFile: string;
+  lastUpdated: string;
+  totalModels: number;
+  providers: string[];
+  models: Array<{
+    provider: string;
+    model: string;
+    inputPer1M: number;
+    outputPer1M: number;
+  }>;
+}
+
+/**
+ * Get detailed pricing information for display.
+ * Includes source, cache info, and full price list.
+ */
+export async function getPricingInfo(filterProvider?: string): Promise<PricingInfo> {
+  // Determine source
+  let source: PricingInfo['source'] = 'static-fallback';
+  let lastUpdated = 'unknown';
+
+  try {
+    if (fs.existsSync(CACHE_META_FILE)) {
+      const meta: CacheMetadata = JSON.parse(fs.readFileSync(CACHE_META_FILE, 'utf-8'));
+      const date = new Date(meta.fetchedAt);
+      lastUpdated = date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+
+      // Check if cache is fresh (within TTL)
+      const ageMs = Date.now() - meta.fetchedAt;
+      if (ageMs < CACHE_TTL_MS) {
+        source = 'litellm-cached';
+      } else {
+        source = 'litellm-cached';  // Still cached, just stale
+        lastUpdated += ' (stale)';
+      }
+    }
+  } catch {
+    // Use static fallback
+  }
+
+  // Get unique models from lookup (deduplicated by normalized name)
+  const modelMap = new Map<string, { provider: string; model: string; inputPer1M: number; outputPer1M: number }>();
+
+  if (pricingLookup) {
+    for (const [, pricing] of pricingLookup) {
+      const key = `${pricing.provider}:${pricing.model}`;
+      if (!modelMap.has(key)) {
+        modelMap.set(key, {
+          provider: pricing.provider,
+          model: pricing.model,
+          inputPer1M: pricing.inputPer1M,
+          outputPer1M: pricing.outputPer1M,
+        });
+      }
+    }
+  }
+
+  let models = Array.from(modelMap.values());
+
+  // Filter by provider if specified
+  if (filterProvider) {
+    models = models.filter(m => m.provider.toLowerCase() === filterProvider.toLowerCase());
+  }
+
+  // Sort by provider then model
+  models.sort((a, b) => {
+    const providerCmp = a.provider.localeCompare(b.provider);
+    if (providerCmp !== 0) return providerCmp;
+    return a.model.localeCompare(b.model);
+  });
+
+  const providers = Array.from(new Set(models.map(m => m.provider))).sort();
+
+  return {
+    source,
+    sourceUrl: LITELLM_PRICING_URL,
+    cacheFile: CACHE_FILE,
+    lastUpdated,
+    totalModels: models.length,
+    providers,
+    models,
+  };
+}
+
+/**
+ * Refresh pricing cache from LiteLLM.
+ * Returns true if successful.
+ */
+export async function refreshPricingCache(): Promise<boolean> {
+  const fetched = await fetchLiteLLMPricing();
+  if (fetched) {
+    writeCache(fetched);
+    pricingLookup = buildLookup(fetched);
+    return true;
+  }
+  return false;
+}
+
+// =============================================================================
+// GPU-HOUR BASED NEOCLOUD PRICING
+// Converted to per-token equivalent for comparison
+// Real-time fetching with local caching
+// =============================================================================
+
+/** GPU pricing data for neoclouds (pay-per-hour) */
+export interface GPUPricing {
+  provider: string;
+  gpu: string;
+  hourlyRate: number;           // $ per hour
+  tokensPerSecond: number;      // Expected throughput for 70B model
+  model: string;                // Reference model
+  servingStack: string;         // e.g., vLLM, TensorRT-LLM
+  // Calculated equivalent per-token pricing
+  inputPer1M: number;
+  outputPer1M: number;
+  note: string;
+}
+
+/** GPU pricing info for transparency */
+export interface GPUPricingInfo {
+  source: 'remote' | 'cached' | 'static-fallback';
+  sourceUrl: string;
+  cacheFile: string;
+  lastUpdated: string;
+  totalProviders: number;
+}
+
+// GPU Pricing Cache Configuration
+// Follows LiteLLM pattern: raw GitHub URL to JSON file in data/pricing/
+// For private repos: set GITHUB_TOKEN env var for authentication
+const GPU_PRICING_URL = 'https://raw.githubusercontent.com/Kalmantic/peakinfer/main/data/pricing/gpu-providers.json';
+const GPU_CACHE_FILE = path.join(CACHE_DIR, 'gpu-pricing-cache.json');
+const GPU_CACHE_META_FILE = path.join(CACHE_DIR, 'gpu-pricing-meta.json');
+
+/** Cache TTL for GPU pricing: 24 hours */
+const GPU_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** In-memory GPU pricing after loading */
+let gpuPricingData: GPUPricing[] | null = null;
+let gpuPricingSource: GPUPricingInfo['source'] = 'static-fallback';
+let gpuPricingLastUpdated: string = 'static data';
+
+/**
+ * Static fallback GPU pricing data.
+ * Used when remote fetch and cache both fail.
+ *
+ * Conversion formula:
+ * - tokens_per_hour = tokens_per_second * 3600
+ * - cost_per_1M = (hourly_rate / tokens_per_hour) * 1_000_000
+ *
+ * Assumptions:
+ * - 50% GPU utilization (realistic for most workloads)
+ * - Blended input/output (output slightly higher due to autoregressive generation)
+ */
+const STATIC_GPU_PRICING: GPUPricing[] = [
+  // Modal
+  {
+    provider: 'modal',
+    gpu: 'H100 (80GB)',
+    hourlyRate: 3.50,
+    tokensPerSecond: 125,
+    model: 'llama-3.1-70b',
+    servingStack: 'vLLM',
+    inputPer1M: 0.70,
+    outputPer1M: 0.90,
+    note: 'H100 80GB SXM5, ~50% utilization assumed',
+  },
+  {
+    provider: 'modal',
+    gpu: 'A100 (80GB)',
+    hourlyRate: 2.80,
+    tokensPerSecond: 80,
+    model: 'llama-3.1-70b',
+    servingStack: 'vLLM',
+    inputPer1M: 0.90,
+    outputPer1M: 1.10,
+    note: 'A100 80GB SXM4, ~50% utilization assumed',
+  },
+  {
+    provider: 'modal',
+    gpu: 'A10G (24GB)',
+    hourlyRate: 1.10,
+    tokensPerSecond: 250,
+    model: 'llama-3.1-8b',
+    servingStack: 'vLLM',
+    inputPer1M: 0.12,
+    outputPer1M: 0.18,
+    note: 'A10G 24GB, optimized for smaller models',
+  },
+  // RunPod
+  {
+    provider: 'runpod',
+    gpu: 'H100 (80GB)',
+    hourlyRate: 2.99,
+    tokensPerSecond: 125,
+    model: 'llama-3.1-70b',
+    servingStack: 'vLLM',
+    inputPer1M: 0.60,
+    outputPer1M: 0.75,
+    note: 'Community Cloud pricing, ~50% utilization',
+  },
+  {
+    provider: 'runpod',
+    gpu: 'A100 (80GB)',
+    hourlyRate: 1.99,
+    tokensPerSecond: 80,
+    model: 'llama-3.1-70b',
+    servingStack: 'vLLM',
+    inputPer1M: 0.65,
+    outputPer1M: 0.80,
+    note: 'Community Cloud pricing, ~50% utilization',
+  },
+  {
+    provider: 'runpod',
+    gpu: 'RTX 4090 (24GB)',
+    hourlyRate: 0.44,
+    tokensPerSecond: 200,
+    model: 'llama-3.1-8b',
+    servingStack: 'vLLM',
+    inputPer1M: 0.06,
+    outputPer1M: 0.08,
+    note: 'Community Cloud, consumer GPU',
+  },
+  // Lambda Labs
+  {
+    provider: 'lambda',
+    gpu: 'H100 (80GB)',
+    hourlyRate: 2.49,
+    tokensPerSecond: 125,
+    model: 'llama-3.1-70b',
+    servingStack: 'vLLM',
+    inputPer1M: 0.50,
+    outputPer1M: 0.65,
+    note: 'Lambda Cloud on-demand',
+  },
+  {
+    provider: 'lambda',
+    gpu: 'A100 (80GB)',
+    hourlyRate: 1.29,
+    tokensPerSecond: 80,
+    model: 'llama-3.1-70b',
+    servingStack: 'vLLM',
+    inputPer1M: 0.42,
+    outputPer1M: 0.52,
+    note: 'Lambda Cloud on-demand',
+  },
+  // Together AI (serverless)
+  {
+    provider: 'together-serverless',
+    gpu: 'Serverless',
+    hourlyRate: 0,
+    tokensPerSecond: 150,
+    model: 'llama-3.1-70b',
+    servingStack: 'Together Runtime',
+    inputPer1M: 0.88,
+    outputPer1M: 0.88,
+    note: 'Serverless per-token pricing',
+  },
+  // Fireworks AI (serverless)
+  {
+    provider: 'fireworks-serverless',
+    gpu: 'Serverless',
+    hourlyRate: 0,
+    tokensPerSecond: 150,
+    model: 'llama-3.1-70b',
+    servingStack: 'Fireworks Runtime',
+    inputPer1M: 0.90,
+    outputPer1M: 0.90,
+    note: 'Serverless per-token pricing',
+  },
+  // Vast.ai (spot market)
+  {
+    provider: 'vast.ai',
+    gpu: 'H100 (spot)',
+    hourlyRate: 1.80,
+    tokensPerSecond: 125,
+    model: 'llama-3.1-70b',
+    servingStack: 'vLLM',
+    inputPer1M: 0.36,
+    outputPer1M: 0.46,
+    note: 'Spot market, prices vary',
+  },
+  {
+    provider: 'vast.ai',
+    gpu: 'A100 (spot)',
+    hourlyRate: 0.90,
+    tokensPerSecond: 80,
+    model: 'llama-3.1-70b',
+    servingStack: 'vLLM',
+    inputPer1M: 0.30,
+    outputPer1M: 0.38,
+    note: 'Spot market, prices vary',
+  },
+];
+
+// =============================================================================
+// GPU PRICING CACHE FUNCTIONS
+// =============================================================================
+
+/**
+ * Check if GPU pricing cache is valid (exists and not expired).
+ */
+function isGPUCacheValid(): boolean {
+  try {
+    if (!fs.existsSync(GPU_CACHE_META_FILE) || !fs.existsSync(GPU_CACHE_FILE)) {
+      return false;
+    }
+
+    const meta: CacheMetadata = JSON.parse(fs.readFileSync(GPU_CACHE_META_FILE, 'utf-8'));
+    const age = Date.now() - meta.fetchedAt;
+    return age < GPU_CACHE_TTL_MS;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Read GPU pricing from cache.
+ */
+function readGPUCache(): GPUPricing[] | null {
+  try {
+    if (!fs.existsSync(GPU_CACHE_FILE)) {
+      return null;
+    }
+    return JSON.parse(fs.readFileSync(GPU_CACHE_FILE, 'utf-8'));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Write GPU pricing to cache.
+ */
+function writeGPUCache(data: GPUPricing[]): void {
+  try {
+    ensureCacheDir();
+    fs.writeFileSync(GPU_CACHE_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    const meta: CacheMetadata = {
+      fetchedAt: Date.now(),
+      version: '1.0',
+    };
+    fs.writeFileSync(GPU_CACHE_META_FILE, JSON.stringify(meta), 'utf-8');
+  } catch {
+    // Silently fail on cache write errors
+  }
+}
+
+/**
+ * Fetch GPU pricing from remote source.
+ * Supports GitHub private repos via GITHUB_TOKEN env var.
+ */
+async function fetchGPUPricing(): Promise<GPUPricing[] | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+    // Build headers - add auth token for private repos if available
+    const headers: Record<string, string> = {
+      'User-Agent': 'PeakInfer/1.0',
+    };
+
+    // Support private GitHub repos via GITHUB_TOKEN
+    const githubToken = process.env.GITHUB_TOKEN;
+    if (githubToken) {
+      headers['Authorization'] = `token ${githubToken}`;
+    }
+
+    const response = await fetch(GPU_PRICING_URL, {
+      signal: controller.signal,
+      headers,
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data as GPUPricing[];
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Initialize GPU pricing data.
+ * Fetches from remote or uses cache, falls back to static data.
+ */
+export async function initializeGPUPricing(): Promise<boolean> {
+  // Try cache first
+  if (isGPUCacheValid()) {
+    const cached = readGPUCache();
+    if (cached && cached.length > 0) {
+      gpuPricingData = cached;
+      gpuPricingSource = 'cached';
+      try {
+        const meta: CacheMetadata = JSON.parse(fs.readFileSync(GPU_CACHE_META_FILE, 'utf-8'));
+        const date = new Date(meta.fetchedAt);
+        gpuPricingLastUpdated = date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+      } catch {
+        gpuPricingLastUpdated = 'cached';
+      }
+      return true;
+    }
+  }
+
+  // Fetch from remote
+  const fetched = await fetchGPUPricing();
+  if (fetched && fetched.length > 0) {
+    writeGPUCache(fetched);
+    gpuPricingData = fetched;
+    gpuPricingSource = 'remote';
+    gpuPricingLastUpdated = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+    return true;
+  }
+
+  // Try stale cache as fallback
+  const staleCache = readGPUCache();
+  if (staleCache && staleCache.length > 0) {
+    gpuPricingData = staleCache;
+    gpuPricingSource = 'cached';
+    try {
+      const meta: CacheMetadata = JSON.parse(fs.readFileSync(GPU_CACHE_META_FILE, 'utf-8'));
+      const date = new Date(meta.fetchedAt);
+      gpuPricingLastUpdated = date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC (stale)';
+    } catch {
+      gpuPricingLastUpdated = 'cached (stale)';
+    }
+    return true;
+  }
+
+  // Fall back to static data
+  gpuPricingData = STATIC_GPU_PRICING;
+  gpuPricingSource = 'static-fallback';
+  gpuPricingLastUpdated = 'static (bundled with cli)';
+  return true;
+}
+
+/**
+ * Refresh GPU pricing cache from remote.
+ * Returns true if successful.
+ */
+export async function refreshGPUPricingCache(): Promise<boolean> {
+  const fetched = await fetchGPUPricing();
+  if (fetched && fetched.length > 0) {
+    writeGPUCache(fetched);
+    gpuPricingData = fetched;
+    gpuPricingSource = 'remote';
+    gpuPricingLastUpdated = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Get GPU-hour pricing data for neoclouds.
+ * Call initializeGPUPricing() first to load data.
+ */
+export function getGPUPricing(filterProvider?: string): GPUPricing[] {
+  // Use loaded data or fall back to static
+  const data = gpuPricingData || STATIC_GPU_PRICING;
+
+  if (filterProvider) {
+    return data.filter(g => g.provider.toLowerCase().includes(filterProvider.toLowerCase()));
+  }
+  return data;
+}
+
+/**
+ * Get GPU pricing info for transparency.
+ */
+export function getGPUPricingInfo(): GPUPricingInfo {
+  const data = gpuPricingData || STATIC_GPU_PRICING;
+  const providers = new Set(data.map(g => g.provider));
+
+  return {
+    source: gpuPricingSource,
+    sourceUrl: GPU_PRICING_URL,
+    cacheFile: GPU_CACHE_FILE,
+    lastUpdated: gpuPricingLastUpdated,
+    totalProviders: providers.size,
+  };
+}

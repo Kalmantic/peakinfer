@@ -3,7 +3,7 @@
  * PeakInfer CLI — Main Entry Point
  *
  * Per PRD v0.95: `peakinfer analyze .`
- * Single command, magical detection, Claude-first architecture.
+ * Single command, magical detection, AI-first architecture.
  *
  * Design: SLC (Simple, Lovable, Complete)
  * First-use experience: Welcoming, clear, actionable.
@@ -44,38 +44,29 @@ const OUTPUT_HTML = 'peakinfer-report.html';
 
 /**
  * Render welcome message for first-time setup.
- * Julie Zhou design: friendly, clear, actionable.
+ * Clean, minimal, actionable.
  */
 function renderSetupGuide(): void {
   console.log(`
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│   ⚡ peakinfer — llm inference intelligence                 │
-│                                                             │
-│   Welcome! Let's get you set up.                            │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+  peakinfer
 
-  peakinfer uses Claude to intelligently analyze your codebase
-  and find all LLM API calls, estimate costs, and suggest
-  optimizations.
+  analyzes your codebase for LLM API calls,
+  estimates costs, and suggests optimizations.
 
-  to get started, you need an Anthropic API key:
+  setup:
 
   1. get your key
-     → https://console.anthropic.com/settings/keys
+     https://console.anthropic.com/settings/keys
 
-  2. set it in your terminal
+  2. set it
      export ANTHROPIC_API_KEY=sk-ant-api03-xxxxx
 
-  3. run peakinfer
+  3. run
      peakinfer analyze .
 
-  ─────────────────────────────────────────────────────────────
+  tip: add export to ~/.zshrc or ~/.bashrc to persist
 
-  tip: add the export to ~/.zshrc or ~/.bashrc to persist it
-
-  need help? https://github.com/kalmantic/peakinfer
+  help: https://github.com/kalmantic/peakinfer
 `);
 }
 
@@ -94,12 +85,10 @@ function checkApiKey(): boolean {
   // Basic validation: should start with sk-ant
   if (!apiKey.startsWith('sk-ant')) {
     console.log(`
-  ⚠️  invalid api key format
+  invalid api key format
 
-  your ANTHROPIC_API_KEY doesn't look right.
-  it should start with "sk-ant-api03-"
-
-  current value starts with: ${apiKey.substring(0, 10)}...
+  ANTHROPIC_API_KEY should start with "sk-ant-api03-"
+  current: ${apiKey.substring(0, 10)}...
 
   get a valid key: https://console.anthropic.com/settings/keys
 `);
@@ -120,7 +109,7 @@ interface AnalyzeOptions {
 }
 
 /**
- * Run the complete analysis pipeline using the Claude Agent SDK.
+ * Run the complete analysis pipeline using AI agents.
  */
 export async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promise<void> {
   // Check API key first (friendly first-use experience)
@@ -157,7 +146,7 @@ export async function analyze(targetPath: string, options: AnalyzeOptions = {}):
     }
 
     // Agent-based analysis (fast!)
-    renderLoadingState(root, `analyzing ${scanResult.totalFiles} files with Claude...`);
+    renderLoadingState(root, `analyzing ${scanResult.totalFiles} files...`);
 
     // Scale maxTurns based on file count (more files = more exploration needed)
     const baseTurns = 30;
@@ -723,7 +712,7 @@ async function templates(subCommand: string, templateId?: string): Promise<void>
 /**
  * Analyze codebase and generate optimization recommendations.
  *
- * Uses FAST Claude Agent SDK approach (same as `analyze` command)
+ * Uses agent-based analysis (same as `analyze` command)
  * Flow: Agent Analysis → Recommender → Report
  */
 async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'balanced' = 'cost'): Promise<void> {
@@ -742,9 +731,8 @@ async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'b
   }
 
   console.log(`
-┌─────────────────────────────────────────────────────────────┐
-│  🏔️  peakinfer recommend — inference cost optimization       │
-└─────────────────────────────────────────────────────────────┘
+  peakinfer recommend
+  ═══════════════════════════════════════════════════════════════
 `);
 
   try {
@@ -753,9 +741,9 @@ async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'b
     const { generateRecommendations, generateReport, detectRisks, generatePatternsReport, generateRiskReport } = await import('./recommender.js');
 
     // Phase 1: Fast agent-based analysis (same as `analyze` command)
-    console.log('  🔍 Analyzing codebase with Claude Agent SDK...');
-    console.log(`     Target: ${root}`);
-    console.log(`     Prioritize: ${prioritize}`);
+    console.log('  analyzing codebase...');
+    console.log(`  target: ${root}`);
+    console.log(`  prioritize: ${prioritize}`);
     console.log('');
 
     // Scale maxTurns based on codebase size (same as analyze command)
@@ -774,19 +762,19 @@ async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'b
 
     const { callsites, techStack, patterns, totalCostUsd, durationMs } = result;
 
-    console.log(`     ✓ Found ${callsites.length} LLM callsites in ${(durationMs / 1000).toFixed(1)}s`);
-    console.log(`     ✓ Analysis cost: $${totalCostUsd.toFixed(4)}`);
+    console.log(`  found ${callsites.length} LLM callsites in ${(durationMs / 1000).toFixed(1)}s`);
+    console.log(`  analysis cost: $${totalCostUsd.toFixed(4)}`);
 
     if (callsites.length === 0) {
       console.log(`
-  ✅ Scan complete — no LLM callsites detected
+  no LLM callsites detected
 
-  No OpenAI, Anthropic, or other LLM API calls found in this codebase.
+  no OpenAI, Anthropic, or other LLM API calls found.
 
-  If you expected to find callsites, ensure:
-  • The code uses LLM SDKs (openai, anthropic, langchain, etc.)
-  • Files are not in .gitignore
-  • Source files have supported extensions (.py, .ts, .js, .go, .java)
+  check:
+  - code uses LLM SDKs (openai, anthropic, langchain, etc.)
+  - files are not in .gitignore
+  - source files have supported extensions (.py, .ts, .js, .go, .java)
 `);
       process.exit(0);
     }
@@ -794,15 +782,15 @@ async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'b
     // Show detected tech stack
     if (techStack) {
       console.log('');
-      console.log('  📊 Tech Stack Detected:');
+      console.log('  tech stack:');
       if (techStack.application?.sdks?.length) {
-        console.log(`     SDKs: ${techStack.application.sdks.join(', ')}`);
+        console.log(`    sdks: ${techStack.application.sdks.join(', ')}`);
       }
       if (techStack.application?.frameworks?.length) {
-        console.log(`     Frameworks: ${techStack.application.frameworks.join(', ')}`);
+        console.log(`    frameworks: ${techStack.application.frameworks.join(', ')}`);
       }
       if (techStack.serving?.platforms?.length) {
-        console.log(`     Platforms: ${techStack.serving.platforms.join(', ')}`);
+        console.log(`    platforms: ${techStack.serving.platforms.join(', ')}`);
       }
     }
 
@@ -815,13 +803,9 @@ async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'b
     console.log(generateRiskReport(riskAssessment));
 
     // Phase 4: Generate recommendations
-    console.log('');
-    console.log('  💡 Generating optimization recommendations...');
-
     const summary = generateRecommendations(callsites, prioritize);
 
     // Phase 5: Output report
-    console.log('');
     console.log(generateReport(summary));
 
     // Write JSON output (include patterns and risks)
@@ -833,7 +817,7 @@ async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'b
       techStack,
     };
     fs.writeFileSync(outputPath, JSON.stringify(fullReport, null, 2), 'utf-8');
-    console.log(`\n  📄 Full report saved to: ${outputPath}\n`);
+    console.log(`\n  output: ${outputPath}\n`);
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -856,6 +840,146 @@ async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'b
 }
 
 // =============================================================================
+// PRICES COMMAND - Show Pricing Data Source and List
+// =============================================================================
+
+/**
+ * Show pricing data source and model prices.
+ * Julie Zhuo aligned: transparency about data being used.
+ */
+async function prices(filterProvider?: string, refresh?: boolean): Promise<void> {
+  try {
+    // Import pricing fetcher
+    const {
+      initializePricing,
+      getPricingInfo,
+      refreshPricingCache,
+      getGPUPricing,
+      initializeGPUPricing,
+      getGPUPricingInfo,
+      refreshGPUPricingCache,
+    } = await import('./pricing-fetcher.js');
+    const { initPricingEngine, STATIC_PRICING_DATA } = await import('./pricing.js');
+
+    // Optionally refresh cache
+    if (refresh) {
+      console.log('  refreshing pricing caches...');
+      const [apiSuccess, gpuSuccess] = await Promise.all([
+        refreshPricingCache(),
+        refreshGPUPricingCache(),
+      ]);
+      if (apiSuccess) {
+        console.log('  ✓ api pricing refreshed from LiteLLM');
+      } else {
+        console.log('  ✗ api pricing refresh failed, using cached');
+      }
+      if (gpuSuccess) {
+        console.log('  ✓ gpu pricing refreshed from remote');
+      } else {
+        console.log('  ✗ gpu pricing refresh failed, using cached/static');
+      }
+      console.log('');
+    }
+
+    // Initialize pricing (both API and GPU)
+    await initPricingEngine();
+    await initializeGPUPricing();
+
+    // Get pricing info
+    const info = await getPricingInfo(filterProvider);
+
+    console.log(`
+peakinfer prices
+─────────────────────────────────────────────────────────────────
+
+  source: ${info.source}
+  data:   ${info.sourceUrl}
+  cache:  ${info.cacheFile}
+  last updated: ${info.lastUpdated}
+  total models: ${info.totalModels}
+  providers: ${info.providers.join(', ')}
+`);
+
+    if (filterProvider) {
+      console.log(`  filtered by: ${filterProvider}\n`);
+    }
+
+    // Show top models by provider (grouped)
+    const byProvider = new Map<string, typeof info.models>();
+    for (const m of info.models) {
+      if (!byProvider.has(m.provider)) {
+        byProvider.set(m.provider, []);
+      }
+      byProvider.get(m.provider)!.push(m);
+    }
+
+    console.log('  model prices ($ per 1M tokens):');
+    console.log('  ─────────────────────────────────────────────────────────────');
+    console.log('  provider          model                    input    output');
+    console.log('  ─────────────────────────────────────────────────────────────');
+
+    // Show limited models per provider (to keep output manageable)
+    const maxPerProvider = filterProvider ? 50 : 5;
+
+    for (const [provider, models] of byProvider) {
+      // Sort by cost (most expensive first)
+      models.sort((a, b) => (b.inputPer1M + b.outputPer1M) - (a.inputPer1M + a.outputPer1M));
+
+      for (const m of models.slice(0, maxPerProvider)) {
+        const providerPad = provider.padEnd(16);
+        const modelPad = m.model.padEnd(24);
+        const inputPrice = m.inputPer1M.toFixed(2).padStart(7);
+        const outputPrice = m.outputPer1M.toFixed(2).padStart(8);
+        console.log(`  ${providerPad}  ${modelPad} ${inputPrice}  ${outputPrice}`);
+      }
+
+      if (models.length > maxPerProvider) {
+        console.log(`  ${provider.padEnd(16)}  ... and ${models.length - maxPerProvider} more`);
+      }
+    }
+
+    // GPU-Hour pricing section (neoclouds)
+    const gpuInfo = getGPUPricingInfo();
+    console.log('');
+    console.log('  ─────────────────────────────────────────────────────────────');
+    console.log('  gpu-hour pricing (converted to per-token equivalent):');
+    console.log('  ─────────────────────────────────────────────────────────────');
+    console.log(`  source: ${gpuInfo.source}`);
+    console.log(`  data:   ${gpuInfo.sourceUrl}`);
+    console.log(`  cache:  ${gpuInfo.cacheFile}`);
+    console.log(`  last updated: ${gpuInfo.lastUpdated}`);
+    console.log('');
+    console.log('  provider          gpu               $/hr    input/1M  output/1M  model');
+    console.log('  ─────────────────────────────────────────────────────────────');
+
+    const gpuPricing = getGPUPricing(filterProvider);
+    for (const gpu of gpuPricing) {
+      const providerPad = gpu.provider.padEnd(16);
+      const gpuPad = gpu.gpu.padEnd(16);
+      const hourlyPad = gpu.hourlyRate > 0 ? `$${gpu.hourlyRate.toFixed(2)}`.padStart(6) : '   n/a';
+      const inputPad = `$${gpu.inputPer1M.toFixed(2)}`.padStart(8);
+      const outputPad = `$${gpu.outputPer1M.toFixed(2)}`.padStart(9);
+      console.log(`  ${providerPad}  ${gpuPad} ${hourlyPad}  ${inputPad} ${outputPad}  ${gpu.model}`);
+    }
+
+    console.log('');
+    console.log('  note: gpu-hour → token conversions assume ~50% utilization');
+    console.log('');
+    console.log('  usage:');
+    console.log('    peakinfer prices                      # show all providers (top 5 each)');
+    console.log('    peakinfer prices openai               # filter by provider');
+    console.log('    peakinfer prices modal                # show modal gpu pricing');
+    console.log('    peakinfer prices --refresh            # refresh API pricing from LiteLLM');
+    console.log('');
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`  error loading pricing data: ${errorMessage}`);
+    process.exit(1);
+  }
+}
+
+// =============================================================================
 // CLI ENTRY POINT
 // =============================================================================
 
@@ -871,6 +995,7 @@ peakinfer — llm inference intelligence
 usage:
   peakinfer analyze <path>         quick codebase analysis (recommended start)
   peakinfer recommend <path>       analyze + recommend cost optimizations
+  peakinfer prices [provider]      show pricing data source and model prices
   peakinfer discover <path>        full discovery with collectors
   peakinfer profile <events.jsonl> profile inference workloads
   peakinfer plan [--constraints]   create optimization plan
@@ -885,6 +1010,9 @@ analyze options:
   --html                      generate an html report
   --open                      open html report in browser
 
+prices options:
+  --refresh                   refresh cache from LiteLLM
+
 discover options:
   --collectors <list>         collectors to use (snowflake,databricks,terraform,codebase)
   --output <dir>              output directory for events.jsonl
@@ -898,6 +1026,8 @@ examples:
   peakinfer analyze ./my-project --html      # with html report
   peakinfer recommend ./my-project           # find cost optimization opportunities
   peakinfer recommend . --prioritize latency # prioritize latency over cost
+  peakinfer prices openai                    # show openai model prices
+  peakinfer prices --refresh                 # refresh pricing from LiteLLM
   peakinfer discover . --collectors codebase # full codebase discovery
   peakinfer templates list                   # list available templates
   peakinfer report --format html             # generate html report
@@ -957,6 +1087,10 @@ environment:
     const subCommand = positionalArgs[1] || 'list';
     const templateId = positionalArgs[2];
     templates(subCommand, templateId);
+  } else if (command === 'prices') {
+    const filterProvider = positionalArgs[1];
+    const refresh = args.includes('--refresh');
+    prices(filterProvider, refresh);
   } else if (!command) {
     // Default: analyze current directory
     analyze('.', options);

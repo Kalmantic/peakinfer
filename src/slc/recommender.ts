@@ -120,6 +120,10 @@ const PROVIDER_BENCHMARKS: ProviderBenchmark[] = [
   },
 
   // TIER 3: Bare Metal Self-Hosted
+  // Note: Self-hosted has GPU hourly costs, not per-token. These are ESTIMATED
+  // equivalent per-token costs based on typical utilization (~50% GPU utilization)
+  // H100: ~$3.50/hr, 125 tok/s = ~450K tok/hr => ~$0.78/1M at 100% util, ~$1.50/1M at 50%
+  // A10G: ~$1.10/hr, 250 tok/s = ~900K tok/hr => ~$0.12/1M at 100% util, ~$0.25/1M at 50%
   {
     tier: 3,
     tierName: 'Self-Hosted',
@@ -128,8 +132,8 @@ const PROVIDER_BENCHMARKS: ProviderBenchmark[] = [
     displayName: 'Modal H100 + vLLM',
     hardware: 'NVIDIA H100',
     servingStack: 'vLLM',
-    inputPer1M: 0,  // GPU hour based
-    outputPer1M: 0,
+    inputPer1M: 0.70,   // Estimated at ~50% GPU utilization
+    outputPer1M: 0.90,  // Output slightly more expensive
     avgLatencyMs: 1700,
     tokensPerSecond: 125,
   },
@@ -141,8 +145,8 @@ const PROVIDER_BENCHMARKS: ProviderBenchmark[] = [
     displayName: 'Modal A10G + vLLM',
     hardware: 'NVIDIA A10G',
     servingStack: 'vLLM',
-    inputPer1M: 0,
-    outputPer1M: 0,
+    inputPer1M: 0.12,   // Estimated at ~50% GPU utilization
+    outputPer1M: 0.18,  // Output slightly more expensive
     avgLatencyMs: 900,
     tokensPerSecond: 250,
   },
@@ -587,7 +591,7 @@ function generateMigrationPath(recommendations: Recommendation[]): MigrationStep
     const files = [...new Set(byComplexity.high.map(r => r.file))];
     steps.push({
       step: stepNum++,
-      description: 'Deploy self-hosted inference (vLLM on Modal/RunPod)',
+      description: 'Deploy self-hosted inference (vLLM on Modal/RunPod) — requires infra setup, GPU reservations',
       affectedFiles: files,
       callsiteCount: byComplexity.high.length,
       savings: byComplexity.high.reduce((sum, r) => sum + r.monthlySavings, 0),
@@ -752,36 +756,32 @@ export function generatePatternsReport(patterns: InferencePatterns): string {
   const lines: string[] = [];
 
   lines.push(`
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│  🔍 INFERENCE PATTERNS DETECTED                                                          │
-├──────────────────────────────────────────────────────────────────────────────────────────┤`);
+  PATTERNS DETECTED
+  ─────────────────────────────────────────────────────────────────`);
 
   const patternList: Array<{
     name: string;
     key: keyof InferencePatterns;
-    icon: string;
   }> = [
-    { name: 'Retry logic', key: 'retry', icon: '🔄' },
-    { name: 'Batching', key: 'batching', icon: '📦' },
-    { name: 'Streaming', key: 'streaming', icon: '🌊' },
-    { name: 'Caching', key: 'caching', icon: '💾' },
-    { name: 'Routing / model selection', key: 'routing', icon: '🔀' },
-    { name: 'Fallback chain', key: 'fallback', icon: '🔙' },
-    { name: 'Guardrails / safety', key: 'guardrails', icon: '🛡️' },
+    { name: 'Retry logic', key: 'retry' },
+    { name: 'Batching', key: 'batching' },
+    { name: 'Streaming', key: 'streaming' },
+    { name: 'Caching', key: 'caching' },
+    { name: 'Routing / model selection', key: 'routing' },
+    { name: 'Fallback chain', key: 'fallback' },
+    { name: 'Guardrails / safety', key: 'guardrails' },
   ];
 
   for (const p of patternList) {
     const pattern = patterns[p.key];
-    const status = pattern.detected ? '✅' : '❌';
+    const status = pattern.detected ? '[x]' : '[ ]';
     const location = pattern.detected && pattern.instances.length > 0
       ? `${pattern.instances[0].file}:${pattern.instances[0].line}`
       : 'not detected';
     const typeInfo = pattern.detected && pattern.type ? ` (${pattern.type})` : '';
 
-    lines.push(`│  ${status} ${p.icon} ${p.name.padEnd(25)} ${location}${typeInfo}`.padEnd(91) + '│');
+    lines.push(`  ${status} ${p.name.padEnd(26)} ${location}${typeInfo}`);
   }
-
-  lines.push(`└──────────────────────────────────────────────────────────────────────────────────────────┘`);
 
   return lines.join('\n');
 }
@@ -792,44 +792,24 @@ export function generatePatternsReport(patterns: InferencePatterns): string {
 export function generateRiskReport(assessment: RiskAssessment): string {
   const lines: string[] = [];
 
-  // Score color indicator
-  let scoreIcon = '🟢';
-  if (assessment.overallScore < 50) scoreIcon = '🔴';
-  else if (assessment.overallScore < 75) scoreIcon = '🟡';
-
   lines.push(`
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│  ⚠️  RISK ASSESSMENT                                                                      │
-├──────────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                          │
-│  ${scoreIcon} Health Score: ${assessment.overallScore}/100                                                          │
-│                                                                                          │
-│  Summary: ${assessment.summary.critical} critical, ${assessment.summary.high} high, ${assessment.summary.medium} medium, ${assessment.summary.low} low risks                         │
-│                                                                                          │
-├──────────────────────────────────────────────────────────────────────────────────────────┤`);
+  RISK ASSESSMENT
+  ─────────────────────────────────────────────────────────────────
+  Health Score: ${assessment.overallScore}/100
+  ${assessment.summary.critical} critical, ${assessment.summary.high} high, ${assessment.summary.medium} medium, ${assessment.summary.low} low
+`);
 
   if (assessment.risks.length === 0) {
-    lines.push(`│  ✅ No significant risks detected. Great job!                                            │`);
+    lines.push(`  No significant risks detected.`);
   } else {
     for (const risk of assessment.risks) {
-      const severityIcon =
-        risk.severity === 'critical' ? '🔴' :
-        risk.severity === 'high' ? '🟠' :
-        risk.severity === 'medium' ? '🟡' : '🔵';
-
-      lines.push(`│                                                                                          │`);
-      lines.push(`│  ${severityIcon} [${risk.severity.toUpperCase()}] ${risk.title}`.padEnd(91) + '│');
-      lines.push(`│     ${risk.description.slice(0, 80)}`.padEnd(91) + '│');
-      if (risk.description.length > 80) {
-        lines.push(`│     ${risk.description.slice(80, 160)}`.padEnd(91) + '│');
-      }
-      lines.push(`│     💡 ${risk.recommendation.slice(0, 75)}`.padEnd(91) + '│');
-      lines.push(`│     Effort: ${risk.effort} | Files: ${risk.affectedFiles.length}`.padEnd(91) + '│');
+      lines.push(`  [${risk.severity.toUpperCase()}] ${risk.title}`);
+      lines.push(`    ${risk.description}`);
+      lines.push(`    → ${risk.recommendation}`);
+      lines.push(`    effort: ${risk.effort}, files: ${risk.affectedFiles.length}`);
+      lines.push('');
     }
   }
-
-  lines.push(`│                                                                                          │`);
-  lines.push(`└──────────────────────────────────────────────────────────────────────────────────────────┘`);
 
   return lines.join('\n');
 }
@@ -845,55 +825,43 @@ export function generateReport(summary: RecommendationSummary): string {
   const lines: string[] = [];
 
   lines.push(`
-╔══════════════════════════════════════════════════════════════════════════════════════════╗
-║                                                                                          ║
-║   🏔️  PeakInfer CODEBASE ANALYSIS & RECOMMENDATIONS                                      ║
-║                                                                                          ║
-╠══════════════════════════════════════════════════════════════════════════════════════════╣
-║                                                                                          ║
-║   📊 SUMMARY                                                                             ║
-║   ──────────────────────────────────────────────────────────────────────────────────     ║
-║   Total LLM Callsites Found:     ${summary.totalCallsites.toString().padStart(5)}                                             ║
-║   Callsites with Optimization:   ${summary.callsitesWithRecommendations.toString().padStart(5)}                                             ║
-║                                                                                          ║
-║   Current Monthly Cost:          $${summary.totalCurrentMonthlyCost.toFixed(0).padStart(6)}                                           ║
-║   Recommended Monthly Cost:      $${summary.totalRecommendedMonthlyCost.toFixed(0).padStart(6)}                                           ║
-║   ─────────────────────────────────────────                                              ║
-║   💰 POTENTIAL SAVINGS:          $${summary.totalMonthlySavings.toFixed(0).padStart(6)}/mo (${summary.savingsPercent.toFixed(0)}%)                              ║
-║                                                                                          ║
-╚══════════════════════════════════════════════════════════════════════════════════════════╝`);
+  COST OPTIMIZATION SUMMARY
+  ═══════════════════════════════════════════════════════════════
+
+  Total LLM Callsites:        ${summary.totalCallsites.toString().padStart(5)}
+  Callsites to Optimize:      ${summary.callsitesWithRecommendations.toString().padStart(5)}
+
+  Current Monthly Cost:       $${summary.totalCurrentMonthlyCost.toFixed(0).padStart(6)}
+  Recommended Monthly Cost:   $${summary.totalRecommendedMonthlyCost.toFixed(0).padStart(6)}
+  ─────────────────────────────────────────
+  Potential Savings:          $${summary.totalMonthlySavings.toFixed(0).padStart(6)}/mo (${summary.savingsPercent.toFixed(0)}%)`);
 
   // Migration Path
   if (summary.migrationPath.length > 0) {
     lines.push(`
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│  🗺️  RECOMMENDED MIGRATION PATH                                                          │
-├──────────────────────────────────────────────────────────────────────────────────────────┤`);
+
+  MIGRATION PATH
+  ─────────────────────────────────────────────────────────────────`);
 
     for (const step of summary.migrationPath) {
-      const complexityIcon = step.complexity === 'low' ? '🟢' : step.complexity === 'medium' ? '🟡' : '🔴';
-      lines.push(`│  ${step.step}. ${complexityIcon} ${step.description.padEnd(60)} │
-│     Files: ${step.affectedFiles.length}, Callsites: ${step.callsiteCount}, Savings: $${step.savings.toFixed(0)}/mo                              │`);
+      lines.push(`  ${step.step}. [${step.complexity}] ${step.description}`);
+      lines.push(`     files: ${step.affectedFiles.length}, callsites: ${step.callsiteCount}, saves: $${step.savings.toFixed(0)}/mo`);
     }
-
-    lines.push(`└──────────────────────────────────────────────────────────────────────────────────────────┘`);
   }
 
   // Top Recommendations
   if (summary.recommendations.length > 0) {
     lines.push(`
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│  🎯 TOP RECOMMENDATIONS                                                                  │
-├──────────────────────────────────────────────────────────────────────────────────────────┤`);
+
+  TOP RECOMMENDATIONS
+  ─────────────────────────────────────────────────────────────────`);
 
     for (const rec of summary.recommendations.slice(0, 5)) {
-      lines.push(`│  ${rec.file}:${rec.line}                                                               │
-│    ${rec.currentProvider} → ${rec.recommendedProvider} (${rec.recommendedModel})                     │
-│    Savings: $${rec.monthlySavings.toFixed(0)}/mo (${rec.savingsPercent.toFixed(0)}%), Latency: ${rec.latencyChange}                              │
-│                                                                                          │`);
+      lines.push(`  ${rec.file}:${rec.line}`);
+      lines.push(`    ${rec.currentProvider} → ${rec.recommendedProvider} (${rec.recommendedModel})`);
+      lines.push(`    saves $${rec.monthlySavings.toFixed(0)}/mo (${rec.savingsPercent.toFixed(0)}%), latency: ${rec.latencyChange}`);
+      lines.push('');
     }
-
-    lines.push(`└──────────────────────────────────────────────────────────────────────────────────────────┘`);
   }
 
   return lines.join('\n');
