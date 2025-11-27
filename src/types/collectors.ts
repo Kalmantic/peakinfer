@@ -76,11 +76,14 @@ export interface SnowflakeCollectorConfig extends CollectorConfig {
     username?: string;
     password?: string;
     database?: string;
+    schema?: string;
     warehouse?: string;
+    role?: string;
   };
   query?: {
-    table: string;
-    timeRange: string;
+    table?: string;
+    timeRange?: string;
+    customQuery?: string;
     filters?: Record<string, any>;
   };
 }

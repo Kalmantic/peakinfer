@@ -1,6 +1,6 @@
 /**
- * Databricks Collector - Mock Implementation
- * Generates realistic Databricks serving endpoint and jobs data
+ * Databricks Collector - Real Implementation
+ * Connects to Databricks REST API for jobs/runs/serving endpoints
  * Based on PRD v0.7: REST APIs for jobs/runs/serving endpoints
  */
 
@@ -9,42 +9,136 @@ import { InferenceEvent } from '../types/events.js';
 import { CollectorValidationResult, DatabricksCollectorConfig } from '../types/collectors.js';
 import { v4 as uuidv4 } from 'uuid';
 
+// Databricks API response interfaces
+interface DatabricksServingEndpoint {
+  name: string;
+  creator: string;
+  creation_timestamp: number;
+  last_updated_timestamp: number;
+  state: {
+    ready: string;
+    config_update: string;
+  };
+  config: {
+    served_entities?: {
+      entity_name: string;
+      entity_version: string;
+      workload_size?: string;
+      scale_to_zero_enabled?: boolean;
+    }[];
+    served_models?: {
+      model_name: string;
+      model_version: string;
+    }[];
+  };
+  tags?: { key: string; value: string }[];
+}
+
+interface DatabricksServingEndpointLog {
+  request_id: string;
+  timestamp_ms: number;
+  request_metadata?: {
+    model_name?: string;
+    input_tokens?: number;
+    output_tokens?: number;
+    request_latency_ms?: number;
+  };
+  response?: {
+    usage?: {
+      prompt_tokens?: number;
+      completion_tokens?: number;
+      total_tokens?: number;
+    };
+  };
+}
+
+interface DatabricksJob {
+  job_id: number;
+  settings: {
+    name: string;
+    tags?: Record<string, string>;
+    tasks?: any[];
+  };
+  created_time: number;
+  creator_user_name: string;
+}
+
+interface DatabricksJobRun {
+  job_id: number;
+  run_id: number;
+  start_time: number;
+  end_time?: number;
+  state: {
+    life_cycle_state: string;
+    result_state?: string;
+  };
+  run_duration?: number;
+}
+
 export class DatabricksCollector extends BaseCollector {
-  private mockConfig: DatabricksCollectorConfig;
+  private databricksConfig: DatabricksCollectorConfig;
+  private baseUrl: string = '';
+  private token: string = '';
 
   constructor(config?: Partial<DatabricksCollectorConfig>) {
     super('databricks', config);
-    this.mockConfig = {
+    this.databricksConfig = {
       ...this.config,
+      connection: {
+        host: process.env.DATABRICKS_HOST || config?.connection?.host || '',
+        token: process.env.DATABRICKS_TOKEN || config?.connection?.token || '',
+        workspace_id: process.env.DATABRICKS_WORKSPACE_ID || config?.connection?.workspace_id || '',
+        ...config?.connection,
+      },
       resources: {
-        endpoints: [],
-        jobs: [],
-        runs: [],
+        endpoints: config?.resources?.endpoints || [],
+        jobs: config?.resources?.jobs || [],
+        runs: config?.resources?.runs || [],
         ...config?.resources,
       },
     } as DatabricksCollectorConfig;
+
+    // Set up base URL
+    const host = this.databricksConfig.connection?.host || '';
+    this.baseUrl = host.startsWith('http') ? host : `https://${host}`;
+    this.token = this.databricksConfig.connection?.token || '';
   }
 
   /**
-   * Collect mock Databricks inference usage data
+   * Collect Databricks inference usage data
    */
   async collect(): Promise<InferenceEvent[]> {
     console.log('  🧱 Collecting Databricks inference usage...');
-    
+
     this.respectTrustBoundaries();
-    
+
     const events: InferenceEvent[] = [];
-    
-    // Simulate collecting from multiple Databricks endpoints
-    const endpoints = this.getMockEndpoints();
-    
-    for (const endpoint of endpoints) {
-      const endpointEvents = await this.collectEndpointUsage(endpoint);
-      events.push(...endpointEvents);
+
+    try {
+      // Collect from serving endpoints
+      const endpoints = await this.listServingEndpoints();
+      console.log(`  📍 Found ${endpoints.length} serving endpoints`);
+
+      for (const endpoint of endpoints) {
+        const endpointEvents = await this.collectEndpointUsage(endpoint);
+        events.push(...endpointEvents);
+      }
+
+      // Collect from ML jobs that may involve inference
+      const jobs = await this.listJobs();
+      console.log(`  📋 Found ${jobs.length} ML jobs`);
+
+      for (const job of jobs) {
+        const jobEvents = await this.collectJobInference(job);
+        events.push(...jobEvents);
+      }
+
+      console.log(`  ✅ Collected ${events.length} Databricks inference events`);
+      return events;
+    } catch (error) {
+      console.error('  ❌ Databricks collection failed:', error);
+      throw error;
     }
-    
-    console.log(`  ✅ Collected ${events.length} Databricks inference events`);
-    return events;
   }
 
   /**
@@ -54,10 +148,26 @@ export class DatabricksCollector extends BaseCollector {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    // In real implementation, would validate Databricks credentials
-    // For mock, just validate configuration structure
-    if (!this.mockConfig.connection?.host && !this.mockConfig.connection?.workspace_id) {
-      warnings.push('No Databricks workspace specified, using mock data');
+    const conn = this.databricksConfig.connection;
+
+    // Required fields
+    if (!conn?.host) {
+      errors.push('Missing DATABRICKS_HOST or connection.host');
+    }
+    if (!conn?.token) {
+      errors.push('Missing DATABRICKS_TOKEN or connection.token');
+    }
+
+    // Test connection if credentials provided
+    if (errors.length === 0) {
+      try {
+        const endpoints = await this.listServingEndpoints();
+        if (endpoints.length === 0) {
+          warnings.push('No serving endpoints found in workspace');
+        }
+      } catch (error) {
+        errors.push(`API connection failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
 
     return {
@@ -69,75 +179,102 @@ export class DatabricksCollector extends BaseCollector {
   }
 
   /**
-   * Get mock Databricks serving endpoints
+   * Make authenticated request to Databricks API
    */
-  private getMockEndpoints() {
-    return [
-      {
-        id: 'endpoint-llama2-70b',
-        name: 'llama-2-70b-chat',
-        model: 'meta-llama/Llama-2-70b-chat-hf',
-        state: 'READY',
-        creator: 'mlops-team',
+  private async apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+    const url = `${this.baseUrl}${path}`;
+
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${this.token}`,
+        'Content-Type': 'application/json',
+        ...options.headers,
       },
-      {
-        id: 'endpoint-mixtral-8x7b',
-        name: 'mixtral-instruct',
-        model: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
-        state: 'READY',
-        creator: 'ai-team',
-      },
-      {
-        id: 'endpoint-custom-bert',
-        name: 'custom-classification',
-        model: 'bert-base-uncased-finetuned',
-        state: 'READY',
-        creator: 'data-science',
-      },
-    ];
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Databricks API error (${response.status}): ${errorText}`);
+    }
+
+    return response.json() as Promise<T>;
   }
 
   /**
-   * Collect usage from a specific endpoint
+   * List serving endpoints
    */
-  private async collectEndpointUsage(endpoint: any): Promise<InferenceEvent[]> {
+  private async listServingEndpoints(): Promise<DatabricksServingEndpoint[]> {
+    try {
+      const response = await this.apiRequest<{ endpoints?: DatabricksServingEndpoint[] }>(
+        '/api/2.0/serving-endpoints'
+      );
+      return response.endpoints || [];
+    } catch (error) {
+      console.warn('  ⚠️  Could not list serving endpoints:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get serving endpoint logs/metrics
+   */
+  private async getEndpointLogs(
+    endpointName: string,
+    startTime: number,
+    endTime: number
+  ): Promise<DatabricksServingEndpointLog[]> {
+    try {
+      // Try the query endpoint for inference logs
+      const response = await this.apiRequest<{ logs?: DatabricksServingEndpointLog[] }>(
+        `/api/2.0/serving-endpoints/${endpointName}/logs?start_time_ms=${startTime}&end_time_ms=${endTime}`
+      );
+      return response.logs || [];
+    } catch (error) {
+      // Logs endpoint may not exist or have different schema
+      // Try alternative metrics endpoint
+      try {
+        const metricsResponse = await this.apiRequest<{ data?: any[] }>(
+          `/api/2.0/serving-endpoints/${endpointName}/metrics?start_time_ms=${startTime}&end_time_ms=${endTime}`
+        );
+        return this.convertMetricsToLogs(metricsResponse.data || [], endpointName);
+      } catch (metricsError) {
+        console.warn(`  ⚠️  Could not get logs for ${endpointName}`);
+        return [];
+      }
+    }
+  }
+
+  /**
+   * Convert metrics data to log format
+   */
+  private convertMetricsToLogs(metrics: any[], endpointName: string): DatabricksServingEndpointLog[] {
+    return metrics.map(m => ({
+      request_id: m.request_id || uuidv4(),
+      timestamp_ms: m.timestamp || Date.now(),
+      request_metadata: {
+        model_name: endpointName,
+        input_tokens: m.input_tokens || m.prompt_tokens || 0,
+        output_tokens: m.output_tokens || m.completion_tokens || 0,
+        request_latency_ms: m.latency_ms || m.duration_ms || 0,
+      },
+    }));
+  }
+
+  /**
+   * Collect usage from a serving endpoint
+   */
+  private async collectEndpointUsage(endpoint: DatabricksServingEndpoint): Promise<InferenceEvent[]> {
     const events: InferenceEvent[] = [];
-    const now = new Date();
-    
-    // Generate 100-200 events per endpoint over last 7 days
-    const eventCount = Math.floor(Math.random() * 100) + 100;
-    
-    for (let i = 0; i < eventCount; i++) {
-      const daysAgo = Math.floor(Math.random() * 7);
-      const hoursAgo = Math.floor(Math.random() * 24);
-      const timestamp = new Date(now);
-      timestamp.setDate(timestamp.getDate() - daysAgo);
-      timestamp.setHours(timestamp.getHours() - hoursAgo);
 
-      // Realistic token distributions based on model size
-      const isLargeModel = endpoint.model.includes('70b') || endpoint.model.includes('8x7B');
-      const inputTokens = Math.floor(Math.random() * (isLargeModel ? 4000 : 2000)) + 200;
-      const outputTokens = Math.floor(Math.random() * (isLargeModel ? 2000 : 1000)) + 100;
-      const latency = Math.floor(Math.random() * (isLargeModel ? 5000 : 2000)) + 300;
+    // Get logs from the last 7 days
+    const endTime = Date.now();
+    const startTime = endTime - (7 * 24 * 60 * 60 * 1000);
 
-      const rawEvent = {
-        request_id: uuidv4(),
-        timestamp: timestamp.getTime(),
-        endpoint_name: endpoint.name,
-        model_name: endpoint.model,
-        input_tokens: inputTokens,
-        output_tokens: outputTokens,
-        latency_ms: latency,
-        cost: 0, // Will be calculated
-        workspace_id: 'workspace-prod',
-        tags: {
-          team: endpoint.creator,
-          environment: 'production',
-          endpoint_id: endpoint.id,
-        },
-      };
+    const logs = await this.getEndpointLogs(endpoint.name, startTime, endTime);
 
-      const event = this.normalizeDatabricksEvent(rawEvent);
+    for (const log of logs) {
+      const event = this.normalizeEndpointLog(log, endpoint);
       events.push(this.filterPII(event));
     }
 
@@ -145,70 +282,252 @@ export class DatabricksCollector extends BaseCollector {
   }
 
   /**
-   * Normalize Databricks event to canonical schema
+   * Normalize endpoint log to canonical event
    */
-  private normalizeDatabricksEvent(raw: any): InferenceEvent {
-    // Determine provider based on model name
-    let provider = 'databricks';
-    if (raw.model_name.includes('llama')) provider = 'together';
-    if (raw.model_name.includes('mixtral')) provider = 'together';
-    if (raw.model_name.includes('gpt')) provider = 'openai';
-    if (raw.model_name.includes('claude')) provider = 'anthropic';
+  private normalizeEndpointLog(log: DatabricksServingEndpointLog, endpoint: DatabricksServingEndpoint): InferenceEvent {
+    const modelName = this.getModelFromEndpoint(endpoint);
+    const provider = this.inferProvider(modelName);
+
+    const inputTokens = log.request_metadata?.input_tokens ||
+                        log.response?.usage?.prompt_tokens || 0;
+    const outputTokens = log.request_metadata?.output_tokens ||
+                         log.response?.usage?.completion_tokens || 0;
+    const latencyMs = log.request_metadata?.request_latency_ms || 0;
+
+    // Extract tenant/team from endpoint tags
+    const teamTag = endpoint.tags?.find(t => t.key === 'team' || t.key === 'owner');
+    const tenant = teamTag?.value || endpoint.creator || 'default';
 
     return {
-      id: raw.request_id,
-      ts: new Date(raw.timestamp).toISOString(),
-      intent: this.inferIntentFromTags(raw.tags),
+      id: log.request_id || uuidv4(),
+      ts: new Date(log.timestamp_ms).toISOString(),
+      intent: this.inferIntent(endpoint),
       provider: provider,
-      model: raw.model_name,
-      input_tokens: raw.input_tokens,
-      output_tokens: raw.output_tokens,
-      latency_ms: raw.latency_ms,
-      cost_usd: this.calculateDatabricksCost(raw),
-      endpoint: `${raw.workspace_id}.databricks.com`,
-      region: 'us-west-2',
-      tenant: raw.tags?.team || 'default',
+      model: modelName,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      latency_ms: latencyMs,
+      cost_usd: this.calculateDatabricksCost(inputTokens, outputTokens, latencyMs),
+      endpoint: `${this.databricksConfig.connection?.workspace_id || 'workspace'}.databricks.com`,
+      region: this.extractRegion(),
+      tenant: tenant,
       metadata: {
-        endpoint_name: raw.endpoint_name,
-        workspace_id: raw.workspace_id,
-        tags: raw.tags,
+        endpoint_name: endpoint.name,
+        workspace_id: this.databricksConfig.connection?.workspace_id,
+        endpoint_state: endpoint.state?.ready,
       },
     };
   }
 
   /**
-   * Infer intent from Databricks tags
+   * Get model name from endpoint configuration
    */
-  private inferIntentFromTags(tags: any): string {
-    if (tags?.use_case) return tags.use_case;
-    if (tags?.team === 'mlops-team') return 'ml_operations';
-    if (tags?.team === 'ai-team') return 'ai_assistant';
-    if (tags?.team === 'data-science') return 'data_classification';
-    return 'databricks_inference';
+  private getModelFromEndpoint(endpoint: DatabricksServingEndpoint): string {
+    // Check served_entities first (newer API)
+    if (endpoint.config?.served_entities?.[0]) {
+      return endpoint.config.served_entities[0].entity_name;
+    }
+
+    // Fall back to served_models (older API)
+    if (endpoint.config?.served_models?.[0]) {
+      return endpoint.config.served_models[0].model_name;
+    }
+
+    return endpoint.name;
   }
 
   /**
-   * Calculate Databricks-specific costs
-   * Based on DBU consumption and model serving costs
+   * Infer provider from model name
    */
-  private calculateDatabricksCost(raw: any): number {
-    const totalTokens = raw.input_tokens + raw.output_tokens;
-    
-    // Databricks charges per DBU + inference costs
-    // Approximate: $0.0002 per 1000 tokens for serving
-    const baseCost = (totalTokens / 1000) * 0.0002;
-    
-    // Add DBU costs (varies by instance type)
-    const dbuCost = (raw.latency_ms / 1000) * 0.0005; // $0.0005 per second
-    
-    return baseCost + dbuCost;
+  private inferProvider(modelName: string): string {
+    const lower = modelName.toLowerCase();
+    if (lower.includes('llama') || lower.includes('mistral') || lower.includes('mixtral')) {
+      return 'meta';
+    }
+    if (lower.includes('gpt')) return 'openai';
+    if (lower.includes('claude')) return 'anthropic';
+    if (lower.includes('gemini') || lower.includes('palm')) return 'google';
+    if (lower.includes('cohere')) return 'cohere';
+    return 'databricks';
   }
 
   /**
-   * Mock REST API endpoint for Databricks
+   * Infer intent from endpoint configuration
    */
-  private getMockAPIEndpoint(): string {
-    return '/api/2.0/serving-endpoints/{endpoint_name}/invocations';
+  private inferIntent(endpoint: DatabricksServingEndpoint): string {
+    const intentTag = endpoint.tags?.find(t => t.key === 'intent' || t.key === 'use_case');
+    if (intentTag) return intentTag.value;
+
+    const name = endpoint.name.toLowerCase();
+    if (name.includes('chat')) return 'chat';
+    if (name.includes('embed')) return 'embedding';
+    if (name.includes('classify')) return 'classification';
+    if (name.includes('extract')) return 'extraction';
+    if (name.includes('summarize') || name.includes('summary')) return 'summarization';
+
+    return 'inference';
+  }
+
+  /**
+   * Extract region from workspace URL
+   */
+  private extractRegion(): string {
+    const host = this.databricksConfig.connection?.host || '';
+    // Databricks hosts are like: adb-1234567890123456.19.azuredatabricks.net
+    // or: dbc-abc12345-1234.cloud.databricks.com
+    if (host.includes('azuredatabricks')) {
+      return 'azure';
+    }
+    if (host.includes('gcp.databricks')) {
+      return 'gcp';
+    }
+    // AWS is default for cloud.databricks.com
+    return 'aws';
+  }
+
+  /**
+   * List ML jobs
+   */
+  private async listJobs(): Promise<DatabricksJob[]> {
+    try {
+      const response = await this.apiRequest<{ jobs?: DatabricksJob[] }>(
+        '/api/2.1/jobs/list?limit=100'
+      );
+      return response.jobs || [];
+    } catch (error) {
+      console.warn('  ⚠️  Could not list jobs:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get recent job runs
+   */
+  private async getJobRuns(jobId: number, limit: number = 100): Promise<DatabricksJobRun[]> {
+    try {
+      const response = await this.apiRequest<{ runs?: DatabricksJobRun[] }>(
+        `/api/2.1/jobs/runs/list?job_id=${jobId}&limit=${limit}`
+      );
+      return response.runs || [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  /**
+   * Collect inference events from job runs
+   */
+  private async collectJobInference(job: DatabricksJob): Promise<InferenceEvent[]> {
+    const events: InferenceEvent[] = [];
+
+    // Only process jobs that appear to be ML inference related
+    if (!this.isInferenceJob(job)) {
+      return events;
+    }
+
+    const runs = await this.getJobRuns(job.job_id, 50);
+
+    for (const run of runs) {
+      if (run.state.life_cycle_state === 'TERMINATED' && run.state.result_state === 'SUCCESS') {
+        const event = this.normalizeJobRun(job, run);
+        if (event) {
+          events.push(this.filterPII(event));
+        }
+      }
+    }
+
+    return events;
+  }
+
+  /**
+   * Check if job is related to inference
+   */
+  private isInferenceJob(job: DatabricksJob): boolean {
+    const name = job.settings.name.toLowerCase();
+    const tags = job.settings.tags || {};
+
+    // Check name patterns
+    if (name.includes('inference') || name.includes('predict') ||
+        name.includes('llm') || name.includes('embedding') ||
+        name.includes('score') || name.includes('classify')) {
+      return true;
+    }
+
+    // Check tags
+    if (tags['type'] === 'inference' || tags['ml_type'] === 'inference') {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Normalize job run to inference event
+   */
+  private normalizeJobRun(job: DatabricksJob, run: DatabricksJobRun): InferenceEvent | null {
+    // Job runs don't have token counts directly, but we can estimate from duration
+    const durationMs = run.run_duration || (run.end_time ? run.end_time - run.start_time : 0);
+
+    if (durationMs === 0) return null;
+
+    const tags = job.settings.tags || {};
+
+    return {
+      id: `job-${run.run_id}`,
+      ts: new Date(run.start_time).toISOString(),
+      intent: tags['intent'] || 'batch_inference',
+      provider: 'databricks',
+      model: tags['model'] || job.settings.name,
+      input_tokens: 0, // Unknown for batch jobs
+      output_tokens: 0,
+      latency_ms: durationMs,
+      cost_usd: this.calculateJobCost(durationMs),
+      endpoint: `${this.databricksConfig.connection?.workspace_id || 'workspace'}.databricks.com`,
+      region: this.extractRegion(),
+      tenant: job.creator_user_name || 'default',
+      metadata: {
+        job_id: job.job_id,
+        job_name: job.settings.name,
+        run_id: run.run_id,
+        source: 'databricks_job',
+      },
+    };
+  }
+
+  /**
+   * Calculate Databricks serving endpoint cost
+   */
+  private calculateDatabricksCost(inputTokens: number, outputTokens: number, latencyMs: number): number {
+    const totalTokens = inputTokens + outputTokens;
+
+    // Databricks Model Serving pricing (approximate)
+    // Base: $0.0002 per 1000 tokens
+    const tokenCost = (totalTokens / 1000) * 0.0002;
+
+    // DBU/compute costs based on duration
+    const computeCost = (latencyMs / 1000) * 0.0005;
+
+    return tokenCost + computeCost;
+  }
+
+  /**
+   * Calculate job cost based on duration
+   */
+  private calculateJobCost(durationMs: number): number {
+    // DBU cost for job compute (approximate: $0.40 per DBU-hour)
+    const hours = durationMs / (1000 * 60 * 60);
+    const estimatedDBUs = 2; // Assume average 2 DBU cluster
+    return hours * estimatedDBUs * 0.40;
+  }
+
+  /**
+   * Get environment variable requirements
+   */
+  static getRequiredEnvVars(): string[] {
+    return [
+      'DATABRICKS_HOST - Databricks workspace URL (e.g., adb-1234567890123456.19.azuredatabricks.net)',
+      'DATABRICKS_TOKEN - Personal access token with serving endpoint and jobs permissions',
+      'DATABRICKS_WORKSPACE_ID - (Optional) Workspace ID for tagging',
+    ];
   }
 }
-

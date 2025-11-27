@@ -7,10 +7,10 @@
 import Anthropic from '@anthropic-ai/sdk';
 import fs from 'fs-extra';
 import * as yaml from 'yaml';
-import { 
-  DiscoveryResult, 
-  OptimizationPlan, 
-  EvaluationResult, 
+import {
+  DiscoveryResult,
+  OptimizationPlan,
+  EvaluationResult,
   AuditReport,
   ProfileResult,
   ApplicationSummary,
@@ -23,7 +23,13 @@ import {
   UtilizationMetrics,
   TrafficDistribution,
   QualityRequirement,
-  CostDriver
+  CostDriver,
+  LayerOptimization,
+  CrossLayerStrategy,
+  ImplementationPhase,
+  WorkloadCluster,
+  SamplePromptSummary,
+  ProfileRecommendation
 } from '../types/multi-agent.js';
 import { InferenceEvent } from '../types/events.js';
 import { OptimizationTemplate } from '../types/template.js';
@@ -51,13 +57,514 @@ export class MultiAgentOrchestrator {
     if (!key) {
       throw new Error('ANTHROPIC_API_KEY not found. Please set it in your environment or pass it to the constructor.');
     }
-    
+
     this.anthropic = new Anthropic({ apiKey: key });
     this.verbose = Boolean(options?.verbose);
     this.logVerbose('MultiAgentOrchestrator initialized', {
       model: this.model,
       maxTokens: this.maxTokens,
     });
+  }
+
+  // =============================================================================
+  // HIGH-LEVEL ORCHESTRATION METHODS (Used by CLI)
+  // =============================================================================
+
+  /**
+   * Run full discovery pipeline
+   * Called by: peakinfer discover <path>
+   */
+  async runDiscovery(options: {
+    codebasePath: string;
+    collectors?: string[];
+    outputPath?: string;
+  }): Promise<{
+    totalEvents: number;
+    estimatedMonthlyCost: number;
+    discoveryResult: DiscoveryResult;
+  }> {
+    console.log('🔍 Starting full discovery pipeline...');
+    this.logVerbose('runDiscovery invoked', options);
+
+    const { codebasePath, collectors = ['codebase'], outputPath } = options;
+
+    // Step 1: Run codebase analysis
+    const codebaseAnalysis = await this.runCodebaseAnalyzer(codebasePath);
+
+    // Step 2: Generate synthetic events from codebase analysis (if no events.jsonl exists)
+    const eventsPath = outputPath ? `${outputPath}/events.jsonl` : 'events.jsonl';
+    const events = await this.generateEventsFromCodebase(codebaseAnalysis, eventsPath);
+
+    // Step 3: Run discovery agent
+    const discoveryResult = await this.runDiscoveryAgent(
+      [eventsPath],
+      codebasePath
+    );
+
+    const totalEvents = events.length;
+    const estimatedMonthlyCost = discoveryResult.configSummary.application.total_monthly_cost;
+
+    return {
+      totalEvents,
+      estimatedMonthlyCost,
+      discoveryResult,
+    };
+  }
+
+  /**
+   * Run profiling pipeline
+   * Called by: peakinfer profile <events.jsonl>
+   */
+  async runProfiling(options: {
+    eventsPath: string;
+    clusterMethod?: string;
+  }): Promise<{
+    clusters: Array<{
+      name: string;
+      eventCount: number;
+      monthlyCost: number;
+    }>;
+    uniqueIntents: number;
+    profileResult: ProfileResult;
+  }> {
+    console.log('📈 Starting profiling pipeline...');
+    this.logVerbose('runProfiling invoked', options);
+
+    const { eventsPath, clusterMethod = 'semantic' } = options;
+
+    // Load events from file
+    const events = await this.loadEventsFromFile(eventsPath);
+
+    // Run profile agent
+    const profileResult = await this.runProfileAgent(events, { clusterMethod });
+
+    // Transform clusters for CLI display
+    const clusters = profileResult.clusters.map(c => ({
+      name: c.intent || c.cluster_id,
+      eventCount: c.size,
+      monthlyCost: c.monthly_cost,
+    }));
+
+    const uniqueIntents = new Set(events.map(e => e.intent).filter(Boolean)).size;
+
+    return {
+      clusters,
+      uniqueIntents,
+      profileResult,
+    };
+  }
+
+  /**
+   * Run planning pipeline
+   * Called by: peakinfer plan
+   */
+  async runPlanning(options: {
+    templates: OptimizationTemplate[];
+    constraintsFile?: string;
+    discoveryPath?: string;
+  }): Promise<{
+    opportunities: Array<{
+      title: string;
+      monthlySavings: number;
+      layer: string;
+    }>;
+    totalPotentialSavings: number;
+    plan: OptimizationPlan;
+  }> {
+    console.log('📋 Starting planning pipeline...');
+    this.logVerbose('runPlanning invoked', options);
+
+    const { templates, constraintsFile, discoveryPath = 'discovered.yaml' } = options;
+
+    // Load discovery results
+    let discoveryResult: DiscoveryResult;
+    if (await fs.pathExists(discoveryPath)) {
+      const content = await fs.readFile(discoveryPath, 'utf-8');
+      discoveryResult = yaml.parse(content) as DiscoveryResult;
+    } else {
+      // Generate mock discovery for planning without prior discovery
+      discoveryResult = this.getMockDiscoveryResult();
+    }
+
+    // Load constraints if provided
+    let constraints: any = {};
+    if (constraintsFile && await fs.pathExists(constraintsFile)) {
+      const constraintContent = await fs.readFile(constraintsFile, 'utf-8');
+      constraints = yaml.parse(constraintContent);
+    }
+
+    // Run planner agent
+    const plan = await this.runPlannerAgent(discoveryResult, templates);
+
+    // Apply cross-layer coordination
+    const coordinatedPlan = await this.applyCrossLayerCoordination(plan, discoveryResult);
+
+    // Transform for CLI display
+    const opportunities = [
+      ...coordinatedPlan.applicationLayer.map(o => ({
+        title: o.template_name || o.description,
+        monthlySavings: o.expected_savings,
+        layer: 'application',
+      })),
+      ...coordinatedPlan.servingLayer.map(o => ({
+        title: o.template_name || o.description,
+        monthlySavings: o.expected_savings,
+        layer: 'serving',
+      })),
+      ...coordinatedPlan.infrastructureLayer.map(o => ({
+        title: o.template_name || o.description,
+        monthlySavings: o.expected_savings,
+        layer: 'infrastructure',
+      })),
+      ...coordinatedPlan.crossLayerStrategies.map(s => ({
+        title: s.name,
+        monthlySavings: s.synergy_benefit,
+        layer: 'cross-layer',
+      })),
+    ];
+
+    const totalPotentialSavings = coordinatedPlan.estimatedSavings;
+
+    return {
+      opportunities,
+      totalPotentialSavings,
+      plan: coordinatedPlan,
+    };
+  }
+
+  /**
+   * Run full optimization pipeline (end-to-end)
+   * Executes all agents in sequence: Discovery → Profile → Plan → Evaluate → Audit
+   */
+  async runFullPipeline(options: {
+    codebasePath: string;
+    templates: OptimizationTemplate[];
+    constraintsFile?: string;
+  }): Promise<AuditReport> {
+    console.log('🚀 Starting full optimization pipeline...');
+    this.logVerbose('runFullPipeline invoked', options);
+
+    const { codebasePath, templates, constraintsFile } = options;
+
+    // Phase 1: Discovery
+    console.log('\n━━━ Phase 1: Discovery ━━━');
+    const { discoveryResult } = await this.runDiscovery({
+      codebasePath,
+      collectors: ['codebase'],
+    });
+
+    // Phase 2: Profiling
+    console.log('\n━━━ Phase 2: Profiling ━━━');
+    const eventsPath = 'events.jsonl';
+    const events = await this.loadEventsFromFile(eventsPath);
+    const profileResult = await this.runProfileAgent(events);
+
+    // Phase 3: Planning with cross-layer coordination
+    console.log('\n━━━ Phase 3: Planning ━━━');
+    const plan = await this.runPlannerAgent(discoveryResult, templates);
+    const coordinatedPlan = await this.applyCrossLayerCoordination(plan, discoveryResult);
+
+    // Phase 4: Evaluation
+    console.log('\n━━━ Phase 4: Evaluation ━━━');
+    const samplePrompts = profileResult.samplePrompts.map(sp => ({
+      prompt: sp.prompt,
+      model: sp.model,
+      provider: sp.provider,
+    }));
+    const evaluationResult = await this.runRunnerEvaluator(coordinatedPlan, samplePrompts);
+
+    // Phase 5: Audit & Reporting
+    console.log('\n━━━ Phase 5: Audit ━━━');
+    const auditReport = await this.runAuditorAgent(evaluationResult);
+
+    console.log('\n✅ Full pipeline complete!');
+    console.log(`💰 Total savings: $${auditReport.executiveSummary.total_cost_savings.toLocaleString()}/month`);
+    console.log(`📊 ROI: ${auditReport.executiveSummary.roi_percentage.toFixed(0)}%`);
+
+    return auditReport;
+  }
+
+  // =============================================================================
+  // CROSS-LAYER COORDINATION
+  // =============================================================================
+
+  /**
+   * Apply cross-layer coordination to optimization plan
+   * Identifies synergies between layers and creates coordinated strategies
+   */
+  private async applyCrossLayerCoordination(
+    plan: OptimizationPlan,
+    discoveryResult: DiscoveryResult
+  ): Promise<OptimizationPlan> {
+    console.log('🔗 Applying cross-layer coordination...');
+    this.logVerbose('applyCrossLayerCoordination invoked', {
+      applicationOpts: plan.applicationLayer.length,
+      servingOpts: plan.servingLayer.length,
+      infraOpts: plan.infrastructureLayer.length,
+    });
+
+    const crossLayerStrategies: CrossLayerStrategy[] = [];
+
+    // Strategy 1: Caching + Model Routing Synergy
+    const hasCaching = plan.applicationLayer.some(o =>
+      o.technique?.includes('caching') || o.template_id?.includes('caching')
+    );
+    const hasRouting = plan.applicationLayer.some(o =>
+      o.technique?.includes('routing') || o.template_id?.includes('routing')
+    );
+    if (hasCaching && hasRouting) {
+      const cachingOpt = plan.applicationLayer.find(o =>
+        o.technique?.includes('caching') || o.template_id?.includes('caching')
+      );
+      const routingOpt = plan.applicationLayer.find(o =>
+        o.technique?.includes('routing') || o.template_id?.includes('routing')
+      );
+
+      crossLayerStrategies.push({
+        strategy_id: 'caching-routing-synergy',
+        name: 'Semantic Caching + Model Routing',
+        description: 'Cache high-frequency queries and route cache misses to appropriate models based on complexity',
+        layers_involved: ['application'],
+        optimizations: [cachingOpt?.optimization_id, routingOpt?.optimization_id].filter(Boolean) as string[],
+        synergy_benefit: (cachingOpt?.expected_savings || 0) * 0.15 + (routingOpt?.expected_savings || 0) * 0.1,
+        coordination_complexity: 'medium',
+        implementation_order: ['caching', 'routing'],
+      });
+    }
+
+    // Strategy 2: vLLM + Spot Instances
+    const hasVLLM = plan.servingLayer.some(o =>
+      o.technique?.includes('vllm') || o.template_id?.includes('vllm')
+    );
+    const hasSpot = plan.infrastructureLayer.some(o =>
+      o.technique?.includes('spot') || o.template_id?.includes('spot')
+    );
+    if (hasVLLM && hasSpot) {
+      const vllmOpt = plan.servingLayer.find(o =>
+        o.technique?.includes('vllm') || o.template_id?.includes('vllm')
+      );
+      const spotOpt = plan.infrastructureLayer.find(o =>
+        o.technique?.includes('spot') || o.template_id?.includes('spot')
+      );
+
+      crossLayerStrategies.push({
+        strategy_id: 'vllm-spot-synergy',
+        name: 'vLLM Migration + Spot Instance Optimization',
+        description: 'Deploy vLLM on spot instances with checkpoint-based recovery for cost-effective high-throughput serving',
+        layers_involved: ['serving', 'infrastructure'],
+        optimizations: [vllmOpt?.optimization_id, spotOpt?.optimization_id].filter(Boolean) as string[],
+        synergy_benefit: (vllmOpt?.expected_savings || 0) * 0.2 + (spotOpt?.expected_savings || 0) * 0.15,
+        coordination_complexity: 'high',
+        implementation_order: ['vllm-migration', 'spot-configuration'],
+      });
+    }
+
+    // Strategy 3: Quantization + Memory Optimization
+    const hasQuantization = plan.servingLayer.some(o =>
+      o.technique?.includes('quantization') || o.technique?.includes('4bit') || o.technique?.includes('8bit')
+    );
+    const hasMemoryOpt = plan.servingLayer.some(o =>
+      o.technique?.includes('memory') || o.technique?.includes('kv_cache')
+    );
+    if (hasQuantization && hasMemoryOpt) {
+      const quantOpt = plan.servingLayer.find(o =>
+        o.technique?.includes('quantization') || o.technique?.includes('4bit')
+      );
+      const memOpt = plan.servingLayer.find(o =>
+        o.technique?.includes('memory') || o.technique?.includes('kv_cache')
+      );
+
+      crossLayerStrategies.push({
+        strategy_id: 'quantization-memory-synergy',
+        name: 'Quantization + Memory Optimization',
+        description: 'Combine model quantization with KV cache optimization for maximum memory efficiency',
+        layers_involved: ['serving'],
+        optimizations: [quantOpt?.optimization_id, memOpt?.optimization_id].filter(Boolean) as string[],
+        synergy_benefit: (quantOpt?.expected_savings || 0) * 0.25,
+        coordination_complexity: 'medium',
+        implementation_order: ['quantization', 'memory-optimization'],
+      });
+    }
+
+    // Strategy 4: Full Stack Optimization (Application + Serving + Infrastructure)
+    if (plan.applicationLayer.length > 0 && plan.servingLayer.length > 0 && plan.infrastructureLayer.length > 0) {
+      const topAppOpt = plan.applicationLayer[0];
+      const topServingOpt = plan.servingLayer[0];
+      const topInfraOpt = plan.infrastructureLayer[0];
+
+      crossLayerStrategies.push({
+        strategy_id: 'full-stack-optimization',
+        name: 'Full Stack Optimization Strategy',
+        description: 'Coordinated optimization across all layers for compound savings - application caching reduces load, serving optimization improves throughput, infrastructure right-sizing reduces costs',
+        layers_involved: ['application', 'serving', 'infrastructure'],
+        optimizations: [
+          topAppOpt?.optimization_id,
+          topServingOpt?.optimization_id,
+          topInfraOpt?.optimization_id,
+        ].filter(Boolean) as string[],
+        synergy_benefit: (topAppOpt?.expected_savings || 0) * 0.1 +
+                         (topServingOpt?.expected_savings || 0) * 0.1 +
+                         (topInfraOpt?.expected_savings || 0) * 0.1,
+        coordination_complexity: 'high',
+        implementation_order: ['application-layer', 'serving-layer', 'infrastructure-layer'],
+      });
+    }
+
+    // Calculate total synergy benefit
+    const totalSynergyBenefit = crossLayerStrategies.reduce((sum, s) => sum + s.synergy_benefit, 0);
+
+    // Build implementation sequence
+    const implementationSequence = this.buildImplementationSequence(plan, crossLayerStrategies);
+
+    // Update plan with cross-layer strategies
+    const coordinatedPlan: OptimizationPlan = {
+      ...plan,
+      crossLayerStrategies,
+      estimatedSavings: plan.estimatedSavings + totalSynergyBenefit,
+      implementationSequence,
+    };
+
+    // Save coordinated plan
+    await fs.writeFile('optimization-plan.yaml', yaml.stringify(coordinatedPlan), 'utf-8');
+    console.log(`  ✅ Cross-layer coordination complete: ${crossLayerStrategies.length} synergies identified`);
+    console.log(`  💰 Additional synergy savings: $${totalSynergyBenefit.toFixed(0)}/month`);
+
+    return coordinatedPlan;
+  }
+
+  /**
+   * Build implementation sequence based on dependencies and priorities
+   */
+  private buildImplementationSequence(
+    plan: OptimizationPlan,
+    crossLayerStrategies: CrossLayerStrategy[]
+  ): ImplementationPhase[] {
+    const phases: ImplementationPhase[] = [];
+
+    // Phase 1: Low-risk, high-impact application layer optimizations
+    const quickWins = plan.applicationLayer.filter(o =>
+      o.risk_level === 'low' && o.implementation_time_days <= 7
+    );
+    if (quickWins.length > 0) {
+      phases.push({
+        phase_number: 1,
+        name: 'Quick Wins - Application Layer',
+        optimizations: quickWins.map(o => o.optimization_id),
+        estimated_duration_days: Math.max(...quickWins.map(o => o.implementation_time_days)),
+        prerequisites_completed: true,
+        parallel_execution_possible: true,
+        success_criteria: ['Cost reduction visible in monitoring', 'No quality degradation'],
+      });
+    }
+
+    // Phase 2: Serving layer optimizations (require more testing)
+    if (plan.servingLayer.length > 0) {
+      phases.push({
+        phase_number: phases.length + 1,
+        name: 'Serving Layer Optimizations',
+        optimizations: plan.servingLayer.map(o => o.optimization_id),
+        estimated_duration_days: Math.max(...plan.servingLayer.map(o => o.implementation_time_days), 14),
+        prerequisites_completed: phases.length === 0,
+        parallel_execution_possible: false,
+        success_criteria: ['Throughput improvement validated', 'Latency within SLA', 'Quality preserved'],
+      });
+    }
+
+    // Phase 3: Infrastructure layer (most disruptive)
+    if (plan.infrastructureLayer.length > 0) {
+      phases.push({
+        phase_number: phases.length + 1,
+        name: 'Infrastructure Layer Optimizations',
+        optimizations: plan.infrastructureLayer.map(o => o.optimization_id),
+        estimated_duration_days: Math.max(...plan.infrastructureLayer.map(o => o.implementation_time_days), 21),
+        prerequisites_completed: false,
+        parallel_execution_possible: false,
+        success_criteria: ['Cost reduction confirmed', 'Resilience maintained', 'No incidents'],
+      });
+    }
+
+    // Phase 4: Cross-layer coordination (after individual optimizations)
+    if (crossLayerStrategies.length > 0) {
+      phases.push({
+        phase_number: phases.length + 1,
+        name: 'Cross-Layer Coordination & Tuning',
+        optimizations: crossLayerStrategies.map(s => s.strategy_id),
+        estimated_duration_days: 7,
+        prerequisites_completed: false,
+        parallel_execution_possible: true,
+        success_criteria: ['Synergy benefits realized', 'Compound savings validated'],
+      });
+    }
+
+    return phases;
+  }
+
+  // =============================================================================
+  // HELPER METHODS FOR ORCHESTRATION
+  // =============================================================================
+
+  /**
+   * Generate synthetic events from codebase analysis
+   */
+  private async generateEventsFromCodebase(
+    codebaseAnalysis: CodebaseAnalysis,
+    outputPath: string
+  ): Promise<InferenceEvent[]> {
+    const events: InferenceEvent[] = [];
+
+    for (const call of codebaseAnalysis.llmApiCalls || []) {
+      // Generate synthetic events based on detected API calls
+      // Map LLMAPICall properties to InferenceEvent properties
+      const baseEvent: InferenceEvent = {
+        id: `evt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        ts: new Date().toISOString(),
+        intent: call.callPattern || 'unknown',
+        provider: call.apiProvider || 'unknown',
+        model: call.model || 'unknown',
+        input_tokens: 500, // Estimated default
+        output_tokens: 100, // Estimated default
+        latency_ms: 500,
+        cost_usd: call.estimatedCost || 0.01,
+        endpoint: `api.${call.apiProvider || 'unknown'}.com`,
+        region: 'us-west-2',
+        tenant: 'default',
+      };
+      events.push(baseEvent);
+    }
+
+    // Write events to file
+    const eventsJsonl = events.map(e => JSON.stringify(e)).join('\n');
+    await fs.writeFile(outputPath, eventsJsonl, 'utf-8');
+    console.log(`  📝 Generated ${events.length} synthetic events from codebase analysis`);
+
+    return events;
+  }
+
+  /**
+   * Load events from JSONL file
+   */
+  private async loadEventsFromFile(eventsPath: string): Promise<InferenceEvent[]> {
+    if (!await fs.pathExists(eventsPath)) {
+      console.warn(`⚠️  Events file not found: ${eventsPath}`);
+      return [];
+    }
+
+    const content = await fs.readFile(eventsPath, 'utf-8');
+    const events = content
+      .trim()
+      .split('\n')
+      .filter(line => line.trim())
+      .map(line => {
+        try {
+          return JSON.parse(line) as InferenceEvent;
+        } catch {
+          return null;
+        }
+      })
+      .filter((e): e is InferenceEvent => e !== null);
+
+    this.logVerbose('Loaded events from file', { eventsPath, count: events.length });
+    return events;
   }
 
   /**

@@ -9,40 +9,156 @@ import * as path from 'path';
 import { glob } from 'glob';
 import { OptimizationTemplate, EnvironmentProfile, TemplateExecutionResult } from '../types/template.js';
 import https from 'https';
+import { fileURLToPath } from 'url';
+
+// ESM-compatible __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// GitHub repository configuration
+const GITHUB_REPO_OWNER = 'Kalmantic';
+const GITHUB_REPO_NAME = 'peakinfer_templates';
+const GITHUB_BRANCH = 'main';
 
 export class TemplateEngine {
   private templates: Map<string, OptimizationTemplate> = new Map();
   private templatesLoaded = false;
+  private githubToken?: string;
 
-  constructor(private templatesDirectory?: string) {
+  constructor(private templatesDirectory?: string, githubToken?: string) {
     // Default to design/templates or look for templates in standard locations
     this.templatesDirectory = templatesDirectory || this.findTemplatesDirectory();
+    // GitHub token for private repo access (from constructor or env)
+    this.githubToken = githubToken || process.env.GITHUB_TOKEN || process.env.PEAKINFER_GITHUB_TOKEN;
   }
 
   /**
    * Stage 1: Configuration ⏳
-   * Load all optimization templates from the design folder
+   * Load all optimization templates from the templates folder
    */
   async loadTemplates(): Promise<void> {
     console.log("Stage 1: Template Loading ⏳");
 
     try {
-      // Try local templates first
-      await this.extractTemplatesFromDesignDoc();
-      await this.loadStandaloneTemplateFiles();
+      // Try local templates directory first (new structure)
+      await this.loadTemplatesFromDirectory();
 
-      // If no local templates found, load from GitHub
+      // Fall back to design doc extraction
       if (this.templates.size === 0) {
-        console.log("  📡 No local templates found, loading from GitHub repository...");
-        await this.loadTemplatesFromGitHub();
+        await this.extractTemplatesFromDesignDoc();
+        await this.loadStandaloneTemplateFiles();
+      }
+
+      // If still no local templates found, try loading from GitHub
+      if (this.templates.size === 0) {
+        console.log("  📡 No local templates found, trying GitHub repository...");
+        try {
+          await this.loadTemplatesFromGitHub();
+        } catch (githubError) {
+          console.warn("  ⚠️  Could not load from GitHub, using built-in defaults");
+          this.loadBuiltInTemplates();
+        }
       }
 
       console.log(`Stage 1: Template Loading ✅ - Loaded ${this.templates.size} templates`);
       this.templatesLoaded = true;
 
     } catch (error) {
-      console.error("Stage 1: Template Loading ❌", error);
-      throw new Error(`Failed to load templates: ${error instanceof Error ? error.message : String(error)}`);
+      console.warn("Stage 1: Template Loading ⚠️ - Some templates may be missing:", error);
+      // Don't throw - allow operation with partial templates
+      this.templatesLoaded = true;
+    }
+  }
+
+  /**
+   * Load templates from the templates/ directory structure
+   */
+  private async loadTemplatesFromDirectory(): Promise<void> {
+    const templatesDirs = [
+      path.join(process.cwd(), 'templates'),
+      path.join(__dirname, '..', '..', 'templates'),
+      this.templatesDirectory || '',
+    ].filter(d => d);
+
+    for (const templatesDir of templatesDirs) {
+      if (!await fs.pathExists(templatesDir)) {
+        continue;
+      }
+
+      // Check for index.yaml
+      const indexPath = path.join(templatesDir, 'index.yaml');
+      if (await fs.pathExists(indexPath)) {
+        await this.loadTemplatesFromIndex(indexPath, templatesDir);
+        if (this.templates.size > 0) {
+          console.log(`  📂 Loaded templates from ${templatesDir}`);
+          return;
+        }
+      }
+
+      // Fall back to scanning directories
+      const categories = ['application-layer', 'serving-layer', 'infrastructure-layer', 'cross-layer'];
+      for (const category of categories) {
+        const categoryPath = path.join(templatesDir, category);
+        if (await fs.pathExists(categoryPath)) {
+          const templateFiles = await glob('*.yaml', {
+            cwd: categoryPath,
+            absolute: true
+          });
+
+          for (const templateFile of templateFiles) {
+            try {
+              const content = await fs.readFile(templateFile, 'utf-8');
+              const template = yaml.parse(content) as OptimizationTemplate;
+
+              if (template.id && template.name) {
+                this.templates.set(template.id, template);
+                console.log(`  ✅ Loaded: ${template.id} (${category})`);
+              }
+            } catch (error) {
+              console.warn(`  ⚠️  Failed to load ${templateFile}: ${error instanceof Error ? error.message : String(error)}`);
+            }
+          }
+        }
+      }
+
+      if (this.templates.size > 0) {
+        console.log(`  📂 Loaded ${this.templates.size} templates from ${templatesDir}`);
+        return;
+      }
+    }
+  }
+
+  /**
+   * Load templates from index.yaml file
+   */
+  private async loadTemplatesFromIndex(indexPath: string, baseDir: string): Promise<void> {
+    try {
+      const indexContent = await fs.readFile(indexPath, 'utf-8');
+      const index = yaml.parse(indexContent);
+
+      if (!index.categories) {
+        return;
+      }
+
+      for (const category of index.categories) {
+        for (const templateInfo of category.templates || []) {
+          const templatePath = path.join(baseDir, templateInfo.file);
+          if (await fs.pathExists(templatePath)) {
+            try {
+              const content = await fs.readFile(templatePath, 'utf-8');
+              const template = yaml.parse(content) as OptimizationTemplate;
+
+              if (template.id && template.name) {
+                this.templates.set(template.id, template);
+              }
+            } catch (error) {
+              console.warn(`  ⚠️  Failed to load ${templatePath}`);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`  ⚠️  Failed to parse index: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -100,7 +216,9 @@ export class TemplateEngine {
           const yamlContent = currentBlock.join('\n');
           // Only include blocks that look like template YAML (have id and name)
           if (yamlContent.includes('id:') && yamlContent.includes('name:')) {
-            yamlBlocks.push(yamlContent);
+            // Split by document separators and only take first document
+            const firstDoc = yamlContent.split(/\n---\n/)[0];
+            yamlBlocks.push(firstDoc);
           }
         }
         inYamlBlock = false;
@@ -108,7 +226,7 @@ export class TemplateEngine {
       } else if (line.trim() === '---' && !inYamlBlock) {
         // Start of potential YAML block
         inYamlBlock = true;
-        currentBlock = ['---'];
+        currentBlock = [];
       } else if (inYamlBlock) {
         currentBlock.push(line);
       }
@@ -338,32 +456,150 @@ export class TemplateEngine {
   }
 
   /**
+   * Load built-in default templates
+   * These are minimal templates for when no external templates are available
+   */
+  private loadBuiltInTemplates(): void {
+    // Simplified templates - cast to any to avoid strict type requirements
+    const builtInTemplates: any[] = [
+      {
+        id: 'semantic-caching',
+        name: 'Semantic Caching',
+        category: 'context_optimization',
+        description: 'Implement semantic caching to reduce redundant LLM API calls',
+        confidence: 0.85,
+        optimization: {
+          technique: 'semantic-caching',
+          expected_cost_reduction: '20-40%',
+          expected_throughput_improvement: '2-3x',
+          risk_level: 'low',
+          effort_estimate: '2-3 days',
+        },
+        environment_match: {},
+        economics: {
+          baseline_calculation: {},
+          implementation_cost: { total_cost: 5000 },
+        },
+        implementation: {
+          prerequisites: [],
+          automated_steps: [],
+        },
+      },
+      {
+        id: 'model-routing',
+        name: 'Intelligent Model Routing',
+        category: 'model_routing',
+        description: 'Route requests to optimal models based on complexity',
+        confidence: 0.80,
+        optimization: {
+          technique: 'model-routing',
+          expected_cost_reduction: '30-50%',
+          expected_throughput_improvement: '1.5x',
+          risk_level: 'medium',
+          effort_estimate: '5-7 days',
+        },
+        environment_match: {},
+        economics: {
+          baseline_calculation: {},
+          implementation_cost: { total_cost: 10000 },
+        },
+        implementation: {
+          prerequisites: [],
+          automated_steps: [],
+        },
+      },
+      {
+        id: 'batch-optimization',
+        name: 'Batch Request Optimization',
+        category: 'concurrency_optimization',
+        description: 'Optimize batch sizes for GPU utilization',
+        confidence: 0.90,
+        optimization: {
+          technique: 'batch-optimization',
+          expected_cost_reduction: '15-25%',
+          expected_throughput_improvement: '2x',
+          risk_level: 'low',
+          effort_estimate: '1-2 days',
+        },
+        environment_match: {},
+        economics: {
+          baseline_calculation: {},
+          implementation_cost: { total_cost: 2000 },
+        },
+        implementation: {
+          prerequisites: [],
+          automated_steps: [],
+        },
+      },
+      {
+        id: 'spot-instances',
+        name: 'Spot Instance Migration',
+        category: 'hardware_optimization',
+        description: 'Migrate fault-tolerant workloads to spot instances',
+        confidence: 0.85,
+        optimization: {
+          technique: 'spot-instances',
+          expected_cost_reduction: '60-70%',
+          expected_throughput_improvement: 'N/A',
+          risk_level: 'medium',
+          effort_estimate: '3-5 days',
+        },
+        environment_match: {},
+        economics: {
+          baseline_calculation: {},
+          implementation_cost: { total_cost: 8000 },
+        },
+        implementation: {
+          prerequisites: [],
+          automated_steps: [],
+        },
+      },
+    ];
+
+    for (const template of builtInTemplates) {
+      this.templates.set(template.id, template as OptimizationTemplate);
+    }
+  }
+
+  /**
    * Load templates from GitHub repository
+   * Templates are stored at: https://github.com/Kalmantic/peakinfer_templates
+   * Supports both public (raw.githubusercontent.com) and private (API) repos
    */
   private async loadTemplatesFromGitHub(): Promise<void> {
-    const githubUrl = 'https://raw.githubusercontent.com/Kalmantic/tokenop/main/tokenop/design/TokenOp%20Template%20v0.2.md';
+    console.log("  📡 Fetching templates from GitHub repository...");
 
     try {
-      const content = await this.fetchFromGitHub(githubUrl);
-      console.log("  ✅ Downloaded template document from GitHub");
+      // First, try to fetch index.yaml to get template list
+      const indexContent = await this.fetchGitHubFile('index.yaml');
+      const index = yaml.parse(indexContent);
 
-      // Extract YAML blocks from the downloaded content
-      const yamlBlocks = this.extractYamlFromMarkdown(content);
+      if (!index.categories) {
+        throw new Error('Invalid index.yaml: missing categories');
+      }
 
-      console.log(`  📋 Found ${yamlBlocks.length} potential templates in remote document`);
+      console.log(`  📋 Found ${index.total_templates || 'multiple'} templates in index`);
 
-      for (const yamlBlock of yamlBlocks) {
-        try {
-          const template = yaml.parse(yamlBlock) as OptimizationTemplate;
+      // Load each template from the categories
+      for (const category of index.categories) {
+        console.log(`  📂 Loading ${category.name} templates...`);
 
-          if (template.id && template.name) {
-            this.templates.set(template.id, template);
-            console.log(`  ✅ Loaded remote template: ${template.id} - ${template.name}`);
+        for (const templateInfo of category.templates || []) {
+          try {
+            const templateContent = await this.fetchGitHubFile(templateInfo.file);
+            const template = yaml.parse(templateContent) as OptimizationTemplate;
+
+            if (template.id && template.name) {
+              this.templates.set(template.id, template);
+              console.log(`    ✅ ${template.id}`);
+            }
+          } catch (error) {
+            console.warn(`    ⚠️  Failed to load ${templateInfo.file}: ${error instanceof Error ? error.message : String(error)}`);
           }
-        } catch (error) {
-          console.warn(`  ⚠️  Failed to parse remote template YAML: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
+
+      console.log(`  ✅ Loaded ${this.templates.size} templates from GitHub`);
 
     } catch (error) {
       console.warn(`  ⚠️  Failed to load templates from GitHub: ${error instanceof Error ? error.message : String(error)}`);
@@ -372,11 +608,78 @@ export class TemplateEngine {
   }
 
   /**
-   * Fetch content from GitHub using HTTPS
+   * Fetch a file from GitHub repository
+   * Uses GitHub API for private repos (with token), raw.githubusercontent.com for public
    */
-  private async fetchFromGitHub(url: string): Promise<string> {
+  private async fetchGitHubFile(filePath: string): Promise<string> {
+    if (this.githubToken) {
+      // Use GitHub API for private repo access
+      return this.fetchFromGitHubAPI(filePath);
+    } else {
+      // Try raw.githubusercontent.com for public repos
+      const rawUrl = `https://raw.githubusercontent.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/${GITHUB_BRANCH}/${filePath}`;
+      return this.fetchFromUrl(rawUrl);
+    }
+  }
+
+  /**
+   * Fetch file content using GitHub API (supports private repos)
+   */
+  private async fetchFromGitHubAPI(filePath: string): Promise<string> {
+    const apiUrl = `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/contents/${filePath}?ref=${GITHUB_BRANCH}`;
+
+    return new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'api.github.com',
+        path: `/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/contents/${filePath}?ref=${GITHUB_BRANCH}`,
+        method: 'GET',
+        headers: {
+          'User-Agent': 'PeakInfer-TemplateEngine',
+          'Accept': 'application/vnd.github.v3.raw',
+          'Authorization': `Bearer ${this.githubToken}`,
+        },
+      };
+
+      const req = https.request(options, (response) => {
+        if (response.statusCode === 404) {
+          reject(new Error(`File not found: ${filePath}`));
+          return;
+        }
+
+        if (response.statusCode !== 200) {
+          reject(new Error(`GitHub API error ${response.statusCode}: ${response.statusMessage}`));
+          return;
+        }
+
+        let data = '';
+        response.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        response.on('end', () => {
+          resolve(data);
+        });
+      });
+
+      req.on('error', (error) => {
+        reject(error);
+      });
+
+      req.end();
+    });
+  }
+
+  /**
+   * Fetch content from a URL using HTTPS (for public repos)
+   */
+  private async fetchFromUrl(url: string): Promise<string> {
     return new Promise((resolve, reject) => {
       https.get(url, (response) => {
+        if (response.statusCode === 404) {
+          reject(new Error(`Not found: ${url}`));
+          return;
+        }
+
         if (response.statusCode !== 200) {
           reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
           return;
@@ -395,5 +698,33 @@ export class TemplateEngine {
         reject(error);
       });
     });
+  }
+
+  /**
+   * Refresh templates from GitHub (force reload)
+   */
+  async refreshFromGitHub(): Promise<number> {
+    console.log("🔄 Refreshing templates from GitHub...");
+    this.templates.clear();
+    this.templatesLoaded = false;
+
+    try {
+      await this.loadTemplatesFromGitHub();
+      this.templatesLoaded = true;
+      return this.templates.size;
+    } catch (error) {
+      console.warn(`Failed to refresh from GitHub: ${error instanceof Error ? error.message : String(error)}`);
+      // Fall back to local templates
+      await this.loadTemplatesFromDirectory();
+      this.templatesLoaded = true;
+      return this.templates.size;
+    }
+  }
+
+  /**
+   * Set GitHub token for private repo access
+   */
+  setGitHubToken(token: string): void {
+    this.githubToken = token;
   }
 }

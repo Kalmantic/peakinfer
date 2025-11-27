@@ -4,6 +4,8 @@
  * Based on PRD v0.7: Codebase Scanner & Analysis
  */
 
+import { HardwareProfile } from './hardware.js';
+
 /**
  * Complete codebase analysis result
  */
@@ -15,6 +17,7 @@ export interface CodebaseAnalysis {
   optimizationOpportunities: CodeOptimization[];
   integrationPoints: IntegrationPoint[];
   codeMetrics: CodeMetrics;
+  hardwareProfile?: HardwareProfile;
 }
 
 /**

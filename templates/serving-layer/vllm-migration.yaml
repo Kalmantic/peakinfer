@@ -1,0 +1,111 @@
+id: "vllm-migration-memory-bound"
+name: "vLLM Runtime Migration for Memory-Bound Workloads"
+description: "Migrate from HuggingFace Transformers to vLLM for 3-5x throughput improvement on memory-bound workloads"
+category: "runtime_optimization"
+confidence: 0.92
+success_count: 1247
+verified_environments: 47
+contributors: ["sarah_chen_fintech", "alex_kumar_healthtech", "ops_team_legalai"]
+last_updated: "2025-01-15"
+
+environment_match:
+  runtime: "huggingface"
+  gpu_utilization: "<30%"
+  batch_size: "<8"
+  memory_bound: true
+  model_size: ["7B", "13B", "30B"]
+  deployment: ["docker", "kubernetes", "bare_metal"]
+
+optimization:
+  technique: "runtime_migration"
+  source: "huggingface_transformers"
+  target: "vllm"
+  expected_throughput_improvement: "3-5x"
+  expected_cost_reduction: "60-70%"
+  effort_estimate: "2 weeks"
+  risk_level: "medium"
+
+economics:
+  baseline_calculation:
+    current_throughput: "${gpu_count} * ${tokens_per_gpu_per_second}"
+    monthly_cost: "${gpu_count} * ${gpu_hourly_cost} * 24 * 30"
+    cost_per_token: "${monthly_cost} / (${current_throughput} * 24 * 30 * 3600)"
+  projected_improvement:
+    new_throughput: "${current_throughput} * 3.4"
+    required_gpus: "ceil(${baseline_throughput_requirement} / ${new_throughput})"
+    new_monthly_cost: "${required_gpus} * ${gpu_hourly_cost} * 24 * 30"
+  implementation_cost:
+    engineering_hours: 80
+    training_cost: 800
+    hourly_rate: 200
+    total_cost: 16800
+
+implementation:
+  prerequisites:
+    - requirement: "vLLM 0.2.7+"
+      validation_command: "python -c 'import vllm; print(vllm.__version__)'"
+    - requirement: "Docker support"
+      validation_command: "docker --version"
+    - requirement: "Model compatibility check"
+      validation_command: "python scripts/check_vllm_compatibility.py --model ${model_name}"
+
+  automated_steps:
+    - step_id: "parallel_deployment"
+      name: "Parallel Deployment Setup"
+      executable: true
+      commands:
+        - "docker build -t vllm-inference -f Dockerfile.vllm ."
+        - "docker run -d --name vllm-test -p 8001:8000 --gpus all vllm-inference"
+      validation:
+        command: "curl -f http://localhost:8001/health"
+        success_criteria: "http_status == 200"
+        rollback_command: "docker stop vllm-test && docker rm vllm-test"
+
+    - step_id: "load_testing"
+      name: "Load Testing"
+      executable: true
+      commands:
+        - "python scripts/run_load_test.py --endpoint http://localhost:8001 --duration 300 --concurrency 10"
+        - "python scripts/compare_outputs.py --baseline http://localhost:8000 --candidate http://localhost:8001"
+      validation:
+        command: "python scripts/validate_load_test.py --throughput-threshold 3.0"
+        success_criteria: "throughput_improvement > 3.0 AND quality_match > 0.99"
+        rollback_command: "echo 'Staying with baseline deployment'"
+
+    - step_id: "traffic_migration"
+      name: "Gradual Traffic Migration"
+      executable: true
+      commands:
+        - "python scripts/setup_traffic_split.py --baseline 90 --candidate 10"
+        - "python scripts/monitor_migration.py --duration 3600"
+      validation:
+        command: "python scripts/validate_migration.py"
+        success_criteria: "error_rate < 0.01 AND latency_p99 < baseline_p99 * 1.2"
+        rollback_command: "python scripts/revert_traffic_split.py"
+
+monitoring:
+  key_metrics:
+    - metric: "throughput_improvement"
+      target: ">300%"
+      alert_threshold: "<200%"
+    - metric: "latency_p99_ms"
+      target: "<${baseline_p99}"
+      alert_threshold: ">${baseline_p99} * 1.5"
+    - metric: "error_rate"
+      target: "<0.001"
+      alert_threshold: ">0.01"
+
+  rollback_triggers:
+    - condition: "throughput_improvement < 150% for 30 minutes"
+      action: "automatic_rollback"
+    - condition: "error_rate > 0.05 for 5 minutes"
+      action: "automatic_rollback"
+
+results:
+  recent_implementations:
+    - environment: "fintech_document_processing"
+      baseline_throughput: 450
+      optimized_throughput: 1530
+      throughput_improvement: 3.4
+      cost_reduction_percent: 65
+      implementation_days: 10

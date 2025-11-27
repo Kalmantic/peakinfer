@@ -1,0 +1,96 @@
+{
+  "estimatedRange": {
+    "low": 10.500000000000002,
+    "high": 450
+  },
+  "mostExpensiveModel": "claude-sonnet-4-5-20250929",
+  "byProvider": [
+    {
+      "provider": "anthropic",
+      "cost": 450,
+      "percentage": 100
+    }
+  ],
+  "byModel": [
+    {
+      "model": "claude-sonnet-4-5-20250929",
+      "cost": 360
+    },
+    {
+      "model": "claude-sonnet-4-20250514",
+      "cost": 90
+    }
+  ],
+  "hotspots": [
+    {
+      "file": "src/core/multi-agent-orchestrator.ts",
+      "line": 211,
+      "model": "claude-sonnet-4-5-20250929",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45
+    },
+    {
+      "file": "src/core/multi-agent-orchestrator.ts",
+      "line": 315,
+      "model": "claude-sonnet-4-5-20250929",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45
+    },
+    {
+      "file": "src/core/multi-agent-orchestrator.ts",
+      "line": 416,
+      "model": "claude-sonnet-4-5-20250929",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45
+    },
+    {
+      "file": "src/core/multi-agent-orchestrator.ts",
+      "line": 527,
+      "model": "claude-sonnet-4-5-20250929",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45
+    },
+    {
+      "file": "src/core/multi-agent-orchestrator.ts",
+      "line": 627,
+      "model": "claude-sonnet-4-5-20250929",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45
+    },
+    {
+      "file": "src/core/optimization-suggester.ts",
+      "line": 319,
+      "model": "claude-sonnet-4-5-20250929",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45
+    },
+    {
+      "file": "src/slc/detector.ts",
+      "line": 282,
+      "model": "claude-sonnet-4-20250514",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45
+    },
+    {
+      "file": "src/slc/detector.ts",
+      "line": 320,
+      "model": "claude-sonnet-4-20250514",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45
+    },
+    {
+      "file": "src/slc/agent-analyzer.ts",
+      "line": 166,
+      "model": "claude-sonnet-4-5-20250929",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45
+    },
+    {
+      "file": "src/slc/agent-analyzer.ts",
+      "line": 401,
+      "model": "claude-sonnet-4-5-20250929",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45
+    }
+  ]
+}

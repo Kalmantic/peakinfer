@@ -20,6 +20,7 @@ import {
   FileAnalysis,
   LanguagePatterns
 } from '../types/codebase.js';
+import { HardwareDetector } from './hardware-detector.js';
 import fs from 'fs-extra';
 import * as path from 'path';
 import { glob } from 'glob';
@@ -175,9 +176,35 @@ export class CodebaseCollector extends BaseCollector {
       
       // Estimate monthly calls (heuristic: 1000 calls per detected API call location)
       analysis.codeMetrics.estimatedMonthlyCalls = analysis.llmApiCalls.length * 1000;
-      
+
+      // Run hardware detection
+      console.log('\n  🔧 Detecting hardware configuration...');
+      try {
+        const hardwareDetector = new HardwareDetector(this.scanOptions.rootPath, false);
+        analysis.hardwareProfile = await hardwareDetector.detect();
+
+        if (analysis.hardwareProfile.summary.totalGPUs > 0) {
+          console.log(`  ✅ Found ${analysis.hardwareProfile.summary.totalGPUs} GPU(s)`);
+          if (analysis.hardwareProfile.summary.primaryGPUType) {
+            console.log(`     Primary: ${analysis.hardwareProfile.summary.primaryGPUType}`);
+          }
+        }
+
+        if (analysis.hardwareProfile.servingRuntimes.length > 0) {
+          const runtimes = [...new Set(analysis.hardwareProfile.servingRuntimes.map(r => r.runtime))];
+          console.log(`  ✅ Serving runtimes: ${runtimes.join(', ')}`);
+        }
+
+        if (analysis.hardwareProfile.parallelization.length > 0) {
+          const strategies = [...new Set(analysis.hardwareProfile.parallelization.map(p => p.strategy))];
+          console.log(`  ✅ Parallelization: ${strategies.join(', ')}`);
+        }
+      } catch (hardwareError) {
+        console.warn('  ⚠️  Hardware detection failed:', hardwareError instanceof Error ? hardwareError.message : String(hardwareError));
+      }
+
       this.printSummary(analysis);
-      
+
       return analysis;
       
     } catch (error) {

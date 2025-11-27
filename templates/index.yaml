@@ -1,0 +1,82 @@
+# PeakInfer Templates Index
+# Auto-generated list of all community optimization templates
+
+version: "1.0.0"
+last_updated: "2025-01-16"
+repository: "https://github.com/Kalmantic/peakinfer_templates"
+
+categories:
+  - name: "application-layer"
+    description: "Application-level optimizations including caching, routing, and context management"
+    templates:
+      - id: "semantic-caching"
+        file: "application-layer/semantic-caching.yaml"
+        name: "Semantic Caching for LLM API Calls"
+        cost_reduction: "30-50%"
+        confidence: 0.92
+
+      - id: "smart-model-routing"
+        file: "application-layer/smart-model-routing.yaml"
+        name: "Intelligent Model Routing"
+        cost_reduction: "60-80%"
+        confidence: 0.92
+
+      - id: "context-window-optimization"
+        file: "application-layer/context-window-optimization.yaml"
+        name: "Context Window Optimization"
+        cost_reduction: "70-87%"
+        confidence: 0.89
+
+  - name: "serving-layer"
+    description: "Serving framework optimizations including vLLM, quantization, and batching"
+    templates:
+      - id: "vllm-high-throughput-optimization"
+        file: "serving-layer/vllm-high-throughput.yaml"
+        name: "vLLM Continuous Batching"
+        cost_reduction: "60-75%"
+        confidence: 0.91
+
+      - id: "gptq-4bit-quantization"
+        file: "serving-layer/gptq-4bit-quantization.yaml"
+        name: "GPTQ 4-bit Quantization"
+        memory_reduction: "75%"
+        confidence: 0.89
+
+      - id: "vllm-migration-memory-bound"
+        file: "serving-layer/vllm-migration.yaml"
+        name: "vLLM Migration"
+        cost_reduction: "60-70%"
+        confidence: 0.92
+
+  - name: "infrastructure-layer"
+    description: "Infrastructure optimizations including spot instances and GPU allocation"
+    templates:
+      - id: "spot-instance-optimization"
+        file: "infrastructure-layer/spot-instance-optimization.yaml"
+        name: "Spot Instance Migration"
+        cost_reduction: "60-70%"
+        confidence: 0.88
+
+      - id: "gpu-right-sizing"
+        file: "infrastructure-layer/gpu-right-sizing.yaml"
+        name: "GPU Right-Sizing"
+        cost_reduction: "40-60%"
+        confidence: 0.90
+
+  - name: "cross-layer"
+    description: "Cross-layer coordination strategies for compound savings"
+    templates:
+      - id: "full-stack-optimization"
+        file: "cross-layer/full-stack-optimization.yaml"
+        name: "Full Stack Optimization"
+        cost_reduction: "70-85%"
+        confidence: 0.87
+
+      - id: "caching-routing-synergy"
+        file: "cross-layer/caching-routing-synergy.yaml"
+        name: "Caching + Routing Synergy"
+        cost_reduction: "65-80%"
+        confidence: 0.91
+
+total_templates: 10
+average_confidence: 0.90

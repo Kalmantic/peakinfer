@@ -1,0 +1,107 @@
+id: "gptq-4bit-quantization"
+name: "Production 4-bit Quantization with GPTQ"
+description: "Implement aggressive 4-bit quantization while maintaining 95%+ quality for memory-constrained deployments"
+category: "memory_optimization"
+confidence: 0.89
+success_count: 1456
+verified_environments: 54
+contributors: ["quantization_expert", "model_optimizer", "quality_engineer"]
+last_updated: "2025-01-13"
+
+environment_match:
+  model_size: ["7B", "13B", "30B"]
+  memory_pressure: "high"
+  quality_tolerance: ">92%"
+  deployment: ["cloud", "edge"]
+
+optimization:
+  technique: "4bit_quantization"
+  method: "gptq"
+  expected_memory_reduction: "75%"
+  expected_quality_retention: "95-98%"
+  effort_estimate: "1 week"
+  risk_level: "medium"
+
+economics:
+  baseline_calculation:
+    model_memory_gb: "${model_parameters_b} * 2 / 1000"
+    gpu_memory_required: "${model_memory_gb} + ${kv_cache_gb}"
+    gpus_needed: "ceil(${gpu_memory_required} / ${gpu_memory_capacity})"
+  projected_improvement:
+    quantized_memory_gb: "${model_memory_gb} * 0.25"
+    new_gpus_needed: "ceil((${quantized_memory_gb} + ${kv_cache_gb}) / ${gpu_memory_capacity})"
+    gpu_reduction: "${gpus_needed} - ${new_gpus_needed}"
+  implementation_cost:
+    engineering_hours: 40
+    compute_hours: 8
+    hourly_rate: 200
+    total_cost: 8800
+
+implementation:
+  prerequisites:
+    - requirement: "auto-gptq 0.5.0+"
+      validation_command: "python -c 'import auto_gptq; print(auto_gptq.__version__)'"
+    - requirement: "transformers 4.35+"
+      validation_command: "python -c 'import transformers; print(transformers.__version__)'"
+    - requirement: "Calibration dataset"
+      validation_command: "test -f calibration.json && python scripts/validate_calibration.py"
+
+  automated_steps:
+    - step_id: "model_preparation"
+      name: "Model Preparation"
+      executable: true
+      commands:
+        - "python scripts/prepare_model.py --model-name meta-llama/Llama-2-7b-hf --cache-dir ./models"
+        - "python scripts/prepare_calibration.py --dataset-size 1024 --output calibration.json"
+      validation:
+        command: "python scripts/validate_preparation.py"
+        success_criteria: "model_loaded AND calibration_valid"
+        rollback_command: "rm -rf ./models ./calibration.json"
+
+    - step_id: "quantization_process"
+      name: "GPTQ Quantization"
+      executable: true
+      commands:
+        - "python scripts/quantize_gptq.py --model ./models --calibration calibration.json --bits 4 --group-size 128"
+        - "python scripts/validate_quantized.py --original ./models --quantized ./quantized_model"
+      validation:
+        command: "python scripts/quality_check.py --threshold 0.95"
+        success_criteria: "quality_score > 0.95"
+        rollback_command: "rm -rf ./quantized_model"
+
+    - step_id: "deployment_optimization"
+      name: "Deployment Optimization"
+      executable: true
+      commands:
+        - "python scripts/deploy_quantized.py --model ./quantized_model --batch-size 16 --gpu-memory-fraction 0.6"
+      validation:
+        command: "python scripts/performance_test.py --duration 300"
+        success_criteria: "memory_usage < baseline * 0.3 AND inference_speed > baseline * 1.5"
+        rollback_command: "python scripts/rollback_to_fp16.py"
+
+monitoring:
+  key_metrics:
+    - metric: "memory_usage_gb"
+      target: "<${baseline_memory} * 0.3"
+      alert_threshold: ">${baseline_memory} * 0.4"
+    - metric: "quality_score"
+      target: ">0.95"
+      alert_threshold: "<0.93"
+    - metric: "inference_latency"
+      target: "<${baseline_latency} * 0.8"
+      alert_threshold: ">${baseline_latency} * 1.2"
+
+  rollback_triggers:
+    - condition: "quality_score < 0.93 for 3 consecutive measurements"
+      action: "automatic_rollback"
+    - condition: "memory_usage > baseline * 0.5 for 15 minutes"
+      action: "automatic_rollback"
+
+results:
+  recent_implementations:
+    - environment: "financial_document_analysis"
+      baseline_memory_gb: 28
+      optimized_memory_gb: 7
+      memory_reduction_percent: 75
+      quality_retention_percent: 96.2
+      implementation_days: 5
