@@ -171,7 +171,7 @@ export async function analyze(targetPath: string, options: AnalyzeOptions = {}):
       },
     });
 
-    const { callsites, stackMap, pricing, techStack, totalCostUsd, durationMs } = result;
+    const { callsites, stackMap, pricing, techStack, patterns, totalCostUsd, durationMs } = result;
 
     // Write output files
     const outputFiles = callsites.length > 0 ? writeOutputFiles(root, stackMap, pricing, options.html) : [];
@@ -750,7 +750,7 @@ async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'b
   try {
     // Import modules
     const { analyzeWithAgent } = await import('./agent-analyzer.js');
-    const { generateRecommendations, generateReport } = await import('./recommender.js');
+    const { generateRecommendations, generateReport, detectRisks, generatePatternsReport, generateRiskReport } = await import('./recommender.js');
 
     // Phase 1: Fast agent-based analysis (same as `analyze` command)
     console.log('  🔍 Analyzing codebase with Claude Agent SDK...');
@@ -772,7 +772,7 @@ async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'b
       },
     });
 
-    const { callsites, techStack, totalCostUsd, durationMs } = result;
+    const { callsites, techStack, patterns, totalCostUsd, durationMs } = result;
 
     console.log(`     ✓ Found ${callsites.length} LLM callsites in ${(durationMs / 1000).toFixed(1)}s`);
     console.log(`     ✓ Analysis cost: $${totalCostUsd.toFixed(4)}`);
@@ -806,19 +806,33 @@ async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'b
       }
     }
 
-    // Phase 2: Generate recommendations
+    // Phase 2: Show detected patterns
+    console.log('');
+    console.log(generatePatternsReport(patterns));
+
+    // Phase 3: Detect and show risks
+    const riskAssessment = detectRisks(patterns, callsites);
+    console.log(generateRiskReport(riskAssessment));
+
+    // Phase 4: Generate recommendations
     console.log('');
     console.log('  💡 Generating optimization recommendations...');
 
     const summary = generateRecommendations(callsites, prioritize);
 
-    // Phase 3: Output report
+    // Phase 5: Output report
     console.log('');
     console.log(generateReport(summary));
 
-    // Write JSON output
+    // Write JSON output (include patterns and risks)
     const outputPath = path.join(root, 'peakinfer-recommendations.json');
-    fs.writeFileSync(outputPath, JSON.stringify(summary, null, 2), 'utf-8');
+    const fullReport = {
+      ...summary,
+      patterns,
+      riskAssessment,
+      techStack,
+    };
+    fs.writeFileSync(outputPath, JSON.stringify(fullReport, null, 2), 'utf-8');
     console.log(`\n  📄 Full report saved to: ${outputPath}\n`);
 
   } catch (error) {
@@ -896,7 +910,7 @@ environment:
 
   // Show version
   if (args.includes('--version') || args.includes('-v')) {
-    console.log('peakinfer v0.3.0');
+    console.log('peakinfer v0.2.0');
     process.exit(0);
   }
 

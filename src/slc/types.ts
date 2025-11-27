@@ -212,3 +212,97 @@ export interface TechStack {
   infrastructure: InfraLayer;
   hardware: HardwareLayer;
 }
+
+// =============================================================================
+// INFERENCE PATTERNS (PRD v0.95 Section 9 - Patterns Detected)
+// =============================================================================
+
+/** A detected pattern instance */
+export interface PatternInstance {
+  file: string;
+  line: number;
+  code?: string;
+}
+
+/** Inference patterns detected in the codebase */
+export interface InferencePatterns {
+  /** Retry/backoff patterns */
+  retry: {
+    detected: boolean;
+    instances: PatternInstance[];
+    type?: 'exponential_backoff' | 'fixed_delay' | 'circuit_breaker' | 'tenacity' | 'other';
+  };
+
+  /** Batching patterns */
+  batching: {
+    detected: boolean;
+    instances: PatternInstance[];
+    type?: 'client_side' | 'server_side' | 'continuous' | 'offline_batch_api' | 'other';
+  };
+
+  /** Streaming patterns */
+  streaming: {
+    detected: boolean;
+    instances: PatternInstance[];
+    type?: 'sse' | 'websocket' | 'chunked' | 'other';
+  };
+
+  /** Caching patterns */
+  caching: {
+    detected: boolean;
+    instances: PatternInstance[];
+    type?: 'exact_match' | 'semantic' | 'kv_cache' | 'prompt_caching' | 'disk' | 'other';
+  };
+
+  /** Routing/model selection patterns */
+  routing: {
+    detected: boolean;
+    instances: PatternInstance[];
+    type?: 'static' | 'cost_based' | 'latency_based' | 'quality_based' | 'cascade' | 'ab_test' | 'other';
+  };
+
+  /** Fallback chain patterns */
+  fallback: {
+    detected: boolean;
+    instances: PatternInstance[];
+    type?: 'provider_fallback' | 'model_fallback' | 'graceful_degradation' | 'other';
+  };
+
+  /** Guardrails/safety patterns */
+  guardrails: {
+    detected: boolean;
+    instances: PatternInstance[];
+    type?: 'input_validation' | 'output_validation' | 'pii_detection' | 'content_moderation' | 'nemo' | 'guardrails_ai' | 'other';
+  };
+}
+
+// =============================================================================
+// RISK DETECTION (PRD v0.95 Section 15 - Risks & Mitigations)
+// =============================================================================
+
+/** Risk severity levels */
+export type RiskSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
+
+/** A detected risk in the codebase */
+export interface DetectedRisk {
+  id: string;
+  severity: RiskSeverity;
+  category: 'reliability' | 'cost' | 'security' | 'vendor_lock_in' | 'performance' | 'compliance';
+  title: string;
+  description: string;
+  affectedFiles: string[];
+  recommendation: string;
+  effort: 'low' | 'medium' | 'high';
+}
+
+/** Risk assessment summary */
+export interface RiskAssessment {
+  overallScore: number;  // 0-100, higher is better (fewer risks)
+  risks: DetectedRisk[];
+  summary: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+}

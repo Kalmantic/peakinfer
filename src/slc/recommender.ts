@@ -10,7 +10,7 @@
  * TIER 4: Hardware Accelerators (Cerebras, Groq LPU)
  */
 
-import type { ClassifiedCallsite, PricingSummary, ModelPricing } from './types.js';
+import type { ClassifiedCallsite, PricingSummary, ModelPricing, InferencePatterns, DetectedRisk, RiskAssessment, RiskSeverity } from './types.js';
 
 // =============================================================================
 // BENCHMARK DATA (from live comparison runs)
@@ -599,7 +599,243 @@ function generateMigrationPath(recommendations: Recommendation[]): MigrationStep
 }
 
 // =============================================================================
-// REPORT GENERATION
+// RISK DETECTION (PRD v0.95 Section 15)
+// =============================================================================
+
+/**
+ * Detect risks based on inference patterns and callsites.
+ */
+export function detectRisks(
+  patterns: InferencePatterns,
+  callsites: ClassifiedCallsite[]
+): RiskAssessment {
+  const risks: DetectedRisk[] = [];
+  let riskId = 1;
+
+  // Get unique files with LLM calls
+  const filesWithLLM = [...new Set(callsites.map(c => c.file))];
+
+  // Risk 1: No retry logic detected
+  if (!patterns.retry.detected && callsites.length > 0) {
+    risks.push({
+      id: `risk-${riskId++}`,
+      severity: 'high',
+      category: 'reliability',
+      title: 'No retry logic detected',
+      description: 'LLM API calls can fail due to rate limits, network issues, or service outages. Without retry logic, your application may fail unexpectedly.',
+      affectedFiles: filesWithLLM,
+      recommendation: 'Add exponential backoff retry logic using tenacity, backoff, or built-in SDK retry options.',
+      effort: 'low',
+    });
+  }
+
+  // Risk 2: No fallback mechanism
+  if (!patterns.fallback.detected && callsites.length > 0) {
+    risks.push({
+      id: `risk-${riskId++}`,
+      severity: 'high',
+      category: 'reliability',
+      title: 'No fallback mechanism detected',
+      description: 'If your primary LLM provider goes down, your entire application fails. No fallback provider or model detected.',
+      affectedFiles: filesWithLLM,
+      recommendation: 'Implement provider fallback (e.g., OpenAI → Anthropic → local model) or use a gateway like LiteLLM.',
+      effort: 'medium',
+    });
+  }
+
+  // Risk 3: No caching detected
+  if (!patterns.caching.detected && callsites.length > 0) {
+    risks.push({
+      id: `risk-${riskId++}`,
+      severity: 'medium',
+      category: 'cost',
+      title: 'No caching detected',
+      description: 'Repeated identical prompts result in unnecessary API costs and increased latency. No caching layer detected.',
+      affectedFiles: filesWithLLM,
+      recommendation: 'Implement semantic caching (GPTCache, Redis) or use provider prompt caching (Anthropic, OpenAI).',
+      effort: 'medium',
+    });
+  }
+
+  // Risk 4: No guardrails detected
+  if (!patterns.guardrails.detected && callsites.length > 0) {
+    risks.push({
+      id: `risk-${riskId++}`,
+      severity: 'medium',
+      category: 'security',
+      title: 'No guardrails or input validation detected',
+      description: 'Without input/output validation, your application is vulnerable to prompt injection, PII leakage, and harmful content.',
+      affectedFiles: filesWithLLM,
+      recommendation: 'Add guardrails using NeMo Guardrails, Guardrails AI, or custom validation logic.',
+      effort: 'medium',
+    });
+  }
+
+  // Risk 5: Single provider dependency (vendor lock-in)
+  const providers = [...new Set(callsites.map(c => c.provider).filter(Boolean))];
+  if (providers.length === 1 && callsites.length > 2) {
+    risks.push({
+      id: `risk-${riskId++}`,
+      severity: 'medium',
+      category: 'vendor_lock_in',
+      title: 'Single provider dependency',
+      description: `All ${callsites.length} LLM callsites use ${providers[0]}. This creates vendor lock-in risk and limits optimization options.`,
+      affectedFiles: filesWithLLM,
+      recommendation: 'Abstract LLM calls behind a unified interface or use a gateway (LiteLLM, Portkey) for provider flexibility.',
+      effort: 'medium',
+    });
+  }
+
+  // Risk 6: No routing/model selection
+  if (!patterns.routing.detected && callsites.length > 3) {
+    risks.push({
+      id: `risk-${riskId++}`,
+      severity: 'low',
+      category: 'cost',
+      title: 'No intelligent routing detected',
+      description: 'Using the same model for all requests misses optimization opportunities. Simple queries could use cheaper models.',
+      affectedFiles: filesWithLLM,
+      recommendation: 'Implement task-based routing: use smaller models for simple tasks, larger models for complex reasoning.',
+      effort: 'high',
+    });
+  }
+
+  // Risk 7: No batching for high-volume scenarios
+  if (!patterns.batching.detected && callsites.length > 5) {
+    risks.push({
+      id: `risk-${riskId++}`,
+      severity: 'low',
+      category: 'performance',
+      title: 'No batching detected',
+      description: 'Multiple sequential LLM calls could benefit from batching to improve throughput and reduce latency.',
+      affectedFiles: filesWithLLM,
+      recommendation: 'Consider batching requests using asyncio.gather, concurrent.futures, or provider batch APIs.',
+      effort: 'low',
+    });
+  }
+
+  // Calculate overall score (0-100, higher is better)
+  const severityScores: Record<RiskSeverity, number> = {
+    critical: 25,
+    high: 15,
+    medium: 8,
+    low: 3,
+    info: 0,
+  };
+
+  const totalPenalty = risks.reduce((sum, r) => sum + severityScores[r.severity], 0);
+  const overallScore = Math.max(0, 100 - totalPenalty);
+
+  // Summary counts
+  const summary = {
+    critical: risks.filter(r => r.severity === 'critical').length,
+    high: risks.filter(r => r.severity === 'high').length,
+    medium: risks.filter(r => r.severity === 'medium').length,
+    low: risks.filter(r => r.severity === 'low').length,
+  };
+
+  return {
+    overallScore,
+    risks,
+    summary,
+  };
+}
+
+// =============================================================================
+// PATTERN & RISK REPORT GENERATION
+// =============================================================================
+
+/**
+ * Generate patterns detected report.
+ */
+export function generatePatternsReport(patterns: InferencePatterns): string {
+  const lines: string[] = [];
+
+  lines.push(`
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│  🔍 INFERENCE PATTERNS DETECTED                                                          │
+├──────────────────────────────────────────────────────────────────────────────────────────┤`);
+
+  const patternList: Array<{
+    name: string;
+    key: keyof InferencePatterns;
+    icon: string;
+  }> = [
+    { name: 'Retry logic', key: 'retry', icon: '🔄' },
+    { name: 'Batching', key: 'batching', icon: '📦' },
+    { name: 'Streaming', key: 'streaming', icon: '🌊' },
+    { name: 'Caching', key: 'caching', icon: '💾' },
+    { name: 'Routing / model selection', key: 'routing', icon: '🔀' },
+    { name: 'Fallback chain', key: 'fallback', icon: '🔙' },
+    { name: 'Guardrails / safety', key: 'guardrails', icon: '🛡️' },
+  ];
+
+  for (const p of patternList) {
+    const pattern = patterns[p.key];
+    const status = pattern.detected ? '✅' : '❌';
+    const location = pattern.detected && pattern.instances.length > 0
+      ? `${pattern.instances[0].file}:${pattern.instances[0].line}`
+      : 'not detected';
+    const typeInfo = pattern.detected && pattern.type ? ` (${pattern.type})` : '';
+
+    lines.push(`│  ${status} ${p.icon} ${p.name.padEnd(25)} ${location}${typeInfo}`.padEnd(91) + '│');
+  }
+
+  lines.push(`└──────────────────────────────────────────────────────────────────────────────────────────┘`);
+
+  return lines.join('\n');
+}
+
+/**
+ * Generate risk assessment report.
+ */
+export function generateRiskReport(assessment: RiskAssessment): string {
+  const lines: string[] = [];
+
+  // Score color indicator
+  let scoreIcon = '🟢';
+  if (assessment.overallScore < 50) scoreIcon = '🔴';
+  else if (assessment.overallScore < 75) scoreIcon = '🟡';
+
+  lines.push(`
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│  ⚠️  RISK ASSESSMENT                                                                      │
+├──────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                          │
+│  ${scoreIcon} Health Score: ${assessment.overallScore}/100                                                          │
+│                                                                                          │
+│  Summary: ${assessment.summary.critical} critical, ${assessment.summary.high} high, ${assessment.summary.medium} medium, ${assessment.summary.low} low risks                         │
+│                                                                                          │
+├──────────────────────────────────────────────────────────────────────────────────────────┤`);
+
+  if (assessment.risks.length === 0) {
+    lines.push(`│  ✅ No significant risks detected. Great job!                                            │`);
+  } else {
+    for (const risk of assessment.risks) {
+      const severityIcon =
+        risk.severity === 'critical' ? '🔴' :
+        risk.severity === 'high' ? '🟠' :
+        risk.severity === 'medium' ? '🟡' : '🔵';
+
+      lines.push(`│                                                                                          │`);
+      lines.push(`│  ${severityIcon} [${risk.severity.toUpperCase()}] ${risk.title}`.padEnd(91) + '│');
+      lines.push(`│     ${risk.description.slice(0, 80)}`.padEnd(91) + '│');
+      if (risk.description.length > 80) {
+        lines.push(`│     ${risk.description.slice(80, 160)}`.padEnd(91) + '│');
+      }
+      lines.push(`│     💡 ${risk.recommendation.slice(0, 75)}`.padEnd(91) + '│');
+      lines.push(`│     Effort: ${risk.effort} | Files: ${risk.affectedFiles.length}`.padEnd(91) + '│');
+    }
+  }
+
+  lines.push(`│                                                                                          │`);
+  lines.push(`└──────────────────────────────────────────────────────────────────────────────────────────┘`);
+
+  return lines.join('\n');
+}
+
+// =============================================================================
+// RECOMMENDATION REPORT GENERATION
 // =============================================================================
 
 /**

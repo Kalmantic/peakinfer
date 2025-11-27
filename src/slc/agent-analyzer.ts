@@ -13,7 +13,7 @@
 import { query, type SDKMessage, type SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { ClassifiedCallsite, StackMap, PricingSummary, TechStack } from './types.js';
+import type { ClassifiedCallsite, StackMap, PricingSummary, TechStack, InferencePatterns, PatternInstance } from './types.js';
 import { buildStackMap } from './stackmap.js';
 import { calculatePricing, initPricingEngine } from './pricing.js';
 
@@ -26,6 +26,7 @@ export interface AgentAnalysisResult {
   stackMap: StackMap;
   pricing: PricingSummary;
   techStack: TechStack;
+  patterns: InferencePatterns;
   totalCostUsd: number;
   durationMs: number;
 }
@@ -43,11 +44,12 @@ export interface AgentAnalysisOptions {
 // PROMPT TEMPLATE
 // =============================================================================
 
-const ANALYSIS_PROMPT = `You are analyzing a codebase to find all LLM/AI API callsites AND map the complete inference tech stack.
+const ANALYSIS_PROMPT = `You are analyzing a codebase to find all LLM/AI API callsites, map the complete inference tech stack, AND detect inference patterns.
 
 Your task:
 1. Find every place in the codebase that makes calls to LLM providers
 2. Identify the full tech stack from Application layer down to Hardware
+3. Detect inference patterns (retry, batching, streaming, caching, routing, fallback, guardrails)
 
 ## What to look for:
 
@@ -71,16 +73,25 @@ Your task:
 - Cloud Accelerators: AWS Inferentia, AWS Trainium, Google TPU
 - Look for: GPU requirements in configs, instance types, runtime flags
 
+**INFERENCE PATTERNS TO DETECT:**
+- Retry: tenacity, backoff, @retry decorators, exponential backoff, max_retries, circuit breakers
+- Batching: asyncio.gather, batch parameter, concurrent.futures, parallel requests
+- Streaming: stream=True, SSE, for chunk in response, async iteration
+- Caching: redis, memcached, gptcache, semantic cache, lru_cache, prompt caching, cache_control
+- Routing: model selection logic, router, cascade patterns, A/B testing, cost-based selection
+- Fallback: try/except with alternative provider, fallback_model, on_fail handlers
+- Guardrails: nemoguardrails, guardrails-ai, llm_guard, content moderation, PII detection, input validation
+
 ## Your approach:
 
 1. Use Glob to find source files (*.ts, *.js, *.py, *.go, *.java) and config files (*.yaml, *.json, *.toml, Dockerfile, requirements.txt, package.json)
-2. Use Grep to search for LLM-related imports, cloud services, and infrastructure patterns
+2. Use Grep to search for LLM-related imports, cloud services, infrastructure patterns, AND inference patterns
 3. Read relevant files to extract details
 4. Check for infrastructure configs (terraform, docker, k8s manifests)
 
 ## Output format:
 
-Return a JSON object with TWO fields:
+Return a JSON object with THREE fields:
 
 {
   "callsites": [
@@ -118,10 +129,52 @@ Return a JSON object with TWO fields:
       "accelerators": [],
       "estimated": true
     }
+  },
+  "patterns": {
+    "retry": {
+      "detected": true,
+      "instances": [{"file": "src/llm.py", "line": 45}],
+      "type": "exponential_backoff"
+    },
+    "batching": {
+      "detected": false,
+      "instances": []
+    },
+    "streaming": {
+      "detected": true,
+      "instances": [{"file": "src/chat.py", "line": 89}],
+      "type": "sse"
+    },
+    "caching": {
+      "detected": false,
+      "instances": []
+    },
+    "routing": {
+      "detected": false,
+      "instances": []
+    },
+    "fallback": {
+      "detected": true,
+      "instances": [{"file": "src/llm.py", "line": 78}],
+      "type": "provider_fallback"
+    },
+    "guardrails": {
+      "detected": false,
+      "instances": []
+    }
   }
 }
 
 Provider values: openai, anthropic, google, mistral, cohere, together, fireworks, groq, aws-bedrock, gcp-vertex, azure-openai, databricks, vllm, langchain, llamaindex, litellm, other
+
+Pattern types:
+- retry: exponential_backoff, fixed_delay, circuit_breaker, tenacity, other
+- batching: client_side, server_side, continuous, offline_batch_api, other
+- streaming: sse, websocket, chunked, other
+- caching: exact_match, semantic, kv_cache, prompt_caching, disk, other
+- routing: static, cost_based, latency_based, quality_based, cascade, ab_test, other
+- fallback: provider_fallback, model_fallback, graceful_degradation, other
+- guardrails: input_validation, output_validation, pii_detection, content_moderation, nemo, guardrails_ai, other
 
 If you can't determine exact values, use empty arrays. Set hardware.estimated=true if GPUs are inferred from platform/runtime rather than explicit config.
 
@@ -209,8 +262,8 @@ export async function analyzeWithAgent(
       }
     }
 
-    // Parse the result (now includes techStack)
-    const { callsites, techStack } = parseResultWithTechStack(resultText, root);
+    // Parse the result (now includes techStack and patterns)
+    const { callsites, techStack, patterns } = parseResultWithTechStack(resultText, root);
 
     // Initialize pricing engine (fetches real-time data from LiteLLM)
     onProgress?.('Loading pricing data...');
@@ -225,6 +278,7 @@ export async function analyzeWithAgent(
       stackMap,
       pricing,
       techStack,
+      patterns,
       totalCostUsd: totalCost,
       durationMs: Date.now() - startTime,
     };
@@ -254,10 +308,23 @@ function getEmptyTechStack(): TechStack {
   };
 }
 
+/** Default empty patterns */
+function getEmptyPatterns(): InferencePatterns {
+  return {
+    retry: { detected: false, instances: [] },
+    batching: { detected: false, instances: [] },
+    streaming: { detected: false, instances: [] },
+    caching: { detected: false, instances: [] },
+    routing: { detected: false, instances: [] },
+    fallback: { detected: false, instances: [] },
+    guardrails: { detected: false, instances: [] },
+  };
+}
+
 /**
- * Parse result containing both callsites and techStack.
+ * Parse result containing callsites, techStack, and patterns.
  */
-function parseResultWithTechStack(resultText: string, root: string): { callsites: ClassifiedCallsite[]; techStack: TechStack } {
+function parseResultWithTechStack(resultText: string, root: string): { callsites: ClassifiedCallsite[]; techStack: TechStack; patterns: InferencePatterns } {
   try {
     let json: unknown;
 
@@ -274,31 +341,32 @@ function parseResultWithTechStack(resultText: string, root: string): { callsites
         const arrayMatch = resultText.match(/\[[\s\S]*\]/);
         if (arrayMatch) {
           const callsites = parseCallsitesArray(JSON.parse(arrayMatch[0]));
-          return { callsites, techStack: getEmptyTechStack() };
+          return { callsites, techStack: getEmptyTechStack(), patterns: getEmptyPatterns() };
         }
         console.error('Could not find JSON in result:', resultText.slice(0, 500));
-        return { callsites: [], techStack: getEmptyTechStack() };
+        return { callsites: [], techStack: getEmptyTechStack(), patterns: getEmptyPatterns() };
       }
     }
 
-    // Handle new format: { callsites: [...], techStack: {...} }
+    // Handle new format: { callsites: [...], techStack: {...}, patterns: {...} }
     if (json && typeof json === 'object' && 'callsites' in json) {
-      const result = json as { callsites?: unknown[]; techStack?: unknown };
+      const result = json as { callsites?: unknown[]; techStack?: unknown; patterns?: unknown };
       const callsites = Array.isArray(result.callsites) ? parseCallsitesArray(result.callsites) : [];
       const techStack = parseTechStack(result.techStack);
-      return { callsites, techStack };
+      const patterns = parsePatterns(result.patterns);
+      return { callsites, techStack, patterns };
     }
 
     // Handle old format: just an array of callsites
     if (Array.isArray(json)) {
-      return { callsites: parseCallsitesArray(json), techStack: getEmptyTechStack() };
+      return { callsites: parseCallsitesArray(json), techStack: getEmptyTechStack(), patterns: getEmptyPatterns() };
     }
 
     console.error('Unexpected result format:', json);
-    return { callsites: [], techStack: getEmptyTechStack() };
+    return { callsites: [], techStack: getEmptyTechStack(), patterns: getEmptyPatterns() };
   } catch (error) {
     console.error('Failed to parse result:', error);
-    return { callsites: [], techStack: getEmptyTechStack() };
+    return { callsites: [], techStack: getEmptyTechStack(), patterns: getEmptyPatterns() };
   }
 }
 
@@ -372,6 +440,57 @@ function parseTechStack(raw: unknown): TechStack {
   };
 }
 
+/**
+ * Parse inference patterns from result.
+ */
+function parsePatterns(raw: unknown): InferencePatterns {
+  const empty = getEmptyPatterns();
+  if (!raw || typeof raw !== 'object') return empty;
+
+  const p = raw as Record<string, unknown>;
+
+  const parsePattern = (patternData: unknown): { detected: boolean; instances: PatternInstance[]; type?: string } => {
+    if (!patternData || typeof patternData !== 'object') {
+      return { detected: false, instances: [] };
+    }
+
+    const pd = patternData as Record<string, unknown>;
+    const detected = pd.detected === true;
+    const instances: PatternInstance[] = [];
+
+    if (Array.isArray(pd.instances)) {
+      for (const inst of pd.instances) {
+        if (inst && typeof inst === 'object') {
+          const i = inst as Record<string, unknown>;
+          if (typeof i.file === 'string' && typeof i.line === 'number') {
+            instances.push({
+              file: i.file,
+              line: i.line,
+              code: typeof i.code === 'string' ? i.code : undefined,
+            });
+          }
+        }
+      }
+    }
+
+    return {
+      detected,
+      instances,
+      type: typeof pd.type === 'string' ? pd.type : undefined,
+    };
+  };
+
+  return {
+    retry: parsePattern(p.retry) as InferencePatterns['retry'],
+    batching: parsePattern(p.batching) as InferencePatterns['batching'],
+    streaming: parsePattern(p.streaming) as InferencePatterns['streaming'],
+    caching: parsePattern(p.caching) as InferencePatterns['caching'],
+    routing: parsePattern(p.routing) as InferencePatterns['routing'],
+    fallback: parsePattern(p.fallback) as InferencePatterns['fallback'],
+    guardrails: parsePattern(p.guardrails) as InferencePatterns['guardrails'],
+  };
+}
+
 // =============================================================================
 // STREAMING VARIANT (for real-time updates)
 // =============================================================================
@@ -430,7 +549,7 @@ export async function* analyzeWithAgentStreaming(
     }
   }
 
-  const { callsites, techStack } = parseResultWithTechStack(resultText, root);
+  const { callsites, techStack, patterns } = parseResultWithTechStack(resultText, root);
 
   // Initialize pricing engine for streaming variant too
   await initPricingEngine();
@@ -445,6 +564,7 @@ export async function* analyzeWithAgentStreaming(
       stackMap,
       pricing,
       techStack,
+      patterns,
       totalCostUsd: totalCost,
       durationMs: Date.now() - startTime,
     },

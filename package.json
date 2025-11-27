@@ -1,6 +1,6 @@
 {
   "name": "@kalmantic/peakinfer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Multi-agent LLM inference optimization using Claude SDK - analyze and optimize across Application, Serving, and Infrastructure layers",
   "main": "dist/slc/index.js",
   "type": "module",
