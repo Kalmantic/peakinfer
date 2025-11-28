@@ -8,7 +8,7 @@
  * - Respect ignore patterns
  *
  * Design: Minimal code, single responsibility.
- * Claude handles semantic analysis; Scanner just finds files.
+ * The agent handles semantic analysis; Scanner just finds files.
  */
 
 import * as fs from 'fs';

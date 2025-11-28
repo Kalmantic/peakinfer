@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * PeakInfer CLI - Template-driven LLM optimization using Claude Code SDK
+ * PeakInfer CLI - Template-driven LLM optimization
  * Main entry point for the SLC (Simple, Lovable, Complete) implementation
  */
 
@@ -288,8 +288,8 @@ async function analyzeOptimizationEconomics(templates: any[], environment: any) 
 // Program configuration
 program
   .name('peakinfer')
-  .description('🔧 LLM inference cost optimization through template-driven Claude Code SDK agents')
-  .version('0.1.0');
+  .description('peak performance of inference through template-driven AI agents')
+  .version('0.2.0');
 
 // Parse and execute
 program.parse();

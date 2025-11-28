@@ -23,43 +23,15 @@
   ],
   "hotspots": [
     {
-      "file": "src/core/multi-agent-orchestrator.ts",
-      "line": 211,
+      "file": "src/slc/agent-analyzer.ts",
+      "line": 166,
       "model": "claude-sonnet-4-5-20250929",
       "estimatedMonthlyLow": 1.05,
       "estimatedMonthlyHigh": 45
     },
     {
-      "file": "src/core/multi-agent-orchestrator.ts",
-      "line": 315,
-      "model": "claude-sonnet-4-5-20250929",
-      "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
-    },
-    {
-      "file": "src/core/multi-agent-orchestrator.ts",
-      "line": 416,
-      "model": "claude-sonnet-4-5-20250929",
-      "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
-    },
-    {
-      "file": "src/core/multi-agent-orchestrator.ts",
-      "line": 527,
-      "model": "claude-sonnet-4-5-20250929",
-      "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
-    },
-    {
-      "file": "src/core/multi-agent-orchestrator.ts",
-      "line": 627,
-      "model": "claude-sonnet-4-5-20250929",
-      "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
-    },
-    {
-      "file": "src/core/optimization-suggester.ts",
-      "line": 319,
+      "file": "src/slc/agent-analyzer.ts",
+      "line": 401,
       "model": "claude-sonnet-4-5-20250929",
       "estimatedMonthlyLow": 1.05,
       "estimatedMonthlyHigh": 45
@@ -79,15 +51,43 @@
       "estimatedMonthlyHigh": 45
     },
     {
-      "file": "src/slc/agent-analyzer.ts",
-      "line": 166,
+      "file": "src/core/multi-agent-orchestrator.ts",
+      "line": 718,
       "model": "claude-sonnet-4-5-20250929",
       "estimatedMonthlyLow": 1.05,
       "estimatedMonthlyHigh": 45
     },
     {
-      "file": "src/slc/agent-analyzer.ts",
-      "line": 401,
+      "file": "src/core/multi-agent-orchestrator.ts",
+      "line": 822,
+      "model": "claude-sonnet-4-5-20250929",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45
+    },
+    {
+      "file": "src/core/multi-agent-orchestrator.ts",
+      "line": 923,
+      "model": "claude-sonnet-4-5-20250929",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45
+    },
+    {
+      "file": "src/core/multi-agent-orchestrator.ts",
+      "line": 1034,
+      "model": "claude-sonnet-4-5-20250929",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45
+    },
+    {
+      "file": "src/core/multi-agent-orchestrator.ts",
+      "line": 1134,
+      "model": "claude-sonnet-4-5-20250929",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45
+    },
+    {
+      "file": "src/core/optimization-suggester.ts",
+      "line": 319,
       "model": "claude-sonnet-4-5-20250929",
       "estimatedMonthlyLow": 1.05,
       "estimatedMonthlyHigh": 45

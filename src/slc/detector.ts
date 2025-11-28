@@ -1,11 +1,11 @@
 /**
- * Claude Detector Module — LLM-Powered Callsite Detection
+ * Detector Module — LLM-Powered Callsite Detection
  *
  * Responsibility (per Tech Design v1.1):
  * - P1: Detect callsites in code chunks (high recall)
  * - P2: Classify each callsite precisely
  *
- * Design: Thin wrapper around Claude SDK with retry logic.
+ * Design: Thin wrapper around the SDK with retry logic.
  * All intelligence lives in prompts; validation in validator.ts.
  */
 
@@ -17,7 +17,7 @@ import type { CodeChunk, RawCallsite, ClassifiedCallsite } from './types.js';
 // CONFIGURATION
 // =============================================================================
 
-/** Claude model for detection (cost-effective, fast) */
+/** Model for detection (cost-effective, fast) */
 const MODEL = 'claude-sonnet-4-20250514';
 
 /** Max tokens for responses */

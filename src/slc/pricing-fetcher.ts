@@ -598,6 +598,9 @@ export interface GPUPricing {
   inputPer1M: number;
   outputPer1M: number;
   note: string;
+  // Price freshness tracking
+  lastVerified?: string;        // ISO date when price was verified (YYYY-MM-DD)
+  source?: string;              // URL where price was verified
 }
 
 /** GPU pricing info for transparency */
@@ -607,12 +610,13 @@ export interface GPUPricingInfo {
   cacheFile: string;
   lastUpdated: string;
   totalProviders: number;
+  staleProviders?: string[];    // Providers with prices >4 weeks old
 }
 
 // GPU Pricing Cache Configuration
-// Follows LiteLLM pattern: raw GitHub URL to JSON file in data/pricing/
-// For private repos: set GITHUB_TOKEN env var for authentication
-const GPU_PRICING_URL = 'https://raw.githubusercontent.com/Kalmantic/peakinfer/main/data/pricing/gpu-providers.json';
+// Pricing data hosted in separate PUBLIC repo for transparency and no auth required
+// Updated independently of CLI releases via automated pricing verification job
+const GPU_PRICING_URL = 'https://raw.githubusercontent.com/Kalmantic/llm-pricing/main/gpu-providers.json';
 const GPU_CACHE_FILE = path.join(CACHE_DIR, 'gpu-pricing-cache.json');
 const GPU_CACHE_META_FILE = path.join(CACHE_DIR, 'gpu-pricing-meta.json');
 
@@ -830,28 +834,16 @@ function writeGPUCache(data: GPUPricing[]): void {
 }
 
 /**
- * Fetch GPU pricing from remote source.
- * Supports GitHub private repos via GITHUB_TOKEN env var.
+ * Fetch GPU pricing from remote source (public repo, no auth needed).
  */
 async function fetchGPUPricing(): Promise<GPUPricing[] | null> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
-    // Build headers - add auth token for private repos if available
-    const headers: Record<string, string> = {
-      'User-Agent': 'PeakInfer/1.0',
-    };
-
-    // Support private GitHub repos via GITHUB_TOKEN
-    const githubToken = process.env.GITHUB_TOKEN;
-    if (githubToken) {
-      headers['Authorization'] = `token ${githubToken}`;
-    }
-
     const response = await fetch(GPU_PRICING_URL, {
       signal: controller.signal,
-      headers,
+      headers: { 'User-Agent': 'PeakInfer/1.0' },
     });
 
     clearTimeout(timeout);
@@ -958,11 +950,28 @@ export function getGPUPricingInfo(): GPUPricingInfo {
   const data = gpuPricingData || STATIC_GPU_PRICING;
   const providers = new Set(data.map(g => g.provider));
 
+  // Check for stale pricing (>4 weeks old)
+  const STALE_THRESHOLD_MS = 4 * 7 * 24 * 60 * 60 * 1000; // 4 weeks
+  const now = Date.now();
+  const staleProviders: string[] = [];
+
+  for (const entry of data) {
+    if (entry.lastVerified) {
+      const verifiedDate = new Date(entry.lastVerified).getTime();
+      if (now - verifiedDate > STALE_THRESHOLD_MS) {
+        if (!staleProviders.includes(entry.provider)) {
+          staleProviders.push(entry.provider);
+        }
+      }
+    }
+  }
+
   return {
     source: gpuPricingSource,
     sourceUrl: GPU_PRICING_URL,
     cacheFile: GPU_CACHE_FILE,
     lastUpdated: gpuPricingLastUpdated,
     totalProviders: providers.size,
+    staleProviders: staleProviders.length > 0 ? staleProviders : undefined,
   };
 }

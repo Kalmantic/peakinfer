@@ -964,6 +964,16 @@ peakinfer prices
 
     console.log('');
     console.log('  note: gpu-hour → token conversions assume ~50% utilization');
+
+    // Staleness warning
+    if (gpuInfo.staleProviders && gpuInfo.staleProviders.length > 0) {
+      console.log('');
+      console.log('  ⚠️  STALE PRICING WARNING');
+      console.log(`  The following providers have not been verified in >4 weeks:`);
+      console.log(`  ${gpuInfo.staleProviders.join(', ')}`);
+      console.log('  Prices may be outdated. Please verify at provider websites.');
+    }
+
     console.log('');
     console.log('  usage:');
     console.log('    peakinfer prices                      # show all providers (top 5 each)');

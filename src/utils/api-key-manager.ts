@@ -39,9 +39,9 @@ export class APIKeyManager {
    * Prompt user for API key and save it
    */
   async promptAndSaveAPIKey(): Promise<string> {
-    console.log('\n🔑 Anthropic API Key Required');
-    console.log('PeakInfer uses Claude to analyze and optimize your LLM infrastructure.');
-    console.log('You can get your API key from: https://console.anthropic.com/settings/keys\n');
+    console.log('\n  anthropic api key required');
+    console.log('  peakinfer uses AI agents to analyze and optimize your LLM infrastructure.');
+    console.log('  get your api key from: https://console.anthropic.com/settings/keys\n');
 
     const apiKey = await this.promptForKey();
 
@@ -51,8 +51,8 @@ export class APIKeyManager {
 
     // Validate API key format
     if (!apiKey.startsWith('sk-ant-')) {
-      console.warn('⚠️  Warning: API key format looks unusual (expected to start with "sk-ant-")');
-      console.warn('Proceeding anyway, but the key might be invalid.\n');
+      console.warn('  warning: api key format looks unusual (expected to start with "sk-ant-")');
+      console.warn('  proceeding anyway, but the key might be invalid.\n');
     }
 
     // Save to config

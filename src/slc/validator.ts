@@ -1,8 +1,8 @@
 /**
- * Validator Module — Claude Output Validation
+ * Validator Module — LLM Output Validation
  *
  * Responsibility (per Tech Design v1.1):
- * - Claude outputs are validated, not trusted
+ * - LLM outputs are validated, not trusted
  * - JSON schema validation
  * - Confidence filtering (< 0.4 rejected)
  * - Provider/model normalization
@@ -33,10 +33,10 @@ const PROVIDER_ALIASES: Record<string, string> = {
 // =============================================================================
 
 /**
- * Validate P1 (detect_callsites) response from Claude.
+ * Validate P1 (detect_callsites) response from LLM.
  * Filters low-confidence and malformed entries.
  *
- * @param raw - Raw response from Claude (untrusted)
+ * @param raw - Raw response from LLM (untrusted)
  * @returns Array of validated RawCallsite objects
  */
 export function validateP1Response(raw: unknown): RawCallsite[] {

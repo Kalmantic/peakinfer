@@ -2,7 +2,7 @@
  * Optimization Suggester
  * Generates actionable code-level optimization suggestions
  * Matches codebase patterns against community templates
- * Uses Claude for contextual analysis
+ * Uses AI for contextual analysis
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -54,10 +54,10 @@ export class OptimizationSuggester {
     const templateSuggestions = await this.matchTemplatesToContext(context);
     suggestions.push(...templateSuggestions);
 
-    // 3. Use Claude for contextual analysis
-    console.log('  🤖 Using Claude for contextual recommendations...');
-    const claudeSuggestions = await this.generateClaudeRecommendations(context);
-    suggestions.push(...claudeSuggestions);
+    // 3. Use AI for contextual analysis
+    console.log('  analyzing for contextual recommendations...');
+    const aiSuggestions = await this.generateAIRecommendations(context);
+    suggestions.push(...aiSuggestions);
 
     // 4. Calculate ROI and prioritize
     console.log('  📊 Calculating ROI and prioritizing...');
@@ -238,7 +238,7 @@ export class OptimizationSuggester {
           category: template.category,
           description: template.description,
           template_id: template.id,
-          affectedFiles: [], // Will be populated by Claude analysis
+          affectedFiles: [], // Will be populated by AI analysis
           codeSnippets: [],
           estimatedMonthlySavings: this.estimateTemplateSavings(template, context),
           estimatedAnnualSavings: this.estimateTemplateSavings(template, context) * 12,
@@ -262,9 +262,9 @@ export class OptimizationSuggester {
   }
 
   /**
-   * Generate Claude-powered recommendations
+   * Generate AI-powered recommendations
    */
-  private async generateClaudeRecommendations(context: SuggestionContext): Promise<OptimizationSuggestion[]> {
+  private async generateAIRecommendations(context: SuggestionContext): Promise<OptimizationSuggestion[]> {
     const systemPrompt = `You are an expert LLM optimization consultant. Analyze the codebase and runtime data to provide actionable optimization recommendations.
 
 Focus on:
@@ -328,16 +328,16 @@ Provide recommendations as a JSON array with format:
         return [];
       }
 
-      // Parse Claude's response
+      // Parse AI response
       const jsonMatch = content.text.match(/```json\s*([\s\S]*?)\s*```/) || content.text.match(/\[([\s\S]*?)\]/);
       if (!jsonMatch) {
         return [];
       }
 
       const recommendations = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-      
+
       return recommendations.map((rec: any) => ({
-        id: `claude-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         title: rec.title,
         layer: 'application' as const,
         category: rec.category,
@@ -367,7 +367,7 @@ Provide recommendations as a JSON array with format:
       }));
 
     } catch (error) {
-      console.warn('  ⚠️  Claude recommendations failed:', error instanceof Error ? error.message : String(error));
+      console.warn('  warning: AI recommendations failed:', error instanceof Error ? error.message : String(error));
       return [];
     }
   }

@@ -96,8 +96,8 @@ program
     const isVerbose = isVerboseEnabled(command);
     const verboseLog = createVerboseLogger(isVerbose);
 
-    console.log(chalk.blue.bold('\n🚀 PeakInfer: Multi-Agent LLM Optimization Discovery\n'));
-    console.log(chalk.gray('Using Claude-powered multi-agent orchestration\n'));
+    console.log(chalk.blue.bold('\n  peakinfer: multi-agent LLM optimization discovery\n'));
+    console.log(chalk.gray('  using AI-powered multi-agent orchestration\n'));
     
     if (options.codebase) {
       console.log(chalk.cyan(`📂 Codebase scanning enabled: ${options.codebase}\n`));
@@ -1050,8 +1050,8 @@ async function generateHTMLReport(report: any): Promise<string> {
 // Program configuration
 program
   .name('peakinfer')
-  .description('🔧 Multi-agent LLM inference optimization using Claude SDK')
-  .version('0.1.0')
+  .description('peak performance of inference')
+  .version('0.2.0')
   .option('-v, --verbose', 'Enable verbose logging for detailed agent output');
 
 // Parse and execute

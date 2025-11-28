@@ -1,12 +1,12 @@
 /**
- * Agent-Based Analyzer — Claude Code SDK Powered
+ * Agent-Based Analyzer
  *
- * Uses the Claude Agent SDK to intelligently analyze codebases.
- * Instead of scanning every file, Claude decides what to look at.
+ * Uses AI agents to intelligently analyze codebases.
+ * Instead of scanning every file, the agent decides what to look at.
  *
- * This is the "Claude Code init" style approach:
- * - Send file tree to Claude
- * - Claude uses tools (glob, grep, read) to explore
+ * Approach:
+ * - Send file tree to agent
+ * - Agent uses tools (glob, grep, read) to explore
  * - Returns structured analysis in 2-3 API calls
  */
 
@@ -187,10 +187,10 @@ Return ONLY the JSON object at the end, no markdown code blocks.`;
 // =============================================================================
 
 /**
- * Analyze a codebase using the Claude Agent SDK.
+ * Analyze a codebase using AI agents.
  *
  * This is much faster than the file-by-file approach because:
- * 1. Claude decides what files to look at
+ * 1. The agent decides what files to look at
  * 2. Uses grep/glob to narrow down candidates
  * 3. Only reads relevant files
  * 4. Single coherent analysis instead of per-file
@@ -215,7 +215,7 @@ export async function analyzeWithAgent(
   let totalCost = 0;
 
   try {
-    // Use the Claude Agent SDK to analyze
+    // Use the agent SDK to analyze
     for await (const message of query({
       prompt: ANALYSIS_PROMPT,
       options: {
@@ -242,7 +242,7 @@ export async function analyzeWithAgent(
           .join('');
 
         if (textContent) {
-          onProgress?.('Claude is analyzing...');
+          onProgress?.('analyzing...');
         }
       } else if (message.type === 'result') {
         if (message.subtype === 'success') {

@@ -819,22 +819,66 @@ export function generateRiskReport(assessment: RiskAssessment): string {
 // =============================================================================
 
 /**
+ * Format a cost as a range estimate (±15% uncertainty).
+ * Returns format like "~$7,100 - $9,600" for better credibility.
+ */
+function formatCostEstimate(cost: number): string {
+  if (cost === 0) return '$0';
+  const lowEstimate = Math.round(cost * 0.85 / 100) * 100;  // -15%, rounded to nearest 100
+  const highEstimate = Math.round(cost * 1.15 / 100) * 100; // +15%, rounded to nearest 100
+
+  // Format with commas for readability
+  const formatNum = (n: number) => n.toLocaleString('en-US');
+
+  if (cost < 100) {
+    // For small amounts, show simpler format
+    return `~$${Math.round(cost * 0.85)} - $${Math.round(cost * 1.15)}`;
+  }
+  return `~$${formatNum(lowEstimate)} - $${formatNum(highEstimate)}`;
+}
+
+/**
+ * Format savings as approximate value
+ */
+function formatSavingsEstimate(savings: number): string {
+  if (savings < 100) return `~$${Math.round(savings / 10) * 10}`;
+  if (savings < 1000) return `~$${Math.round(savings / 50) * 50}`;
+  return `~$${(Math.round(savings / 100) * 100).toLocaleString('en-US')}`;
+}
+
+/**
  * Generate a human-readable report from recommendations.
+ *
+ * Design principle: Show estimates, not false precision.
+ * Reference: Julie Zhuo's "The Making of a Manager" - Building trust through
+ * transparency about uncertainty rather than false confidence.
  */
 export function generateReport(summary: RecommendationSummary): string {
   const lines: string[] = [];
 
+  // Calculate estimate ranges
+  const currentCostRange = formatCostEstimate(summary.totalCurrentMonthlyCost);
+  const recommendedCostRange = formatCostEstimate(summary.totalRecommendedMonthlyCost);
+  const savingsEstimate = formatSavingsEstimate(summary.totalMonthlySavings);
+
+  // Show savings as a range (e.g., "85-99%" instead of exact "99%")
+  const savingsLow = Math.max(0, Math.round(summary.savingsPercent * 0.9));
+  const savingsHigh = Math.min(99, Math.round(summary.savingsPercent * 1.1));
+  const savingsRange = savingsLow === savingsHigh
+    ? `~${savingsLow}%`
+    : `${savingsLow}-${savingsHigh}%`;
+
   lines.push(`
-  COST OPTIMIZATION SUMMARY
+  COST OPTIMIZATION SUMMARY (Estimates)
   ═══════════════════════════════════════════════════════════════
 
-  Total LLM Callsites:        ${summary.totalCallsites.toString().padStart(5)}
-  Callsites to Optimize:      ${summary.callsitesWithRecommendations.toString().padStart(5)}
+  Total LLM Callsites:              ${summary.totalCallsites.toString().padStart(5)}
+  Callsites to Optimize:            ${summary.callsitesWithRecommendations.toString().padStart(5)}
 
-  Current Monthly Cost:       $${summary.totalCurrentMonthlyCost.toFixed(0).padStart(6)}
-  Recommended Monthly Cost:   $${summary.totalRecommendedMonthlyCost.toFixed(0).padStart(6)}
-  ─────────────────────────────────────────
-  Potential Savings:          $${summary.totalMonthlySavings.toFixed(0).padStart(6)}/mo (${summary.savingsPercent.toFixed(0)}%)`);
+  Est. Current Monthly Cost:    ${currentCostRange.padStart(20)}
+  Est. Recommended Monthly:     ${recommendedCostRange.padStart(20)}
+  ─────────────────────────────────────────────────────────────────
+  Potential Savings:            ${savingsEstimate.padStart(12)}/mo (${savingsRange})`);
 
   // Migration Path
   if (summary.migrationPath.length > 0) {
@@ -844,8 +888,9 @@ export function generateReport(summary: RecommendationSummary): string {
   ─────────────────────────────────────────────────────────────────`);
 
     for (const step of summary.migrationPath) {
+      const stepSavings = formatSavingsEstimate(step.savings);
       lines.push(`  ${step.step}. [${step.complexity}] ${step.description}`);
-      lines.push(`     files: ${step.affectedFiles.length}, callsites: ${step.callsiteCount}, saves: $${step.savings.toFixed(0)}/mo`);
+      lines.push(`     files: ${step.affectedFiles.length}, callsites: ${step.callsiteCount}, saves: ${stepSavings}/mo`);
     }
   }
 
@@ -857,12 +902,24 @@ export function generateReport(summary: RecommendationSummary): string {
   ─────────────────────────────────────────────────────────────────`);
 
     for (const rec of summary.recommendations.slice(0, 5)) {
+      const recSavings = formatSavingsEstimate(rec.monthlySavings);
+      const recSavingsRange = `${Math.max(0, Math.round(rec.savingsPercent * 0.9))}-${Math.min(99, Math.round(rec.savingsPercent * 1.1))}%`;
       lines.push(`  ${rec.file}:${rec.line}`);
       lines.push(`    ${rec.currentProvider} → ${rec.recommendedProvider} (${rec.recommendedModel})`);
-      lines.push(`    saves $${rec.monthlySavings.toFixed(0)}/mo (${rec.savingsPercent.toFixed(0)}%), latency: ${rec.latencyChange}`);
+      lines.push(`    saves ${recSavings}/mo (${recSavingsRange}), latency: ${rec.latencyChange}`);
       lines.push('');
     }
   }
+
+  // Disclaimer about estimates
+  lines.push(`
+  ─────────────────────────────────────────────────────────────────
+  NOTE: Estimates based on detected usage patterns and current pricing.
+  Actual savings depend on: token volume, usage patterns, and provider
+  pricing changes. GPU costs assume ~50% utilization.
+
+  → Run 'peakinfer prices' for current pricing sources and methodology.
+  `);
 
   return lines.join('\n');
 }

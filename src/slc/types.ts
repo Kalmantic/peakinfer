@@ -3,7 +3,7 @@
  *
  * Design Philosophy:
  * - Minimal types that map directly to PRD v0.95 requirements
- * - Claude-first architecture (Tech Design v1.1)
+ * - AI-first architecture (Tech Design v1.1)
  * - All types support the 5 UX states (Design Doc)
  */
 

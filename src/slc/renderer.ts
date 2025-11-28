@@ -134,7 +134,7 @@ export function renderSuccessState(
   scan: ScanResult,
   stackMap: StackMap,
   pricing: PricingSummary,
-  techStack: TechStack,
+  techStack?: TechStack,
   outputFiles: string[] = []
 ): void {
   console.log('');
@@ -149,7 +149,9 @@ export function renderSuccessState(
   console.log('');
 
   // Tech Stack (full inference stack)
-  renderTechStack(techStack);
+  if (techStack) {
+    renderTechStack(techStack);
+  }
 
   // StackMap (structure before impact)
   renderStackMapSummary(stackMap);

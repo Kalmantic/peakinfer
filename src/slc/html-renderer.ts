@@ -1,12 +1,8 @@
 /**
- * HTML Report Renderer — Beautiful Visual Reports
+ * HTML Report Renderer
  *
- * Generates a self-contained HTML report with:
- * - Dark/light mode support
- * - Interactive file tree
- * - Cost breakdown charts
- * - Optimization recommendations
- * - Export-friendly (single file, no external deps)
+ * Generates a self-contained HTML report with dark/light mode,
+ * interactive file tree, cost breakdown, and optimization recommendations.
  */
 
 import type { ScanResult, StackMap, StackMapNode, PricingSummary, CallsiteCost, TechStack } from './types.js';
@@ -351,17 +347,6 @@ function getStyles(): string {
       margin-bottom: 8px;
     }
 
-    .optimization-icon {
-      width: 32px;
-      height: 32px;
-      background: rgba(59, 130, 246, 0.1);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-    }
-
     .optimization-location {
       font-family: 'SF Mono', 'Cascadia Code', monospace;
       font-size: 13px;
@@ -458,11 +443,6 @@ function getStyles(): string {
       color: var(--text-muted);
     }
 
-    .empty-state .icon {
-      font-size: 48px;
-      margin-bottom: 16px;
-    }
-
     /* Tech Stack */
     .tech-stack {
       font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
@@ -500,10 +480,6 @@ function getStyles(): string {
     .stack-connector {
       color: var(--text-muted);
       margin-left: -16px;
-    }
-
-    .stack-icon {
-      font-size: 16px;
     }
 
     .stack-name {
@@ -560,11 +536,11 @@ function renderHeader(projectName: string, timestamp: string): string {
   return `
     <header class="header">
       <h1>
-        <span class="logo">⚡</span>
-        PeakInfer Report
+        <span class="logo">P</span>
+        peakinfer
       </h1>
       <div class="meta">
-        <strong>${escapeHtml(projectName)}</strong> • Generated ${date}
+        ${escapeHtml(projectName)} / ${date}
       </div>
     </header>
   `;
@@ -605,12 +581,11 @@ function renderCostBreakdown(pricing: PricingSummary): string {
     return `
       <section class="section">
         <div class="section-header">
-          <h2>💰 Cost Breakdown</h2>
+          <h2>cost breakdown</h2>
         </div>
         <div class="section-content">
           <div class="empty-state">
-            <div class="icon">📊</div>
-            <p>No cost data available (all models are dynamic/unknown)</p>
+            <p>no cost data available (all models are dynamic/unknown)</p>
           </div>
         </div>
       </section>
@@ -639,8 +614,8 @@ function renderCostBreakdown(pricing: PricingSummary): string {
   return `
     <section class="section">
       <div class="section-header">
-        <h2>💰 Cost Breakdown by Provider</h2>
-        <span class="badge badge-info">Based on default usage estimates</span>
+        <h2>cost breakdown by provider</h2>
+        <span class="badge badge-info">based on default usage estimates</span>
       </div>
       <div class="section-content">
         ${bars}
@@ -672,7 +647,6 @@ function renderTechStackSection(techStack: TechStack): string {
       <div class="stack-layer ${lineClass}">
         <div class="stack-layer-header">
           <span class="stack-connector">${connector}─</span>
-          <span class="stack-icon">${icon}</span>
           <span class="stack-name">${name}</span>
         </div>
         <div class="stack-layer-content">
@@ -688,24 +662,24 @@ function renderTechStackSection(techStack: TechStack): string {
   };
 
   const layers = [
-    hasApp ? renderLayer('Application', '📱', [
-      { label: 'Frameworks', values: application.frameworks },
-      { label: 'SDKs', values: application.sdks },
-      { label: 'Patterns', values: application.patterns },
+    hasApp ? renderLayer('application', '', [
+      { label: 'frameworks', values: application.frameworks },
+      { label: 'sdks', values: application.sdks },
+      { label: 'patterns', values: application.patterns },
     ]) : '',
-    hasServing ? renderLayer('Serving', '🚀', [
-      { label: 'Runtimes', values: serving.runtimes },
-      { label: 'Gateways', values: serving.gateways },
-      { label: 'Platforms', values: serving.platforms },
+    hasServing ? renderLayer('serving', '', [
+      { label: 'runtimes', values: serving.runtimes },
+      { label: 'gateways', values: serving.gateways },
+      { label: 'platforms', values: serving.platforms },
     ]) : '',
-    hasInfra ? renderLayer('Infrastructure', '☁️', [
-      { label: 'Cloud', values: infrastructure.cloud },
-      { label: 'Compute', values: infrastructure.compute },
-      { label: 'Orchestration', values: infrastructure.orchestration },
+    hasInfra ? renderLayer('infrastructure', '', [
+      { label: 'cloud', values: infrastructure.cloud },
+      { label: 'compute', values: infrastructure.compute },
+      { label: 'orchestration', values: infrastructure.orchestration },
     ]) : '',
-    hasHardware ? renderLayer('Hardware' + (hardware.estimated ? ' (estimated)' : ''), '🔧', [
-      { label: 'GPUs', values: hardware.gpus },
-      { label: 'Accelerators', values: hardware.accelerators },
+    hasHardware ? renderLayer('hardware' + (hardware.estimated ? ' (estimated)' : ''), '', [
+      { label: 'gpus', values: hardware.gpus },
+      { label: 'accelerators', values: hardware.accelerators },
     ], true) : '',
   ].filter(Boolean);
 
@@ -717,8 +691,8 @@ function renderTechStackSection(techStack: TechStack): string {
   return `
     <section class="section">
       <div class="section-header">
-        <h2>🏗️ Inference Tech Stack</h2>
-        <span class="badge badge-info">Application → Hardware</span>
+        <h2>inference tech stack</h2>
+        <span class="badge badge-info">application to hardware</span>
       </div>
       <div class="section-content">
         <div class="tech-stack">
@@ -739,7 +713,7 @@ function renderFileTree(stackMap: StackMap): string {
   return `
     <section class="section">
       <div class="section-header">
-        <h2>📁 Callsite Map</h2>
+        <h2>callsite map</h2>
         <span class="badge badge-info">${stackMap.summary.totalCallsites} callsites</span>
       </div>
       <div class="section-content">
@@ -757,7 +731,7 @@ function renderTreeNode(node: StackMapNode): string {
     return `
       <div class="tree-node">
         <div class="tree-dir" onclick="this.parentElement.classList.toggle('collapsed')">
-          <span class="icon">📂</span>
+          <span class="icon">/</span>
           <span>${escapeHtml(node.name)}/</span>
         </div>
         <div class="tree-children">
@@ -785,7 +759,6 @@ function renderTreeNode(node: StackMapNode): string {
   return `
     <div class="tree-node">
       <div class="tree-file">
-        <span class="icon">📄</span>
         <span>${escapeHtml(node.name)}</span>
       </div>
       ${callsites}
@@ -800,13 +773,12 @@ function renderOptimizations(pricing: PricingSummary): string {
     return `
       <section class="section">
         <div class="section-header">
-          <h2>🎯 Optimization Suggestions</h2>
+          <h2>optimization suggestions</h2>
         </div>
         <div class="section-content">
           <div class="empty-state">
-            <div class="icon">✨</div>
-            <p>No optimization suggestions available</p>
-            <p style="font-size: 12px; margin-top: 8px;">All detected models appear to be appropriately selected for their use cases</p>
+            <p>no optimization suggestions available</p>
+            <p style="font-size: 12px; margin-top: 8px;">all detected models appear to be appropriately selected for their use cases</p>
           </div>
         </div>
       </section>
@@ -816,10 +788,9 @@ function renderOptimizations(pricing: PricingSummary): string {
   const items = suggestions.map(h => `
     <div class="optimization-item">
       <div class="optimization-header">
-        <div class="optimization-icon">💡</div>
         <div>
           <div class="optimization-location">${escapeHtml(h.file)}:${h.line}</div>
-          <div class="optimization-model">Current model: ${escapeHtml(h.model)}</div>
+          <div class="optimization-model">current model: ${escapeHtml(h.model)}</div>
         </div>
       </div>
       <div class="optimization-suggestion">
@@ -831,7 +802,7 @@ function renderOptimizations(pricing: PricingSummary): string {
   return `
     <section class="section">
       <div class="section-header">
-        <h2>🎯 Optimization Suggestions</h2>
+        <h2>optimization suggestions</h2>
         <span class="badge badge-info">${suggestions.length} opportunities</span>
       </div>
       <div class="section-content">
@@ -863,25 +834,25 @@ function renderUnknownModelsSection(stackMap: StackMap): string {
   return `
     <section class="section">
       <div class="section-header">
-        <h2>⚠️ Dynamic Model References</h2>
+        <h2>dynamic model references</h2>
         <span class="badge badge-warning">${unknownCount} callsites</span>
       </div>
       <div class="section-content">
         <div class="unknown-callout">
-          <h3>⚡ Why are some models "unknown"?</h3>
+          <h3>why are some models "unknown"?</h3>
           <p>
-            PeakInfer detected ${unknownCount} callsite(s) where the model name couldn't be determined
-            through static analysis. This typically happens when:
+            peakinfer detected ${unknownCount} callsite(s) where the model name couldn't be determined
+            through static analysis. this typically happens when:
           </p>
           <ul>
-            <li><strong>Dynamic configuration</strong> — Model set via environment variables (e.g., <code>process.env.MODEL_NAME</code>)</li>
-            <li><strong>Factory patterns</strong> — Client created through factory functions with runtime parameters</li>
-            <li><strong>Wrapper classes</strong> — Abstraction layers that configure models at runtime</li>
-            <li><strong>User selection</strong> — Model chosen based on user input or API parameters</li>
+            <li><strong>dynamic configuration</strong> — model set via environment variables (e.g., <code>process.env.MODEL_NAME</code>)</li>
+            <li><strong>factory patterns</strong> — client created through factory functions with runtime parameters</li>
+            <li><strong>wrapper classes</strong> — abstraction layers that configure models at runtime</li>
+            <li><strong>user selection</strong> — model chosen based on user input or API parameters</li>
           </ul>
           <p style="margin-top: 12px;">
-            <strong>💡 Tip:</strong> To get accurate cost estimates, consider adding model annotations
-            in comments or using a configuration file that PeakInfer can parse.
+            to get accurate cost estimates, consider adding model annotations
+            in comments or using a configuration file that peakinfer can parse.
           </p>
         </div>
       </div>
@@ -893,9 +864,9 @@ function renderFooter(): string {
   return `
     <footer class="footer">
       <p>
-        Generated by <strong>PeakInfer</strong> — LLM Inference Intelligence<br>
-        <a href="https://github.com/kalmantic/peakinfer" target="_blank">GitHub</a> •
-        <a href="https://peakinfer.dev" target="_blank">Documentation</a>
+        generated by <strong>peakinfer</strong><br>
+        <a href="https://github.com/kalmantic/peakinfer" target="_blank">github</a> ·
+        <a href="https://peakinfer.dev" target="_blank">docs</a>
       </p>
     </footer>
   `;
