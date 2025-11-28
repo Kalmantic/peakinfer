@@ -1,0 +1,28 @@
+{
+  "estimatedMonthlyCost": 116,
+  "estimatedMonthlyCostHigh": 158,
+  "byVendor": [
+    {
+      "name": "Anthropic",
+      "cost": 105,
+      "percentage": 100
+    }
+  ],
+  "byModel": [
+    {
+      "name": "claude-sonnet-4-5",
+      "provider": "Anthropic",
+      "cost": 105,
+      "percentage": 100
+    }
+  ],
+  "deltas": [
+    {
+      "vendor": "Anthropic",
+      "model": "claude-3.5-sonnet",
+      "change": 0,
+      "date": "Nov 2025"
+    }
+  ],
+  "pricingDataDate": "2025-11"
+}

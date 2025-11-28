@@ -1,25 +1,28 @@
 #!/usr/bin/env node
 
 /**
- * PeakInfer CLI - Complete Implementation
- * Multi-agent orchestration for LLM inference optimization
- * Based on PRD v0.7
+ * PeakInfer CLI - SLC v1 Implementation
+ * Single command: peakinfer analyze
+ * Based on PRD v0.95 + Technical Design Document v1.1
+ * 
+ * Claude-First Semantic Detection + Template-Based Suggestions
  */
 
 import { Command } from 'commander';
 import chalk from 'chalk';
-import ora from 'ora';
+import ora, { Ora } from 'ora';
 import fs from 'fs-extra';
 import * as path from 'path';
 import * as yaml from 'yaml';
 import { fileURLToPath } from 'url';
-import { MultiAgentOrchestrator } from './core/multi-agent-orchestrator.js';
-import { TemplateManager } from './core/template-manager.js';
-import { SnowflakeCollector, DatabricksCollector, TerraformCollector, ManualCollector } from './collectors/index.js';
+import readline from 'node:readline';
 import { APIKeyManager } from './utils/api-key-manager.js';
-import { OptimizationSuggester } from './core/optimization-suggester.js';
+import { StackMapAnalyzer } from './core/stackmap-analyzer.js';
+import { PricingEngine } from './core/pricing-engine.js';
+import { TemplateManager } from './core/template-manager.js';
 import { ReportGenerator } from './core/report-generator.js';
-import { InferenceEvent } from './types/events.js';
+import { StackMap, AnalysisResult, CLIState } from './types/stackmap.js';
+import type { OptimizationTemplate } from './types/template.js';
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -28,871 +31,558 @@ const __dirname = path.dirname(__filename);
 const program = new Command();
 const apiKeyManager = new APIKeyManager();
 
-type GlobalCLIOptions = {
-  verbose?: boolean;
-};
-
-const resolveGlobalOptions = (command?: Command): GlobalCLIOptions => {
-  if (typeof command?.optsWithGlobals === 'function') {
-    return command.optsWithGlobals() as GlobalCLIOptions;
-  }
-  return program.opts() as GlobalCLIOptions;
-};
-
-const isVerboseEnabled = (command?: Command): boolean => {
-  return Boolean(resolveGlobalOptions(command).verbose);
-};
-
-const startSpinner = (text: string, verbose: boolean) => {
-  return ora({ text, isEnabled: !verbose }).start();
-};
-
-const createVerboseLogger = (verbose: boolean) => {
-  return (...args: unknown[]) => {
-    if (verbose) {
-      console.log(chalk.gray('[verbose]'), ...args);
-    }
-  };
-};
-
-const commandsSkippingAPIKeyPrompt = new Set(['config']);
-
-program.hook('preAction', async (thisCommand) => {
-  if (commandsSkippingAPIKeyPrompt.has(thisCommand.name())) {
-    return;
-  }
-
-  try {
-    await ensureAPIKey();
-  } catch (error) {
-    console.error(chalk.red('❌ Anthropic API key required:'), error instanceof Error ? error.message : String(error));
-    process.exit(1);
-  }
-});
+// Version from package.json
+const VERSION = '0.95.0';
 
 /**
- * Ensure API key is configured before running commands
+ * CLI Output Renderer - Implements Julie Zhuo Design Principles
+ * States: Empty, Loading, Success, Error, Partial
  */
-async function ensureAPIKey(): Promise<string> {
-  try {
-    return await apiKeyManager.ensureAPIKey();
-  } catch (error) {
-    console.error(chalk.red('❌ Failed to get API key:'), error instanceof Error ? error.message : String(error));
-    process.exit(1);
+class CLIRenderer {
+  private spinner: Ora | null = null;
+  private verbose: boolean;
+
+  constructor(verbose: boolean = false) {
+    this.verbose = verbose;
+  }
+
+  log(...args: unknown[]) {
+    if (this.verbose) {
+      console.log(chalk.gray('[verbose]'), ...args);
+    }
+  }
+
+  startSpinner(text: string): Ora {
+    this.spinner = ora({ text, isEnabled: !this.verbose }).start();
+    return this.spinner;
+  }
+
+  updateSpinner(text: string) {
+    if (this.spinner) {
+      this.spinner.text = text;
+    }
+  }
+
+  succeedSpinner(text?: string) {
+    if (this.spinner) {
+      this.spinner.succeed(text);
+    }
+  }
+
+  failSpinner(text?: string) {
+    if (this.spinner) {
+      this.spinner.fail(text);
+    }
+  }
+
+  warnSpinner(text?: string) {
+    if (this.spinner) {
+      this.spinner.warn(text);
+    }
+  }
+
+  /**
+   * Render Empty State - No LLM calls detected
+   */
+  renderEmptyState(filesScanned: number, linesOfCode: number, languages: string[]) {
+    console.log(chalk.blue.bold(`\nPeakInfer v${VERSION}\n`));
+    console.log(`Scanned: ${chalk.cyan(filesScanned.toLocaleString())} files (${chalk.cyan(linesOfCode.toLocaleString())} LOC)`);
+    console.log(`Languages: ${chalk.cyan(languages.join(', ') || 'None detected')}\n`);
+    console.log(chalk.yellow('No LLM inference calls detected.\n'));
+    console.log('Checked for:');
+    console.log(`  ${chalk.gray('•')} OpenAI SDK         ${chalk.red('not found')}`);
+    console.log(`  ${chalk.gray('•')} Anthropic SDK      ${chalk.red('not found')}`);
+    console.log(`  ${chalk.gray('•')} LangChain          ${chalk.red('not found')}`);
+    console.log(`  ${chalk.gray('•')} LlamaIndex         ${chalk.red('not found')}`);
+    console.log(`  ${chalk.gray('•')} vLLM               ${chalk.red('not found')}`);
+    console.log(`  ${chalk.gray('•')} Direct HTTP to inference APIs   ${chalk.red('not found')}`);
+    console.log(chalk.gray('\nIf you expected LLM usage, check:'));
+    console.log(chalk.gray('  → Dynamic imports or runtime-loaded modules'));
+    console.log(chalk.gray('  → Environment-gated code paths'));
+    console.log(chalk.gray('  → Vendored or renamed SDKs\n'));
+    console.log('Nothing to map. Exiting.\n');
+  }
+
+  /**
+   * Render Error State - API failure or other errors
+   */
+  renderErrorState(error: Error, apiKeySet: boolean) {
+    console.log(chalk.blue.bold(`\nPeakInfer v${VERSION}\n`));
+    console.log(`Connecting to Claude Code SDK...    ${chalk.red('✗')}\n`);
+    console.log(chalk.red('Error:'), error.message, '\n');
+    console.log('Possible causes:');
+    console.log(chalk.gray('  → No internet connection'));
+    if (!apiKeySet) {
+      console.log(chalk.yellow('  → ANTHROPIC_API_KEY not set or invalid'));
+    }
+    console.log(chalk.gray('  → API rate limit exceeded'));
+    console.log(chalk.gray('\nSet your API key:'));
+    console.log(chalk.cyan('  export ANTHROPIC_API_KEY=sk-ant-...\n'));
+    console.log('Cached StackMaps remain available:');
+    console.log(chalk.gray('  → peakinfer analyze --cached\n'));
+  }
+
+  /**
+   * Render Partial State - Some files unparseable
+   */
+  renderPartialState(skippedFiles: { file: string; reason: string }[]) {
+    if (skippedFiles.length > 0) {
+      console.log(chalk.yellow(`\nSkipped: ${skippedFiles.length} files (parse errors)`));
+      for (const { file, reason } of skippedFiles.slice(0, 5)) {
+        console.log(chalk.gray(`  └─ ${file}        ${reason}`));
+      }
+      if (skippedFiles.length > 5) {
+        console.log(chalk.gray(`  └─ ... and ${skippedFiles.length - 5} more`));
+      }
+      console.log(chalk.yellow('\nWarning: Skipped files may contain undetected LLM calls.'));
+    }
+  }
+
+  /**
+   * Render Success State - Full StackMap with pricing
+   */
+  renderSuccessState(result: AnalysisResult) {
+    const { stackmap, pricing, suggestions, metadata } = result;
+
+    console.log(chalk.blue.bold(`\nPeakInfer v${VERSION}\n`));
+    console.log(`Scanned: ${chalk.cyan(metadata.filesScanned.toLocaleString())} files (${chalk.cyan(metadata.linesOfCode.toLocaleString())} LOC)`);
+    console.log(`Languages: ${chalk.cyan(metadata.languages.join(', '))}\n`);
+    console.log(chalk.green(`Found ${chalk.bold(stackmap.callsites.length)} inference callsites across ${chalk.bold(metadata.filesWithCalls)} files.\n`));
+
+    // StackMap Box
+    this.renderStackMapBox(stackmap);
+
+    // Pricing Summary
+    if (pricing) {
+      this.renderPricingSummary(pricing);
+    }
+
+    // Hotspots
+    if (suggestions && suggestions.length > 0) {
+      this.renderHotspots(suggestions);
+    }
+
+    // Output files
+    console.log(chalk.gray('\nOutput saved:'));
+    console.log(chalk.gray('  → stackmap.json'));
+    console.log(chalk.gray('  → pricing.json'));
+    console.log(chalk.gray('  → peakinfer-report.html\n'));
+  }
+
+  private renderStackMapBox(stackmap: StackMap) {
+    const boxWidth = 65;
+    const border = '─'.repeat(boxWidth);
+    
+    console.log(chalk.cyan(`┌${border}┐`));
+    console.log(chalk.cyan(`│${this.centerText('STACKMAP', boxWidth)}│`));
+    console.log(chalk.cyan(`├${border}┤`));
+    
+    // Callsites
+    console.log(chalk.cyan(`│${this.padText('', boxWidth)}│`));
+    console.log(chalk.cyan(`│${this.padText(`  CALLSITES (${stackmap.callsites.length})`, boxWidth)}│`));
+    for (const callsite of stackmap.callsites.slice(0, 5)) {
+      const info = `     ├──► ${path.basename(callsite.file)}:${callsite.line}  ${callsite.model || 'unknown'}, ${callsite.patterns.join(', ') || 'default'}`;
+      console.log(chalk.cyan(`│${this.padText(info.substring(0, boxWidth - 2), boxWidth)}│`));
+    }
+    if (stackmap.callsites.length > 5) {
+      console.log(chalk.cyan(`│${this.padText(`     └──► ... ${stackmap.callsites.length - 5} more (see stackmap.json)`, boxWidth)}│`));
+    }
+
+    // Models
+    console.log(chalk.cyan(`│${this.padText('', boxWidth)}│`));
+    console.log(chalk.cyan(`├${border}┤`));
+    console.log(chalk.cyan(`│${this.padText(`  MODELS (${stackmap.models.length})`, boxWidth)}│`));
+    for (const model of stackmap.models.slice(0, 4)) {
+      const info = `     ├──► ${model.name.padEnd(25)} ${model.callCount} calls   ~${this.formatTokens(model.estimatedTokensPerMonth)} tok/mo`;
+      console.log(chalk.cyan(`│${this.padText(info.substring(0, boxWidth - 2), boxWidth)}│`));
+    }
+
+    // Vendors
+    console.log(chalk.cyan(`│${this.padText('', boxWidth)}│`));
+    console.log(chalk.cyan(`├${border}┤`));
+    console.log(chalk.cyan(`│${this.padText(`  VENDORS / PROVIDERS (${stackmap.vendors.length})`, boxWidth)}│`));
+    for (const vendor of stackmap.vendors.slice(0, 3)) {
+      const info = `     ├──► ${vendor.name.padEnd(20)} ${vendor.callCount} calls   ${vendor.sdkType}`;
+      console.log(chalk.cyan(`│${this.padText(info.substring(0, boxWidth - 2), boxWidth)}│`));
+    }
+
+    // Runtimes
+    if (stackmap.runtimes.length > 0) {
+      console.log(chalk.cyan(`│${this.padText('', boxWidth)}│`));
+      console.log(chalk.cyan(`├${border}┤`));
+      console.log(chalk.cyan(`│${this.padText(`  RUNTIMES (${stackmap.runtimes.length})`, boxWidth)}│`));
+      for (const runtime of stackmap.runtimes.slice(0, 3)) {
+        const info = `     ├──► ${runtime.name.padEnd(20)} ${runtime.vendor || 'unknown'}`;
+        console.log(chalk.cyan(`│${this.padText(info.substring(0, boxWidth - 2), boxWidth)}│`));
+      }
+    }
+
+    // Patterns Detected
+    console.log(chalk.cyan(`│${this.padText('', boxWidth)}│`));
+    console.log(chalk.cyan(`├${border}┤`));
+    console.log(chalk.cyan(`│${this.padText('  PATTERNS DETECTED', boxWidth)}│`));
+    const patterns = [
+      { name: 'Retry logic', detected: stackmap.patterns.hasRetry },
+      { name: 'Batching', detected: stackmap.patterns.hasBatching },
+      { name: 'Streaming', detected: stackmap.patterns.hasStreaming },
+      { name: 'Caching', detected: stackmap.patterns.hasCaching },
+      { name: 'Router / model switching', detected: stackmap.patterns.hasRouting },
+      { name: 'Fallback chain', detected: stackmap.patterns.hasFallback },
+    ];
+    for (const pattern of patterns) {
+      const status = pattern.detected ? chalk.green('✓') : chalk.red('✗  not detected');
+      const info = `     ├──► ${pattern.name.padEnd(25)} ${status}`;
+      console.log(chalk.cyan(`│${this.padText(info.substring(0, boxWidth - 2), boxWidth)}│`));
+    }
+
+    console.log(chalk.cyan(`│${this.padText('', boxWidth)}│`));
+    console.log(chalk.cyan(`└${border}┘`));
+  }
+
+  private renderPricingSummary(pricing: any) {
+    const boxWidth = 65;
+    const border = '─'.repeat(boxWidth);
+
+    console.log(chalk.green(`\n┌${border}┐`));
+    console.log(chalk.green(`│${this.centerText('PRICING SUMMARY', boxWidth)}│`));
+    console.log(chalk.green(`├${border}┤`));
+    console.log(chalk.green(`│${this.padText('', boxWidth)}│`));
+    console.log(chalk.green(`│${this.padText(`  Estimated monthly cost: ${chalk.bold('$' + pricing.estimatedMonthlyCost.toLocaleString())} - $${pricing.estimatedMonthlyCostHigh.toLocaleString()}`, boxWidth)}│`));
+    console.log(chalk.green(`│${this.padText('', boxWidth)}│`));
+    
+    // By vendor
+    console.log(chalk.green(`│${this.padText('  By vendor:', boxWidth)}│`));
+    for (const vendor of pricing.byVendor.slice(0, 3)) {
+      const info = `     ├──► ${vendor.name.padEnd(15)} $${vendor.cost.toLocaleString().padEnd(12)} (${vendor.percentage}%)`;
+      console.log(chalk.green(`│${this.padText(info, boxWidth)}│`));
+    }
+    console.log(chalk.green(`│${this.padText('', boxWidth)}│`));
+
+    // Pricing deltas
+    if (pricing.deltas && pricing.deltas.length > 0) {
+      console.log(chalk.green(`│${this.padText('  Pricing deltas (since last sync):', boxWidth)}│`));
+      for (const delta of pricing.deltas.slice(0, 2)) {
+        const arrow = delta.change < 0 ? '↓' : '↑';
+        const info = `     └──► ${delta.vendor} ${delta.model}  ${arrow}${Math.abs(delta.change)}%  (${delta.date})`;
+        console.log(chalk.green(`│${this.padText(info, boxWidth)}│`));
+      }
+    }
+
+    // Alternatives
+    if (pricing.alternatives && pricing.alternatives.length > 0) {
+      console.log(chalk.green(`│${this.padText('', boxWidth)}│`));
+      console.log(chalk.green(`├${border}┤`));
+      console.log(chalk.green(`│${this.padText('  ALTERNATIVE PRICING (same models, different providers)', boxWidth)}│`));
+      for (const alt of pricing.alternatives.slice(0, 3)) {
+        const info = `     ├──► ${alt.model} via ${alt.provider.padEnd(12)} $${alt.cost}/mo   (${alt.savings})`;
+        console.log(chalk.green(`│${this.padText(info, boxWidth)}│`));
+      }
+    }
+
+    console.log(chalk.green(`│${this.padText('', boxWidth)}│`));
+    console.log(chalk.green(`└${border}┘`));
+  }
+
+  private renderHotspots(suggestions: any[]) {
+    const boxWidth = 65;
+    const border = '─'.repeat(boxWidth);
+
+    console.log(chalk.yellow(`\n┌${border}┐`));
+    console.log(chalk.yellow(`│${this.centerText('HOTSPOTS & SUGGESTIONS', boxWidth)}│`));
+    console.log(chalk.yellow(`├${border}┤`));
+    console.log(chalk.yellow(`│${this.padText('', boxWidth)}│`));
+
+    for (const suggestion of suggestions.slice(0, 5)) {
+      console.log(chalk.yellow(`│${this.padText(`  ⚠  ${suggestion.location}`, boxWidth)}│`));
+      console.log(chalk.yellow(`│${this.padText(`     └─ ${suggestion.issue}`, boxWidth)}│`));
+      console.log(chalk.yellow(`│${this.padText(`     └─ Suggestion: ${suggestion.recommendation}`, boxWidth)}│`));
+      if (suggestion.templateId) {
+        console.log(chalk.yellow(`│${this.padText(`     └─ Template: ${suggestion.templateId}`, boxWidth)}│`));
+      }
+      console.log(chalk.yellow(`│${this.padText('', boxWidth)}│`));
+    }
+
+    console.log(chalk.yellow(`└${border}┘`));
+  }
+
+  private centerText(text: string, width: number): string {
+    const padding = Math.max(0, Math.floor((width - text.length) / 2));
+    return ' '.repeat(padding) + text + ' '.repeat(width - padding - text.length);
+  }
+
+  private padText(text: string, width: number): string {
+    const stripped = text.replace(/\x1b\[[0-9;]*m/g, ''); // Remove ANSI codes for length calc
+    const padding = Math.max(0, width - stripped.length);
+    return text + ' '.repeat(padding);
+  }
+
+  private formatTokens(tokens: number): string {
+    if (tokens >= 1000000) return (tokens / 1000000).toFixed(1) + 'M';
+    if (tokens >= 1000) return (tokens / 1000).toFixed(0) + 'K';
+    return tokens.toString();
   }
 }
 
+class LineProgressBar {
+  private hasRendered = false;
+  private isActive = false;
+  private lastFile = '';
+
+  constructor(
+    private label: string,
+    private width = 10,
+    private stream: NodeJS.WriteStream = process.stdout
+  ) {}
+
+  start() {
+    if (this.isActive) return;
+    this.isActive = true;
+    this.render(0);
+  }
+
+  update(percentage: number, currentFile?: string) {
+    if (!this.isActive) {
+      this.start();
+    }
+    const numeric = typeof percentage === 'number' ? percentage : Number(percentage);
+    const normalized = Number.isFinite(numeric) ? numeric : 0;
+    this.render(Math.max(0, Math.min(100, Math.round(normalized))), currentFile);
+  }
+
+  complete(message?: string) {
+    if (!this.isActive) return;
+    this.replaceWithSummary(message || 'Scan complete');
+  }
+
+  fail(message?: string) {
+    if (!this.isActive) return;
+    this.replaceWithSummary(message || 'Scan interrupted');
+  }
+
+  private render(percentage: number, currentFile?: string) {
+    if (currentFile) {
+      this.lastFile = currentFile;
+    }
+
+    const filled = Math.floor((percentage / 100) * this.width);
+    const empty = Math.max(0, this.width - filled);
+    const bar = `${'█'.repeat(filled)}${'░'.repeat(empty)}`;
+    const pctText = percentage.toString().padStart(3, ' ');
+    const line1 = `${this.label.padEnd(30)} ${bar}  ${pctText}%`;
+    const detail = this.lastFile
+      ? `  └─ ${this.formatFile(this.lastFile)}`
+      : '  └─ analyzing files...';
+    this.writeLines(line1, detail);
+  }
+
+  private formatFile(filePath: string): string {
+    const trimmed = filePath.length > 40 ? `…${filePath.slice(-39)}` : filePath;
+    return `${trimmed.padEnd(40)} analyzing`;
+  }
+
+  private writeLines(line1: string, line2: string) {
+    if (this.hasRendered) {
+      readline.moveCursor(this.stream, 0, -2);
+      readline.clearLine(this.stream, 0);
+      readline.cursorTo(this.stream, 0);
+    } else {
+      this.hasRendered = true;
+    }
+
+    this.stream.write(line1 + '\n');
+    readline.clearLine(this.stream, 0);
+    readline.cursorTo(this.stream, 0);
+    this.stream.write(line2 + '\n');
+  }
+
+  private replaceWithSummary(message: string) {
+    if (this.hasRendered) {
+      this.writeLines(`${this.label.padEnd(30)} ${message}`, '');
+    } else {
+      this.stream.write(`${this.label.padEnd(30)} ${message}\n\n`);
+    }
+    this.isActive = false;
+    this.hasRendered = false;
+  }
+}
+
+// =============================================================================
+// MAIN ANALYZE COMMAND
+// =============================================================================
+
+program
+  .name('peakinfer')
+  .description(chalk.cyan('🔬 PeakInfer - Inference Intelligence Layer for AI Engineering Teams'))
+  .version(VERSION)
+  .option('-v, --verbose', 'Enable verbose logging for detailed output');
+
 /**
- * Main discover command - Multi-agent orchestration entry point
+ * Main analyze command - The only command you need
+ * peakinfer analyze .
  */
 program
-  .command('discover')
-  .description('🔍 Discover optimization opportunities across your full LLM stack')
-  .option('--input-dir <dir>', 'Directory with manual input files')
-  .option('--codebase <path>', 'Path to codebase root for static code analysis (analyzes current directory if not specified)')
-  .option('--collectors <collectors>', 'Comma-separated collector list', 'manual')
-  .option('--output <file>', 'Save results to file')
-.action(async (options, command: Command) => {
-    const isVerbose = isVerboseEnabled(command);
-    const verboseLog = createVerboseLogger(isVerbose);
-
-    console.log(chalk.blue.bold('\n🚀 PeakInfer: Multi-Agent LLM Optimization Discovery\n'));
-    console.log(chalk.gray('Using Claude-powered multi-agent orchestration\n'));
+  .command('analyze [path]')
+  .description('🔬 Analyze codebase for LLM inference: detect callsites, map vendors, calculate costs')
+  .option('--output <dir>', 'Output directory for reports', '.')
+  .option('--format <formats>', 'Output formats: html,json,yaml', 'html,json')
+  .option('--cached', 'Use cached StackMap if available')
+  .option('--no-pricing', 'Skip pricing calculations')
+  .option('--estimate-usage', 'Include token usage estimates (slower)')
+  .action(async (targetPath: string = '.', options, command: Command) => {
+    const verbose = command.optsWithGlobals().verbose || false;
+    const renderer = new CLIRenderer(verbose);
+    const scanProgress = new LineProgressBar('Scanning codebase...');
     
-    if (options.codebase) {
-      console.log(chalk.cyan(`📂 Codebase scanning enabled: ${options.codebase}\n`));
-    }
+    console.log(chalk.blue.bold(`\n🔬 PeakInfer v${VERSION}`));
+    console.log(chalk.gray('Inference Intelligence Layer\n'));
 
-    const spinner = startSpinner('Starting discovery...', isVerbose);
-    if (isVerbose) {
-      verboseLog('Verbose logging enabled. Streaming detailed collector and agent output.');
-    }
-
+    let apiKey: string;
+    
     try {
-      // Ensure API key
-      const apiKey = await ensureAPIKey();
-      verboseLog('Anthropic API key initialized');
-
-      // Initialize orchestrator
-      const orchestrator = new MultiAgentOrchestrator(apiKey, { verbose: isVerbose });
-      const inputFiles: string[] = [];
-
-      // Run collectors
-      const collectors = options.collectors.split(',').map((c: string) => c.trim());
-      verboseLog('Collectors requested:', collectors);
-
-      if (collectors.includes('snowflake')) {
-        spinner.text = 'Collecting Snowflake inference data...';
-        verboseLog('Collecting Snowflake inference data via SnowflakeCollector');
-        const collector = new SnowflakeCollector();
-        const events = await collector.collect();
-        const eventsFile = 'snowflake-events.jsonl';
-        await fs.writeFile(eventsFile, events.map(e => JSON.stringify(e)).join('\n'));
-        inputFiles.push(eventsFile);
-        verboseLog(`Snowflake collector produced ${events.length} events -> ${eventsFile}`);
-      }
-
-      if (collectors.includes('databricks')) {
-        spinner.text = 'Collecting Databricks inference data...';
-        verboseLog('Collecting Databricks inference data via DatabricksCollector');
-        const collector = new DatabricksCollector();
-        const events = await collector.collect();
-        const eventsFile = 'databricks-events.jsonl';
-        await fs.writeFile(eventsFile, events.map(e => JSON.stringify(e)).join('\n'));
-        inputFiles.push(eventsFile);
-        verboseLog(`Databricks collector produced ${events.length} events -> ${eventsFile}`);
-      }
-
-      if (collectors.includes('terraform')) {
-        spinner.text = 'Collecting Terraform infrastructure config...';
-        verboseLog('Collecting Terraform infrastructure via TerraformCollector');
-        const collector = new TerraformCollector();
-        const config = await collector.getInfrastructureConfig();
-        const configFile = 'terraform-config.yaml';
-        await fs.writeFile(configFile, yaml.stringify(config));
-        inputFiles.push(configFile);
-        verboseLog(`Terraform collector saved infrastructure config -> ${configFile}`);
-      }
-
-      if (collectors.includes('manual') && options.inputDir) {
-        verboseLog(`Scanning manual input directory: ${options.inputDir}`);
-        const manualFiles = await fs.readdir(options.inputDir);
-        for (const file of manualFiles) {
-          if (file.endsWith('.jsonl') || file.endsWith('.json') || file.endsWith('.yaml')) {
-            inputFiles.push(path.join(options.inputDir, file));
-            verboseLog(`Added manual input file: ${path.join(options.inputDir, file)}`);
-          }
-        }
-      }
-
-      // Add sample data if no inputs
-      if (inputFiles.length === 0) {
-        const sampleData = path.join(__dirname, '..', 'sample-data', 'sample-events.jsonl');
-        if (await fs.pathExists(sampleData)) {
-          inputFiles.push(sampleData);
-          console.log(chalk.yellow('\n⚠️  No input data found, using sample data for demo\n'));
-          verboseLog(`Using bundled sample data: ${sampleData}`);
-        }
-      }
-
-      verboseLog('Final discovery input files:', inputFiles);
-
-      // Run Discovery Agent (with optional codebase analysis)
-      spinner.text = 'Running Discovery Agent...';
-      const discoveryResult = await orchestrator.runDiscoveryAgent(inputFiles, options.codebase);
-      spinner.succeed('Discovery complete');
-      verboseLog('Discovery agent metadata:', discoveryResult.metadata);
-
-      console.log(chalk.cyan('\n📊 Discovery Summary:'));
-      console.log(`  Total Events Analyzed: ${discoveryResult.metadata.total_events_analyzed}`);
-      console.log(`  Optimization Opportunities: ${discoveryResult.optimizationOpportunities.length}`);
-      console.log(`  Application Cost: $${discoveryResult.configSummary.application.total_monthly_cost.toLocaleString()}/month`);
-      console.log(`  Infrastructure Cost: $${discoveryResult.configSummary.infrastructure.total_monthly_cost.toLocaleString()}/month`);
-      
-      if (discoveryResult.codebaseInsights) {
-        console.log(chalk.green('\n📝 Codebase Analysis:'));
-        const metrics = discoveryResult.codebaseInsights.codeMetrics;
-        console.log(`  Files Scanned: ${metrics?.totalFiles ?? 'n/a'}`);
-        console.log(`  LLM API Calls Found: ${metrics?.totalLLMCalls ?? 'n/a'}`);
-        console.log(`  Files with LLM Calls: ${metrics?.filesWithLLMCalls ?? 'n/a'}`);
-        console.log(`  Caching Opportunities: ${discoveryResult.codebaseInsights.cachingOpportunities?.length ?? 0}`);
-        console.log(`  Code Optimizations: ${discoveryResult.codebaseInsights.optimizationOpportunities?.length ?? 0}`);
-      }
-
-      if (options.output) {
-        await fs.writeJson(options.output, discoveryResult, { spaces: 2 });
-        console.log(chalk.gray(`\n✅ Results saved to ${options.output}`));
-        verboseLog('Detailed discovery output persisted to file');
-      }
-
-      console.log(chalk.blue.bold('\n🚀 Next Steps:'));
-      console.log(`  ${chalk.gray('└')} peakinfer suggest - Generate targeted code-level actions`);
-      console.log(`  ${chalk.gray('└')} peakinfer plan - Generate optimization plan`);
-      console.log(`  ${chalk.gray('└')} peakinfer templates - Browse available templates\n`);
-
+      // Check for API key
+      renderer.startSpinner('Connecting to Claude Code SDK...');
+      apiKey = await apiKeyManager.ensureAPIKey();
+      renderer.succeedSpinner('Connected to Claude Code SDK');
+      renderer.log('API key validated');
     } catch (error) {
-      spinner.fail('Discovery failed');
-      console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
-      process.exit(1);
-    }
-  });
-
-/**
- * Profile command - Workload clustering
- */
-program
-  .command('profile')
-  .description('📈 Profile inference workloads and cluster prompts')
-  .option('--events <file>', 'Inference events file (jsonl/json)', 'events.jsonl')
-  .option('--cluster-method <method>', 'Clustering method (semantic,intent,token)', 'semantic')
-  .option('--output <file>', 'Save profile report to file', 'profile-report.yaml')
-.action(async (options, command: Command) => {
-    console.log(chalk.blue.bold('\n📈 PeakInfer: Workload Profiler\n'));
-
-    const isVerbose = isVerboseEnabled(command);
-    const verboseLog = createVerboseLogger(isVerbose);
-    const spinner = startSpinner('Loading inference events...', isVerbose);
-    verboseLog('Profiling command options:', options);
-
-    let events: InferenceEvent[] = [];
-    let eventsFileUsed = options.events;
-
-    try {
-      events = await loadEventsFromFile(options.events);
-      spinner.succeed(`Loaded ${events.length} events from ${options.events}`);
-      verboseLog(`Loaded ${events.length} events from ${options.events}`);
-    } catch (error) {
-      spinner.warn(`Failed to load ${options.events}: ${error instanceof Error ? error.message : String(error)}`);
-      const sampleData = path.join(__dirname, '..', 'sample-data', 'sample-events.jsonl');
-      if (await fs.pathExists(sampleData)) {
-        spinner.start('Loading sample events...');
-        events = await loadEventsFromFile(sampleData);
-        eventsFileUsed = sampleData;
-        spinner.succeed(`Loaded ${events.length} sample events`);
-        verboseLog(`Fallback to sample events: ${sampleData} (${events.length} events)`);
-      } else {
-        spinner.fail('No inference events available to profile');
-        process.exit(1);
-      }
-    }
-
-    const apiKey = await ensureAPIKey();
-    verboseLog('Anthropic API key initialized for profile command');
-    const orchestrator = new MultiAgentOrchestrator(apiKey, { verbose: isVerbose });
-
-    spinner.start('Profiling workloads...');
-    try {
-      const profile = await orchestrator.runProfileAgent(events, {
-        clusterMethod: options.clusterMethod,
-      });
-      spinner.succeed('Profiling complete');
-      verboseLog('Profile metadata:', profile.metadata);
-
-      await fs.writeFile(options.output, yaml.stringify(profile), 'utf-8');
-      console.log(chalk.gray(`\n🗂️  Profile saved to ${options.output}`));
-
-      console.log(chalk.cyan('\n📊 Workload Profile Summary:'));
-      console.log(`  Events Analyzed: ${profile.metadata.events_analyzed}`);
-      console.log(`  Clusters: ${profile.metadata.total_clusters}`);
-      console.log(`  Cluster Method: ${profile.metadata.cluster_method}`);
-      if (profile.metadata.top_intents?.length) {
-        console.log(`  Top Intents: ${profile.metadata.top_intents.join(', ')}`);
-      }
-      console.log(`  File Source: ${eventsFileUsed}`);
-
-      if (profile.clusters?.length) {
-        console.log(chalk.green('\n🏷️  Top Clusters:'));
-        profile.clusters.slice(0, 3).forEach((cluster, index) => {
-          console.log(`  ${index + 1}. ${chalk.bold(cluster.intent)} (${cluster.size} events)`);
-          console.log(`     Cost / request: $${cluster.cost_per_request.toFixed(2)} | Model: ${cluster.dominant_model}`);
-          console.log(`     Action: ${cluster.recommended_action}`);
-        });
-      }
-
-      if (profile.samplePrompts?.length) {
-        console.log(chalk.green('\n📝 Representative Prompts:'));
-        profile.samplePrompts.slice(0, 3).forEach((sample) => {
-          console.log(`  - ${sample.prompt.substring(0, 80)}${sample.prompt.length > 80 ? '…' : ''}`);
-        });
-      }
-
-      if (profile.recommendations?.length) {
-        console.log(chalk.green('\n💡 Recommendations:'));
-        profile.recommendations.slice(0, 3).forEach((rec, index) => {
-          console.log(`  ${index + 1}. (${rec.impact}) ${rec.description} — est. savings $${rec.estimated_savings.toLocaleString()}/month`);
-        });
-      }
-
-      console.log(chalk.blue.bold('\n🚀 Next Steps:'));
-      console.log(`  1. Review ${chalk.cyan(options.output)} for full profile details`);
-      console.log('  2. Use clusters to select representative prompts');
-      console.log(`  3. Run ${chalk.cyan('peakinfer suggest')} or ${chalk.cyan('peakinfer plan')} to continue optimization\n`);
-    } catch (error) {
-      spinner.fail('Profiling failed');
-      console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
-      process.exit(1);
-    }
-  });
-
-/**
- * Plan command - Generate optimization plan
- */
-program
-  .command('plan')
-  .description('📋 Generate comprehensive optimization plan')
-  .option('--discovery <file>', 'Discovery results file', 'discovered.yaml')
-  .option('--constraints <file>', 'Policy constraints file', 'policy.yaml')
-  .option('--output <file>', 'Save plan to file')
-.action(async (options, command: Command) => {
-    console.log(chalk.blue.bold('\n📋 Generating Optimization Plan\n'));
-
-    const isVerbose = isVerboseEnabled(command);
-    const verboseLog = createVerboseLogger(isVerbose);
-    const spinner = startSpinner('Loading discovery results...', isVerbose);
-    verboseLog('Plan command options:', options);
-
-    try {
-      const apiKey = await ensureAPIKey();
-      verboseLog('Anthropic API key initialized for planner');
-
-      // Load discovery results
-      let discoveryResult;
-      if (await fs.pathExists(options.discovery)) {
-        const content = await fs.readFile(options.discovery, 'utf-8');
-        discoveryResult = yaml.parse(content);
-        spinner.succeed('Discovery results loaded');
-        verboseLog(`Discovery file loaded: ${options.discovery}`);
-      } else {
-        spinner.fail('Discovery results not found');
-        console.log(chalk.yellow('\n⚠️  Run "peakinfer discover" first to generate discovery results\n'));
-        return;
-      }
-
-      // Load templates
-      spinner.start('Loading community templates...');
-      const templateManager = new TemplateManager();
-      await templateManager.loadTemplates();
-      const templates = templateManager.listTemplates();
-      spinner.succeed(`Loaded ${templates.length} templates`);
-      verboseLog(`Templates available: ${templates.length}`);
-
-      // Run Planner Agent
-      spinner.start('Running Planner Agent...');
-      const orchestrator = new MultiAgentOrchestrator(apiKey, { verbose: isVerbose });
-      const plan = await orchestrator.runPlannerAgent(discoveryResult, templates);
-      spinner.succeed('Optimization plan generated');
-      verboseLog('Planner output metadata:', {
-        applicationLayer: plan.applicationLayer.length,
-        servingLayer: plan.servingLayer.length,
-        infrastructureLayer: plan.infrastructureLayer.length,
-        crossLayer: plan.crossLayerStrategies.length,
-      });
-
-      console.log(chalk.green.bold('\n💡 Optimization Plan Summary:\n'));
-      console.log(`  💰 Estimated Monthly Savings: ${chalk.green.bold('$' + (plan.estimatedSavings || 0).toLocaleString())}`);
-      console.log(`  📊 Implementation Complexity: ${chalk.yellow(plan.implementationComplexity)}`);
-      console.log(`  📈 ROI: ${chalk.cyan((plan.economicProjections?.roi_percentage || 0).toFixed(0) + '%')}`);
-      console.log(`  ⏱️  Payback Period: ${chalk.blue((plan.economicProjections?.payback_period_months || 0).toFixed(1) + ' months')}`);
-      console.log(`\n  Optimizations by Layer:`);
-      console.log(`    Application: ${plan.applicationLayer.length}`);
-      console.log(`    Serving: ${plan.servingLayer.length}`);
-      console.log(`    Infrastructure: ${plan.infrastructureLayer.length}`);
-      console.log(`    Cross-Layer: ${plan.crossLayerStrategies.length}`);
-
-      if (options.output) {
-        await fs.writeJson(options.output, plan, { spaces: 2 });
-        console.log(chalk.gray(`\n✅ Plan saved to ${options.output}`));
-        verboseLog(`Plan saved to ${options.output}`);
-      }
-
-      console.log(chalk.blue.bold('\n🚀 Next Steps:'));
-      console.log(`  ${chalk.gray('└')} peakinfer run - Execute the optimization plan\n`);
-
-    } catch (error) {
-      spinner.fail('Planning failed');
-      console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
-      process.exit(1);
-    }
-  });
-
-/**
- * Run command - Execute optimization plan
- */
-program
-  .command('run')
-  .description('🏃 Execute optimization plan with evaluation')
-  .option('--plan <file>', 'Optimization plan file', 'optimization-plan.yaml')
-  .option('--sample-size <number>', 'Number of sample prompts for testing', '100')
-  .option('--dry-run', 'Simulate execution without making changes')
-.action(async (options, command: Command) => {
-    console.log(chalk.blue.bold('\n🏃 Executing Optimization Plan\n'));
-
-    const isVerbose = isVerboseEnabled(command);
-    const verboseLog = createVerboseLogger(isVerbose);
-    const spinner = startSpinner('Loading optimization plan...', isVerbose);
-    verboseLog('Run command options:', options);
-
-    try {
-      const apiKey = await ensureAPIKey();
-      verboseLog('Anthropic API key initialized for runner');
-
-      // Load plan
-      let plan;
-      if (await fs.pathExists(options.plan)) {
-        const content = await fs.readFile(options.plan, 'utf-8');
-        plan = yaml.parse(content);
-        spinner.succeed('Plan loaded');
-        verboseLog(`Optimization plan loaded: ${options.plan}`);
-      } else {
-        spinner.fail('Plan not found');
-        console.log(chalk.yellow('\n⚠️  Run "peakinfer plan" first to generate an optimization plan\n'));
-        return;
-      }
-
-      if (options.dryRun) {
-        console.log(chalk.yellow('\n🔬 DRY RUN MODE - No changes will be made\n'));
-        verboseLog('Dry run enabled — execution will be simulated');
-      }
-
-      // Generate sample prompts (mock for now)
-      const samplePrompts = Array.from({ length: parseInt(options.sampleSize) }, (_, i) => ({
-        id: `sample-${i}`,
-        prompt: `Sample prompt ${i}`,
-      }));
-      verboseLog(`Generated ${samplePrompts.length} sample prompts for evaluation`);
-
-      // Run Runner/Evaluator Agent
-      spinner.start('Running Runner/Evaluator Agent...');
-      const orchestrator = new MultiAgentOrchestrator(apiKey, { verbose: isVerbose });
-      const evaluation = await orchestrator.runRunnerEvaluator(plan, samplePrompts);
-      spinner.succeed('Evaluation complete');
-      verboseLog('Evaluation summary:', {
-        baselineCost: evaluation.baseline.total_cost,
-        optimizedCost: evaluation.optimized.total_cost,
-        qualityPreserved: evaluation.qualityEvaluation.overall_quality_preserved,
-      });
-
-      console.log(chalk.green.bold('\n✅ Execution Results:\n'));
-      const baselineCost = evaluation.baseline?.total_cost || 0;
-      const optimizedCost = evaluation.optimized?.total_cost || 0;
-      const baselineQuality = evaluation.baseline?.quality_score || 0;
-      const optimizedQuality = evaluation.optimized?.quality_score || 0;
-      console.log(`  💰 Actual Savings: $${(baselineCost - optimizedCost).toLocaleString()}/month`);
-      console.log(`  📊 Cost Reduction: ${baselineCost > 0 ? ((1 - optimizedCost / baselineCost) * 100).toFixed(1) : 0}%`);
-      console.log(`  ⚡ Latency P95: ${evaluation.optimized?.latency_p95 || 0}ms (baseline: ${evaluation.baseline?.latency_p95 || 0}ms)`);
-      console.log(`  🎯 Quality Score: ${(optimizedQuality * 100).toFixed(1)}% (baseline: ${(baselineQuality * 100).toFixed(1)}%)`);
-      console.log(`  ✅ Quality Preserved: ${evaluation.qualityEvaluation.overall_quality_preserved ? 'Yes' : 'No'}`);
-
-      console.log(chalk.blue.bold('\n🚀 Next Steps:'));
-      console.log(`  ${chalk.gray('└')} peakinfer report - Generate final audit report\n`);
-
-    } catch (error) {
-      spinner.fail('Execution failed');
-      console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
-      process.exit(1);
-    }
-  });
-
-/**
- * Report command - Generate final audit report
- */
-program
-  .command('report')
-  .description('📊 Generate final audit report and implementation artifacts')
-  .option('--evaluation <file>', 'Evaluation results file', 'evaluation-report.yaml')
-  .option('--output-dir <dir>', 'Output directory for reports', 'reports')
-  .option('--format <formats>', 'Output formats (html,csv,yaml)', 'html,yaml')
-.action(async (options, command: Command) => {
-    console.log(chalk.blue.bold('\n📊 Generating Audit Report\n'));
-
-    const isVerbose = isVerboseEnabled(command);
-    const verboseLog = createVerboseLogger(isVerbose);
-    const spinner = startSpinner('Loading evaluation results...', isVerbose);
-    verboseLog('Report command options:', options);
-
-    try {
-      const apiKey = await ensureAPIKey();
-      verboseLog('Anthropic API key initialized for auditor');
-
-      // Load evaluation results
-      let evaluation;
-      if (await fs.pathExists(options.evaluation)) {
-        const content = await fs.readFile(options.evaluation, 'utf-8');
-        evaluation = yaml.parse(content);
-        spinner.succeed('Evaluation results loaded');
-        verboseLog(`Evaluation file loaded: ${options.evaluation}`);
-      } else {
-        spinner.fail('Evaluation results not found');
-        console.log(chalk.yellow('\n⚠️  Run "peakinfer run" first to execute the plan\n'));
-        return;
-      }
-
-      // Run Auditor Agent
-      spinner.start('Running Auditor Agent...');
-      const orchestrator = new MultiAgentOrchestrator(apiKey, { verbose: isVerbose });
-      const report = await orchestrator.runAuditorAgent(evaluation);
-      spinner.succeed('Audit report generated');
-      verboseLog('Audit report generated with executive summary:', report.executiveSummary);
-
-      // Create output directory
-      await fs.ensureDir(options.outputDir);
-      verboseLog(`Ensured output directory: ${options.outputDir}`);
-
-      // Generate reports in different formats
-      const formats = options.format.split(',');
-      
-      if (formats.includes('yaml')) {
-        await fs.writeFile(path.join(options.outputDir, 'audit-report.yaml'), yaml.stringify(report));
-      }
-      
-      if (formats.includes('html')) {
-        const html = await generateHTMLReport(report);
-        await fs.writeFile(path.join(options.outputDir, 'audit-report.html'), html);
-      }
-
-      console.log(chalk.green.bold('\n✅ Audit Report Summary:\n'));
-      console.log(`  💰 Total Cost Savings: ${chalk.green.bold('$' + (report.executiveSummary?.total_cost_savings || 0).toLocaleString())}/month`);
-      console.log(`  📊 Cost Reduction: ${chalk.cyan((report.executiveSummary?.cost_reduction_percentage || 0).toFixed(1) + '%')}`);
-      console.log(`  📈 ROI: ${chalk.yellow((report.executiveSummary?.roi_percentage || 0).toFixed(0) + '%')}`);
-      console.log(`  ⏱️  Payback Period: ${chalk.blue((report.executiveSummary?.payback_period_months || 0).toFixed(1) + ' months')}`);
-      console.log(`  ✅ Quality Preserved: ${report.executiveSummary?.quality_preserved ? 'Yes' : 'No'}`);
-      console.log(`  🎯 Optimizations Applied: ${report.executiveSummary?.optimizations_successful || 0}/${report.executiveSummary?.optimizations_applied || 0}`);
-
-      console.log(chalk.gray(`\n📁 Reports saved to ${options.outputDir}/`));
-      console.log(chalk.gray(`📁 Implementation artifacts saved to implementation-artifacts/\n`));
-
-    } catch (error) {
-      spinner.fail('Report generation failed');
-      console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
-      process.exit(1);
-    }
-  });
-
-/**
- * Templates command - Browse and search templates
- */
-program
-  .command('templates')
-  .description('📋 Browse available optimization templates')
-  .option('--category <category>', 'Filter by category')
-  .option('--layer <layer>', 'Filter by layer (application, serving, infrastructure, cross-layer)')
-  .option('--detailed', 'Show detailed information')
-  .action(async (options) => {
-    console.log(chalk.blue.bold('\n📋 PeakInfer Optimization Templates\n'));
-
-    try {
-      const templateManager = new TemplateManager();
-      await templateManager.loadTemplates();
-      let templates = templateManager.listTemplates();
-
-      if (options.category) {
-        templates = templates.filter(t => t.category === options.category);
-      }
-
-      if (options.layer) {
-        templates = templateManager.getTemplatesByLayer(options.layer);
-      }
-
-      // Group by category
-      const byCategory: Record<string, typeof templates> = {};
-      for (const template of templates) {
-        if (!byCategory[template.category]) {
-          byCategory[template.category] = [];
-        }
-        byCategory[template.category].push(template);
-      }
-
-      for (const [category, categoryTemplates] of Object.entries(byCategory)) {
-        console.log(chalk.cyan.bold(`\n${category.toUpperCase().replace(/_/g, ' ')}:`));
-
-        for (const template of categoryTemplates) {
-          console.log(`\n  ${chalk.blue(template.id)}`);
-          console.log(`    ${chalk.white(template.name)}`);
-          console.log(`    ${chalk.gray(template.description)}`);
-          console.log(`    Confidence: ${chalk.yellow((template.confidence * 100).toFixed(0) + '%')} | ` +
-                     `Verified: ${template.success_count} | ` +
-                     `Savings: ${template.optimization.expected_cost_reduction || 'Variable'}`);
-
-          if (options.detailed) {
-            console.log(`    Effort: ${template.optimization.effort_estimate} | ` +
-                       `Risk: ${template.optimization.risk_level}`);
-          }
-        }
-      }
-
-      console.log(chalk.blue(`\n📊 Total: ${templates.length} templates available\n`));
-
-    } catch (error) {
-      console.error(chalk.red('❌ Error loading templates:'), error instanceof Error ? error.message : String(error));
-      process.exit(1);
-    }
-  });
-
-/**
- * Sync templates command
- */
-program
-  .command('sync-templates')
-  .description('🔄 Sync templates from repository')
-  .action(async () => {
-    console.log(chalk.blue.bold('\n🔄 Syncing Templates\n'));
-
-    try {
-      const templateManager = new TemplateManager();
-      await templateManager.syncTemplates();
-      console.log(chalk.green('✅ Templates synced successfully\n'));
-    } catch (error) {
-      console.error(chalk.red('❌ Sync failed:'), error instanceof Error ? error.message : String(error));
-      process.exit(1);
-    }
-  });
-
-/**
- * Validate command
- */
-program
-  .command('validate')
-  .description('✅ Validate input data format')
-  .option('--input <file>', 'Input file to validate')
-  .action(async (options) => {
-    console.log(chalk.blue.bold('\n✅ Validating Input Data\n'));
-
-    if (!options.input) {
-      console.error(chalk.red('❌ --input flag required'));
+      renderer.failSpinner('Failed to connect');
+      const hasKey = await apiKeyManager.hasAPIKey();
+      renderer.renderErrorState(error instanceof Error ? error : new Error(String(error)), hasKey);
       process.exit(1);
     }
 
     try {
-      if (!await fs.pathExists(options.input)) {
-        console.error(chalk.red(`❌ File not found: ${options.input}`));
+      // Resolve path
+      const codebasePath = path.resolve(targetPath);
+      renderer.log('Analyzing codebase at:', codebasePath);
+
+      if (!await fs.pathExists(codebasePath)) {
+        console.error(chalk.red(`\n❌ Path not found: ${codebasePath}\n`));
         process.exit(1);
       }
 
-      const content = await fs.readFile(options.input, 'utf-8');
-      const ext = path.extname(options.input);
+      // Initialize components
+      const analyzer = new StackMapAnalyzer(apiKey, { verbose });
+      const pricingEngine = new PricingEngine();
+      const templateManager = new TemplateManager(undefined, { quiet: !verbose });
+      const reportGenerator = new ReportGenerator();
 
-      if (ext === '.jsonl') {
-        const lines = content.trim().split('\n');
-        let valid = 0;
-        let invalid = 0;
+      const templatesPromise = (async () => {
+        await templateManager.loadTemplates();
+        return templateManager.listTemplates();
+      })();
+      console.log(chalk.gray('Templates: loading in background...'));
 
-        for (const line of lines) {
-          try {
-            JSON.parse(line);
-            valid++;
-          } catch {
-            invalid++;
-          }
+      // Run Claude-First Detection
+      scanProgress.start();
+      const stackmap = await analyzer.analyze(codebasePath, {
+        estimateUsage: options.estimateUsage,
+        onProgress: (progress) => {
+          const percentageValue = typeof progress.percentage === 'number'
+            ? progress.percentage
+            : Number.parseFloat(progress.percentage ?? '0');
+          const relativePath = progress.currentFile
+            ? path.relative(codebasePath, progress.currentFile)
+            : undefined;
+          const displayPath = relativePath && !relativePath.startsWith('..')
+            ? relativePath
+            : progress.currentFile;
+          scanProgress.update(percentageValue, displayPath);
+          renderer.log(`Progress: ${progress.filesProcessed}/${progress.totalFiles} files`);
         }
-
-        console.log(chalk.green(`✅ Valid JSONL events: ${valid}`));
-        if (invalid > 0) {
-          console.log(chalk.yellow(`⚠️  Invalid lines: ${invalid}`));
-        }
-      } else if (ext === '.json') {
-        JSON.parse(content);
-        console.log(chalk.green('✅ Valid JSON file'));
-      } else if (ext === '.yaml' || ext === '.yml') {
-        yaml.parse(content);
-        console.log(chalk.green('✅ Valid YAML file'));
-      }
-
-      console.log(chalk.green('\n✅ Validation complete\n'));
-
-    } catch (error) {
-      console.error(chalk.red('❌ Validation failed:'), error instanceof Error ? error.message : String(error));
-      process.exit(1);
-    }
-  });
-
-/**
- * Suggest command - Generate optimization suggestions
- */
-program
-  .command('suggest')
-  .description('💡 Generate actionable optimization suggestions')
-  .option('--discovery <file>', 'Discovery results file', 'discovered.yaml')
-  .option('--format <formats>', 'Output formats (html,markdown,json)', 'html,markdown,json')
-  .option('--output-dir <dir>', 'Output directory for reports', 'optimization-reports')
-.action(async (options, command: Command) => {
-    console.log(chalk.blue.bold('\n💡 PeakInfer: Optimization Suggestions\n'));
-
-    const isVerbose = isVerboseEnabled(command);
-    const verboseLog = createVerboseLogger(isVerbose);
-    const spinner = startSpinner('Loading discovery results...', isVerbose);
-    verboseLog('Suggest command options:', options);
-
-    try {
-      const apiKey = await ensureAPIKey();
-      verboseLog('Anthropic API key initialized for suggestions');
-
-      // Load discovery results
-      if (!await fs.pathExists(options.discovery)) {
-        spinner.fail('Discovery file not found');
-        console.log(chalk.yellow('\n⚠️  Run "peakinfer discover" first\n'));
-        return;
-      }
-
-      const content = await fs.readFile(options.discovery, 'utf-8');
-      const discoveryResult = yaml.parse(content);
-      spinner.succeed('Discovery results loaded');
-      verboseLog(`Discovery file loaded: ${options.discovery}`);
-
-      // Load templates
-      spinner.start('Loading community templates...');
-      const templateManager = new TemplateManager();
-      await templateManager.loadTemplates();
-      const templates = templateManager.listTemplates();
-      spinner.succeed(`Loaded ${templates.length} templates`);
-      verboseLog(`Templates available: ${templates.length}`);
-
-      // Generate suggestions
-      spinner.start('Generating optimization suggestions...');
-      const suggester = new OptimizationSuggester(apiKey);
-      const suggestionReport = await suggester.generateSuggestions({
-        discoveryResult,
-        codebaseAnalysis: discoveryResult.codebaseInsights,
-        templates
       });
-      spinner.succeed('Suggestions generated');
-      verboseLog('Suggestion report summary:', suggestionReport.summary);
+      scanProgress.complete(`Found ${stackmap.callsites.length} inference callsites`);
+
+      let templates: OptimizationTemplate[];
+      try {
+        templates = await templatesPromise;
+      } catch (templateError) {
+        throw new Error(`Failed to load optimization templates: ${templateError instanceof Error ? templateError.message : String(templateError)}`);
+      }
+      renderer.log('Templates loaded:', templates.map(t => t.id).join(', '));
+      console.log(chalk.gray(`Templates ready (${templates.length})`));
+
+      // Check for empty state
+      if (stackmap.callsites.length === 0) {
+        renderer.renderEmptyState(
+          stackmap.metadata.filesScanned,
+          stackmap.metadata.linesOfCode,
+          stackmap.metadata.languages
+        );
+        process.exit(0);
+      }
+
+      // Render partial state if needed
+      if (stackmap.metadata.skippedFiles && stackmap.metadata.skippedFiles.length > 0) {
+        renderer.renderPartialState(stackmap.metadata.skippedFiles);
+      }
+
+      // Calculate pricing
+      let pricing = null;
+      if (options.pricing !== false) {
+        renderer.startSpinner('Calculating pricing...');
+        pricing = await pricingEngine.calculatePricing(stackmap);
+        renderer.succeedSpinner('Pricing calculated');
+        renderer.log('Estimated monthly cost:', pricing.estimatedMonthlyCost);
+      }
+
+      // Match templates and generate suggestions
+      renderer.startSpinner('Matching optimization templates...');
+      const suggestions = await analyzer.generateSuggestions(stackmap, templates);
+      renderer.succeedSpinner(`Generated ${suggestions.length} optimization suggestions`);
+      renderer.log('Suggestions by template:', suggestions.map(s => s.templateId).filter(Boolean).join(', '));
+
+      // Create analysis result
+      const analysisResult: AnalysisResult = {
+        stackmap,
+        pricing,
+        suggestions,
+        metadata: {
+          analyzedAt: new Date().toISOString(),
+          codebasePath,
+          filesScanned: stackmap.metadata.filesScanned,
+          linesOfCode: stackmap.metadata.linesOfCode,
+          languages: stackmap.metadata.languages,
+          filesWithCalls: new Set(stackmap.callsites.map(c => c.file)).size,
+          templatesMatched: suggestions.filter(s => s.templateId).length
+        }
+      };
 
       // Generate reports
-      spinner.start('Creating reports...');
-      const reportGenerator = new ReportGenerator();
+      renderer.startSpinner('Generating reports...');
+      const outputDir = path.resolve(options.output);
+      await fs.ensureDir(outputDir);
+
+      // Save stackmap.json
+      await fs.writeJson(path.join(outputDir, 'stackmap.json'), stackmap, { spaces: 2 });
+      
+      // Save pricing.json
+      if (pricing) {
+        await fs.writeJson(path.join(outputDir, 'pricing.json'), pricing, { spaces: 2 });
+      }
+
+      // Generate HTML report
       const formats = options.format.split(',').map((f: string) => f.trim());
-      const { files } = await reportGenerator.generateReports(
-        suggestionReport,
-        discoveryResult,
-        {
-          outputDir: options.outputDir,
-          formats: formats as any,
-          includeCodeSnippets: true
-        }
-      );
-      spinner.succeed('Reports generated');
-      verboseLog('Report files generated:', files);
-
-      // Print summary
-      console.log(chalk.green.bold('\n✨ Optimization Suggestions Summary:\n'));
-      console.log(`  💰 Total Savings Opportunity: ${chalk.green.bold('$' + suggestionReport.summary.totalMonthlySavings.toLocaleString())}/month`);
-      console.log(`  📊 Total Opportunities: ${suggestionReport.summary.totalOpportunities}`);
-      console.log(`  🏆 Quick Wins: ${suggestionReport.summary.quickWins.length}`);
-      console.log(`  📈 Average ROI: ${chalk.cyan(suggestionReport.metadata.averageROI.toFixed(0) + '%')}`);
-
-      console.log(chalk.cyan('\n📑 Reports generated:'));
-      for (const file of files) {
-        console.log(`  ${chalk.gray('└')} ${file}`);
+      if (formats.includes('html')) {
+        const html = await reportGenerator.generateHTMLReport(analysisResult, templates);
+        await fs.writeFile(path.join(outputDir, 'peakinfer-report.html'), html);
       }
 
-      console.log(chalk.blue.bold('\n🚀 Next Steps:'));
-      console.log(`  1. Review reports in ${chalk.cyan(options.outputDir)}/`);
-      console.log(`  2. Start with quick wins (high ROI, low effort)`);
-      console.log(`  3. Run ${chalk.cyan('peakinfer plan')} to create detailed implementation plan\n`);
+      renderer.succeedSpinner('Reports generated');
+
+      // Render success state
+      renderer.renderSuccessState(analysisResult);
+
+      // Open HTML report hint
+      console.log(chalk.blue.bold('🚀 Next Steps:'));
+      console.log(`  ${chalk.gray('└')} Open ${chalk.cyan('peakinfer-report.html')} in your browser for detailed analysis`);
+      console.log(`  ${chalk.gray('└')} Review suggestions and implement quick wins first\n`);
 
     } catch (error) {
-      spinner.fail('Suggestion generation failed');
+      scanProgress.fail('Scan interrupted');
+      renderer.failSpinner('Analysis failed');
       console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
-      process.exit(1);
-    }
-  });
-
-/**
- * Analyze command - All-in-one discovery + suggestions
- */
-program
-  .command('analyze')
-  .description('🔬 Complete analysis: scan codebase + generate suggestions')
-  .option('--codebase <path>', 'Path to codebase (default: current directory)', '.')
-  .option('--events <file>', 'Runtime events file (optional)')
-  .option('--output-dir <dir>', 'Output directory', 'peakinfer-analysis')
-.action(async (options, command: Command) => {
-    console.log(chalk.blue.bold('\n🔬 PeakInfer: Complete Analysis\n'));
-    console.log(chalk.gray('Scanning codebase + generating optimization suggestions\n'));
-
-    const isVerbose = isVerboseEnabled(command);
-    const verboseLog = createVerboseLogger(isVerbose);
-    const spinner = startSpinner('Starting analysis...', isVerbose);
-    verboseLog('Analyze command options:', options);
-
-    try {
-      const apiKey = await ensureAPIKey();
-      verboseLog('Anthropic API key initialized for analyze command');
-      const orchestrator = new MultiAgentOrchestrator(apiKey, { verbose: isVerbose });
-
-      // Prepare input files
-      const inputFiles: string[] = [];
-      if (options.events && await fs.pathExists(options.events)) {
-        inputFiles.push(options.events);
-        verboseLog(`Added runtime events file: ${options.events}`);
-      } else {
-        // Use sample data if available
-        const sampleData = path.join(__dirname, '..', 'sample-data', 'sample-events.jsonl');
-        if (await fs.pathExists(sampleData)) {
-          inputFiles.push(sampleData);
-          verboseLog(`Using bundled sample events: ${sampleData}`);
-        }
-      }
-
-      verboseLog('Analysis input files:', inputFiles);
-
-      // Run discovery with codebase
-      spinner.text = 'Running discovery with codebase analysis...';
-      const discoveryResult = await orchestrator.runDiscoveryAgent(inputFiles, options.codebase);
-      spinner.succeed('Discovery complete');
-      verboseLog('Discovery result metadata:', discoveryResult.metadata);
-
-      // Load templates
-      spinner.start('Loading community templates...');
-      const templateManager = new TemplateManager();
-      await templateManager.loadTemplates();
-      const templates = templateManager.listTemplates();
-      spinner.succeed(`Loaded ${templates.length} templates`);
-      verboseLog(`Templates available: ${templates.length}`);
-
-      // Generate suggestions
-      spinner.start('Generating optimization suggestions...');
-      const suggester = new OptimizationSuggester(apiKey);
-      const suggestionReport = await suggester.generateSuggestions({
-        discoveryResult,
-        codebaseAnalysis: discoveryResult.codebaseInsights,
-        templates
-      });
-      spinner.succeed('Suggestions generated');
-      verboseLog('Suggestion summary:', suggestionReport.summary);
-
-      // Generate reports
-      spinner.start('Creating comprehensive reports...');
-      await fs.ensureDir(options.outputDir);
-      verboseLog(`Ensured output directory: ${options.outputDir}`);
-      const reportGenerator = new ReportGenerator();
-      const { files } = await reportGenerator.generateReports(
-        suggestionReport,
-        discoveryResult,
-        {
-          outputDir: options.outputDir,
-          formats: ['html', 'markdown', 'json'],
-          includeCodeSnippets: true,
-          includeCharts: true
-        }
-      );
-      spinner.succeed('Reports generated');
-      verboseLog('Generated report files:', files);
-
-      // Print comprehensive summary
-      console.log(chalk.green.bold('\n✨ Analysis Complete!\n'));
-      
-      if (discoveryResult.codebaseInsights) {
-        console.log(chalk.cyan('📝 Codebase Analysis:'));
-        const metrics = discoveryResult.codebaseInsights.codeMetrics;
-        console.log(`  Files Scanned: ${metrics?.totalFiles ?? 'n/a'}`);
-        console.log(`  LLM API Calls: ${metrics?.totalLLMCalls ?? 'n/a'}`);
-        console.log(`  Caching Opportunities: ${discoveryResult.codebaseInsights.cachingOpportunities?.length ?? 0}`);
-        console.log(`  Code Optimizations: ${discoveryResult.codebaseInsights.optimizationOpportunities?.length ?? 0}`);
-      }
-
-      console.log(chalk.green('\n💰 Cost Savings Opportunity:'));
-      console.log(`  Monthly Savings: ${chalk.green.bold('$' + suggestionReport.summary.totalMonthlySavings.toLocaleString())}`);
-      console.log(`  Annual Savings: ${chalk.green.bold('$' + suggestionReport.summary.totalAnnualSavings.toLocaleString())}`);
-      console.log(`  Total Opportunities: ${suggestionReport.summary.totalOpportunities}`);
-      console.log(`  Quick Wins: ${suggestionReport.summary.quickWins.length}`);
-      console.log(`  Average ROI: ${chalk.cyan(suggestionReport.metadata.averageROI.toFixed(0) + '%')}`);
-
-      console.log(chalk.cyan('\n📑 Generated Reports:'));
-      for (const file of files) {
-        console.log(`  ${chalk.gray('└')} ${file}`);
-      }
-
-      console.log(chalk.blue.bold('\n🚀 Next Steps:'));
-      console.log(`  1. Open ${chalk.cyan(path.join(options.outputDir, 'optimization-report.html'))} in your browser`);
-      console.log(`  2. Review ${chalk.cyan(path.join(options.outputDir, 'OPTIMIZATION_GUIDE.md'))} for detailed guide`);
-      console.log(`  3. Start with quick wins for immediate impact`);
-      console.log(`  4. Run ${chalk.cyan('peakinfer plan')} to create implementation plan\n`);
-
-    } catch (error) {
-      spinner.fail('Analysis failed');
-      console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
-      if (error instanceof Error && error.stack) {
+      if (verbose && error instanceof Error && error.stack) {
         console.error(chalk.gray(error.stack));
       }
       process.exit(1);
@@ -900,17 +590,17 @@ program
   });
 
 /**
- * Config command - Manage configuration
+ * Config command - Manage API key
  */
 program
   .command('config')
   .description('⚙️  Manage PeakInfer configuration')
   .option('--show', 'Show current configuration')
-  .option('--set-key', 'Set new API key')
+  .option('--set-key', 'Set Anthropic API key')
   .option('--clear-key', 'Clear saved API key')
   .action(async (options) => {
     if (options.show) {
-      console.log(chalk.blue.bold('\n⚙️  PeakInfer Configuration\n'));
+      console.log(chalk.blue.bold(`\n⚙️  PeakInfer v${VERSION} Configuration\n`));
       const hasKey = await apiKeyManager.hasAPIKey();
       console.log(`  API Key: ${hasKey ? chalk.green('✓ Configured') : chalk.yellow('✗ Not configured')}`);
       console.log(`  Config File: ${chalk.gray(apiKeyManager.getConfigPath())}`);
@@ -924,141 +614,19 @@ program
     } else if (options.clearKey) {
       await apiKeyManager.clearAPIKey();
     } else {
-      console.log(chalk.yellow('Use --show, --set-key, or --clear-key'));
+      console.log(chalk.yellow('\nUsage: peakinfer config [--show | --set-key | --clear-key]\n'));
     }
   });
 
-/**
- * Load inference events from file
- */
-async function loadEventsFromFile(filePath: string): Promise<InferenceEvent[]> {
-  if (!await fs.pathExists(filePath)) {
-    throw new Error(`Events file not found: ${filePath}`);
-  }
-
-  const ext = path.extname(filePath).toLowerCase();
-  const events: InferenceEvent[] = [];
-
-  if (ext === '.jsonl') {
-    const content = await fs.readFile(filePath, 'utf-8');
-    const lines = content.split('\n').map(line => line.trim()).filter(Boolean);
-    for (const line of lines) {
-      events.push(JSON.parse(line));
-    }
-    return events;
-  }
-
-  if (ext === '.json') {
-    const content = await fs.readJson(filePath);
-    if (Array.isArray(content)) {
-      return content as InferenceEvent[];
-    }
-    if (content.events && Array.isArray(content.events)) {
-      return content.events as InferenceEvent[];
-    }
-    return [content as InferenceEvent];
-  }
-
-  if (ext === '.yaml' || ext === '.yml') {
-    const content = await fs.readFile(filePath, 'utf-8');
-    const data = yaml.parse(content);
-    if (Array.isArray(data)) {
-      return data as InferenceEvent[];
-    }
-    if (data.events && Array.isArray(data.events)) {
-      return data.events as InferenceEvent[];
-    }
-  }
-
-  throw new Error(`Unsupported events file format: ${ext}`);
-}
-
-/**
- * Generate HTML report
- */
-async function generateHTMLReport(report: any): Promise<string> {
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PeakInfer Audit Report</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 40px; line-height: 1.6; }
-    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; }
-    .metric { background: #f7fafc; padding: 20px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #667eea; }
-    .metric h3 { margin: 0 0 10px 0; color: #2d3748; }
-    .metric .value { font-size: 2em; font-weight: bold; color: #667eea; }
-    .section { margin: 30px 0; }
-    .achievement { background: #c6f6d5; padding: 10px 15px; margin: 5px 0; border-radius: 5px; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>🚀 PeakInfer Audit Report</h1>
-    <p>LLM Inference Optimization Results</p>
-    <p style="opacity: 0.9; font-size: 0.9em;">${new Date().toLocaleString()}</p>
-  </div>
-
-  <div class="section">
-    <h2>Executive Summary</h2>
-    <div class="metric">
-      <h3>💰 Total Cost Savings</h3>
-      <div class="value">$${(report.executiveSummary?.total_cost_savings || 0).toLocaleString()}/month</div>
-    </div>
-    <div class="metric">
-      <h3>📊 Cost Reduction</h3>
-      <div class="value">${(report.executiveSummary?.cost_reduction_percentage || 0).toFixed(1)}%</div>
-    </div>
-    <div class="metric">
-      <h3>📈 ROI</h3>
-      <div class="value">${(report.executiveSummary?.roi_percentage || 0).toFixed(0)}%</div>
-    </div>
-    <div class="metric">
-      <h3>⏱️ Payback Period</h3>
-      <div class="value">${(report.executiveSummary?.payback_period_months || 0).toFixed(1)} months</div>
-    </div>
-  </div>
-
-  <div class="section">
-    <h2>Key Achievements</h2>
-    ${(report.executiveSummary?.key_achievements || []).map((achievement: string) => 
-      `<div class="achievement">✅ ${achievement}</div>`
-    ).join('')}
-  </div>
-
-  <div class="section">
-    <h2>Savings by Layer</h2>
-    <div class="metric">
-      <h3>Application Layer</h3>
-      <p>$${(report.detailedResults?.by_layer?.application?.cost_savings || 0).toLocaleString()}/month (${report.detailedResults?.by_layer?.application?.savings_percentage || 0}%)</p>
-    </div>
-    <div class="metric">
-      <h3>Serving Layer</h3>
-      <p>$${(report.detailedResults?.by_layer?.serving?.cost_savings || 0).toLocaleString()}/month (${report.detailedResults?.by_layer?.serving?.savings_percentage || 0}%)</p>
-    </div>
-    <div class="metric">
-      <h3>Infrastructure Layer</h3>
-      <p>$${(report.detailedResults?.by_layer?.infrastructure?.cost_savings || 0).toLocaleString()}/month (${report.detailedResults?.by_layer?.infrastructure?.savings_percentage || 0}%)</p>
-    </div>
-  </div>
-
-  <div class="section">
-    <p style="text-align: center; color: #718096; margin-top: 50px;">
-      Generated by <strong>PeakInfer</strong> - LLM Inference Optimization Platform
-    </p>
-  </div>
-</body>
-</html>`;
-}
-
-// Program configuration
+// Default command is analyze
 program
-  .name('peakinfer')
-  .description('🔧 Multi-agent LLM inference optimization using Claude SDK')
-  .version('0.1.0')
-  .option('-v, --verbose', 'Enable verbose logging for detailed agent output');
+  .arguments('[path]')
+  .action((targetPath) => {
+    if (targetPath && !targetPath.startsWith('-')) {
+      // If just a path is provided, run analyze
+      program.parse(['node', 'peakinfer', 'analyze', targetPath, ...process.argv.slice(3)]);
+    }
+  });
 
 // Parse and execute
 program.parse();
-

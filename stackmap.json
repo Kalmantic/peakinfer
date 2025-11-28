@@ -1,0 +1,177 @@
+{
+  "callsites": [
+    {
+      "id": "c1a2b3c4-d5e6-7890-abcd-ef1234567891",
+      "file": "src/core/stackmap-analyzer.ts",
+      "line": 339,
+      "lineEnd": 344,
+      "code": "const response = await this.anthropic.messages.create({\n        model: this.model,\n        max_tokens: this.maxTokens,\n        system: systemPrompt,\n        messages: [{ role: 'user', content: userPrompt }]\n      });",
+      "provider": "Anthropic",
+      "model": "claude-sonnet-4-5-20250929",
+      "framework": null,
+      "runtime": null,
+      "taskKind": "chat",
+      "isStreaming": false,
+      "patterns": [],
+      "confidence": 1,
+      "language": "typescript",
+      "reasoning": {
+        "whyProvider": "The callsite uses 'this.anthropic.messages.create()' which is the official Anthropic SDK for Claude. The import statement confirms: 'import Anthropic from '@anthropic-ai/sdk'",
+        "whyModel": "Found in file header at line defining class properties: 'private model: string = 'claude-sonnet-4-5-20250929';' - this is explicitly assigned and then used as 'model: this.model' in the callsite"
+      }
+    },
+    {
+      "id": "c2b3c4d5-e6f7-8901-bcde-f12345678902",
+      "file": "src/core/stackmap-analyzer.ts",
+      "line": 463,
+      "lineEnd": 468,
+      "code": "const response = await this.anthropic.messages.create({\n        model: this.model,\n        max_tokens: this.maxTokens,\n        system: systemPrompt,\n        messages: [{ role: 'user', content: userPrompt }]\n      });",
+      "provider": "Anthropic",
+      "model": "claude-sonnet-4-5-20250929",
+      "framework": null,
+      "runtime": null,
+      "taskKind": "chat",
+      "isStreaming": false,
+      "patterns": [],
+      "confidence": 1,
+      "language": "typescript",
+      "reasoning": {
+        "whyProvider": "The code uses 'this.anthropic.messages.create()' which is the official Anthropic SDK method for Claude API calls",
+        "whyModel": "Found in file header line 'private model: string = \"claude-sonnet-4-5-20250929\";' - this.model references this exact model string"
+      }
+    },
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "file": "src/core/optimization-suggester.ts",
+      "line": 357,
+      "lineEnd": 362,
+      "code": "const response = await this.anthropic.messages.create({\n        model: this.model,\n        max_tokens: this.maxTokens,\n        system: systemPrompt,\n        messages: [{ role: 'user', content: prompt }]\n      });",
+      "provider": "Anthropic",
+      "model": "claude-sonnet-4-5-20250929",
+      "framework": null,
+      "runtime": null,
+      "taskKind": "chat",
+      "isStreaming": false,
+      "patterns": [],
+      "confidence": 1,
+      "language": "typescript",
+      "reasoning": {
+        "whyProvider": "The code uses '@anthropic-ai/sdk' and calls 'this.anthropic.messages.create()', which is the official Anthropic SDK pattern for message creation.",
+        "whyModel": "Found in file header at line 'private model: string = \"claude-sonnet-4-5-20250929\";' - the model is explicitly defined as a class property with the exact model name claude-sonnet-4-5-20250929."
+      }
+    },
+    {
+      "id": "c1a2b3c4-d5e6-f789-0123-456789abcdef",
+      "file": "src/core/multi-agent-orchestrator.ts",
+      "line": 153,
+      "lineEnd": 165,
+      "code": "const response = await this.anthropic.messages.create({\n        model: this.model,\n        max_tokens: this.maxTokens,\n        system: systemPrompt,\n        messages: [\n          {\n            role: 'user',\n            content: prompt,\n          },\n        ],\n      });",
+      "provider": "Anthropic",
+      "model": "claude-sonnet-4-5-20250929",
+      "framework": null,
+      "runtime": null,
+      "taskKind": "chat",
+      "isStreaming": false,
+      "patterns": [],
+      "confidence": 1,
+      "language": "typescript",
+      "reasoning": {
+        "whyProvider": "Direct use of @anthropic-ai/sdk with this.anthropic.messages.create() API call",
+        "whyModel": "Found in file header at line 'private model: string = \"claude-sonnet-4-5-20250929\";' - this.model references this exact model name"
+      }
+    },
+    {
+      "id": "d2e3f4a5-b6c7-8901-2345-6789abcdef01",
+      "file": "src/core/multi-agent-orchestrator.ts",
+      "line": 246,
+      "lineEnd": 258,
+      "code": "const response = await this.anthropic.messages.create({\n        model: this.model,\n        max_tokens: this.maxTokens,\n        system: systemPrompt,\n        messages: [\n          {\n            role: 'user',\n            content: prompt,\n          },\n        ],\n      });",
+      "provider": "Anthropic",
+      "model": "claude-sonnet-4-5-20250929",
+      "framework": null,
+      "runtime": null,
+      "taskKind": "chat",
+      "isStreaming": false,
+      "patterns": [],
+      "confidence": 1,
+      "language": "typescript",
+      "reasoning": {
+        "whyProvider": "Code uses '@anthropic-ai/sdk' and calls 'this.anthropic.messages.create()' which is the Anthropic Messages API",
+        "whyModel": "Found in file header: 'private model: string = \"claude-sonnet-4-5-20250929\"' on line defining the class property. The callsite uses 'model: this.model' which references this exact value."
+      }
+    }
+  ],
+  "models": [
+    {
+      "name": "claude-sonnet-4-5-20250929",
+      "provider": "Anthropic",
+      "callCount": 5,
+      "files": [
+        "src/core/stackmap-analyzer.ts",
+        "src/core/optimization-suggester.ts",
+        "src/core/multi-agent-orchestrator.ts"
+      ],
+      "estimatedTokensPerMonth": 0,
+      "taskKinds": [
+        "chat"
+      ]
+    }
+  ],
+  "vendors": [
+    {
+      "name": "Anthropic",
+      "sdkType": "direct SDK",
+      "callCount": 5,
+      "models": [
+        "claude-sonnet-4-5-20250929"
+      ],
+      "files": [
+        "src/core/stackmap-analyzer.ts",
+        "src/core/optimization-suggester.ts",
+        "src/core/multi-agent-orchestrator.ts"
+      ]
+    }
+  ],
+  "runtimes": [
+    {
+      "name": "TensorRT-LLM (inferred)",
+      "inferred": true,
+      "vendor": "Anthropic backend"
+    }
+  ],
+  "hardware": [
+    {
+      "type": "NVIDIA H100 / A100",
+      "provider": "Anthropic",
+      "inferred": true,
+      "source": "vendor inference"
+    }
+  ],
+  "frameworks": [],
+  "patterns": {
+    "hasRetry": false,
+    "hasBatching": false,
+    "hasStreaming": false,
+    "hasCaching": false,
+    "hasRouting": false,
+    "hasFallback": false
+  },
+  "metadata": {
+    "filesScanned": 33,
+    "linesOfCode": 12598,
+    "languages": [
+      "typescript",
+      "javascript",
+      "json"
+    ],
+    "durationMs": 128946,
+    "analyzedAt": "2025-11-26T09:26:34.545Z",
+    "version": "0.95.0",
+    "confidenceScores": {
+      "overall": 1,
+      "callsiteDetection": 1,
+      "modelClassification": 1,
+      "patternDetection": 0
+    }
+  }
+}

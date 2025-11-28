@@ -1,37 +1,4 @@
-/**
- * Report Generator - Beautiful HTML Reports
- * Based on Magic UX Principles + Julie Zhuo Design Rules
- * 
- * Principles:
- * - Progressive Disclosure: Start simple, reveal complexity
- * - Real-time Feedback: Interactive elements
- * - Graceful Recovery: Clear error states
- * - Contextual Intelligence: Smart suggestions
- * - Transparent Intelligence: Show confidence scores
- * 
- * Avoiding "AI Slop":
- * - No Inter/Roboto - using distinctive fonts
- * - No purple gradients on white
- * - Dark theme with accent colors
- * - Geometric backgrounds
- * - Professional, IDE-inspired aesthetic
- */
-
-import { AnalysisResult, StackMap, Suggestion, PricingResult } from '../types/stackmap.js';
-import { OptimizationTemplate } from '../types/template.js';
-import * as path from 'path';
-
-export class ReportGenerator {
-  /**
-   * Generate beautiful HTML report
-   */
-  async generateHTMLReport(
-    result: AnalysisResult,
-    templates: OptimizationTemplate[]
-  ): Promise<string> {
-    const { stackmap, pricing, suggestions, metadata } = result;
-    
-    return `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -639,10 +606,10 @@ export class ReportGenerator {
       </div>
       <p class="header-subtitle">Inference Intelligence Layer Analysis Report</p>
       <div class="header-meta">
-        <span>📁 ${metadata.filesScanned.toLocaleString()} files</span>
-        <span>📝 ${metadata.linesOfCode.toLocaleString()} LOC</span>
-        <span>🔍 ${stackmap.callsites.length} callsites</span>
-        <span>📅 ${new Date(metadata.analyzedAt).toLocaleDateString()}</span>
+        <span>📁 33 files</span>
+        <span>📝 12,598 LOC</span>
+        <span>🔍 5 callsites</span>
+        <span>📅 26/11/2025</span>
       </div>
     </header>
 
@@ -650,23 +617,23 @@ export class ReportGenerator {
     <div class="stats-grid animate-in delay-1">
       <div class="stat-card cyan">
         <div class="stat-label">Inference Callsites</div>
-        <div class="stat-value">${stackmap.callsites.length}</div>
-        <div class="stat-subtext">across ${metadata.filesWithCalls} files</div>
+        <div class="stat-value">5</div>
+        <div class="stat-subtext">across 3 files</div>
       </div>
       <div class="stat-card green">
         <div class="stat-label">Est. Monthly Cost</div>
-        <div class="stat-value">${pricing ? '$' + pricing.estimatedMonthlyCost.toLocaleString() : 'N/A'}</div>
-        <div class="stat-subtext">${pricing ? 'range: $' + pricing.estimatedMonthlyCost.toLocaleString() + ' - $' + pricing.estimatedMonthlyCostHigh.toLocaleString() : ''}</div>
+        <div class="stat-value">$116</div>
+        <div class="stat-subtext">range: $116 - $158</div>
       </div>
       <div class="stat-card yellow">
         <div class="stat-label">Optimization Opportunities</div>
-        <div class="stat-value">${suggestions.length}</div>
-        <div class="stat-subtext">${metadata.templatesMatched} template matches</div>
+        <div class="stat-value">2</div>
+        <div class="stat-subtext">1 template matches</div>
       </div>
       <div class="stat-card purple">
         <div class="stat-label">Models Detected</div>
-        <div class="stat-value">${stackmap.models.length}</div>
-        <div class="stat-subtext">${stackmap.vendors.length} vendors</div>
+        <div class="stat-value">1</div>
+        <div class="stat-subtext">1 vendors</div>
       </div>
     </div>
 
@@ -677,148 +644,193 @@ export class ReportGenerator {
         <h2>StackMap</h2>
       </div>
       <div class="stackmap-container">
-        ${this.renderStackMapCallsites(stackmap)}
-        ${this.renderStackMapModels(stackmap)}
-        ${this.renderStackMapVendors(stackmap)}
-        ${this.renderStackMapRuntimes(stackmap)}
-        ${this.renderStackMapPatterns(stackmap)}
-      </div>
-    </section>
-
-    <!-- Pricing Section -->
-    ${pricing ? this.renderPricingSection(pricing) : ''}
-
-    <!-- Suggestions Section -->
-    <section class="section animate-in delay-4">
-      <div class="section-header">
-        <div class="section-icon" style="background: rgba(247, 129, 102, 0.1);">💡</div>
-        <h2>Optimization Suggestions</h2>
-      </div>
-      ${suggestions.length > 0 ? suggestions.map(s => this.renderSuggestionCard(s)).join('') : `
-        <div class="suggestion-card">
-          <div class="suggestion-description">No optimization suggestions at this time. Your inference setup looks well-optimized!</div>
-        </div>
-      `}
-    </section>
-
-    <!-- Footer -->
-    <footer class="footer">
-      <div class="footer-logo">PeakInfer v0.95</div>
-      <div class="footer-text">Inference Intelligence Layer • Generated ${new Date().toISOString()}</div>
-    </footer>
-  </div>
-</body>
-</html>`;
-  }
-
-  private renderStackMapCallsites(stackmap: StackMap): string {
-    const topCallsites = stackmap.callsites.slice(0, 10);
-    return `
+        
       <div class="stackmap-section">
-        <div class="stackmap-section-title">Callsites (${stackmap.callsites.length})</div>
-        ${topCallsites.map(cs => `
+        <div class="stackmap-section-title">Callsites (5)</div>
+        
           <div class="stackmap-item">
             <div class="stackmap-item-icon">→</div>
             <div class="stackmap-item-content">
-              <div class="stackmap-item-title">${path.basename(cs.file)}:${cs.line}</div>
+              <div class="stackmap-item-title">stackmap-analyzer.ts:339</div>
               <div class="stackmap-item-meta">
-                <span class="badge badge-cyan">${cs.provider || 'unknown'}</span>
-                <span class="badge badge-purple">${cs.model || 'unknown'}</span>
-                ${cs.isStreaming ? '<span class="badge badge-green">streaming</span>' : ''}
-                ${cs.framework ? `<span class="badge badge-yellow">${cs.framework}</span>` : ''}
+                <span class="badge badge-cyan">Anthropic</span>
+                <span class="badge badge-purple">claude-sonnet-4-5-20250929</span>
+                
+                
               </div>
             </div>
             <div class="confidence-bar">
               <div class="confidence-track">
-                <div class="confidence-fill ${cs.confidence > 0.8 ? 'high' : cs.confidence > 0.6 ? 'medium' : 'low'}" style="width: ${cs.confidence * 100}%"></div>
+                <div class="confidence-fill high" style="width: 100%"></div>
               </div>
-              <span class="confidence-value">${Math.round(cs.confidence * 100)}%</span>
+              <span class="confidence-value">100%</span>
             </div>
           </div>
-        `).join('')}
-        ${stackmap.callsites.length > 10 ? `<div class="stackmap-item-meta" style="padding: 12px 0; text-align: center;">... and ${stackmap.callsites.length - 10} more callsites (see stackmap.json)</div>` : ''}
+        
+          <div class="stackmap-item">
+            <div class="stackmap-item-icon">→</div>
+            <div class="stackmap-item-content">
+              <div class="stackmap-item-title">stackmap-analyzer.ts:463</div>
+              <div class="stackmap-item-meta">
+                <span class="badge badge-cyan">Anthropic</span>
+                <span class="badge badge-purple">claude-sonnet-4-5-20250929</span>
+                
+                
+              </div>
+            </div>
+            <div class="confidence-bar">
+              <div class="confidence-track">
+                <div class="confidence-fill high" style="width: 100%"></div>
+              </div>
+              <span class="confidence-value">100%</span>
+            </div>
+          </div>
+        
+          <div class="stackmap-item">
+            <div class="stackmap-item-icon">→</div>
+            <div class="stackmap-item-content">
+              <div class="stackmap-item-title">optimization-suggester.ts:357</div>
+              <div class="stackmap-item-meta">
+                <span class="badge badge-cyan">Anthropic</span>
+                <span class="badge badge-purple">claude-sonnet-4-5-20250929</span>
+                
+                
+              </div>
+            </div>
+            <div class="confidence-bar">
+              <div class="confidence-track">
+                <div class="confidence-fill high" style="width: 100%"></div>
+              </div>
+              <span class="confidence-value">100%</span>
+            </div>
+          </div>
+        
+          <div class="stackmap-item">
+            <div class="stackmap-item-icon">→</div>
+            <div class="stackmap-item-content">
+              <div class="stackmap-item-title">multi-agent-orchestrator.ts:153</div>
+              <div class="stackmap-item-meta">
+                <span class="badge badge-cyan">Anthropic</span>
+                <span class="badge badge-purple">claude-sonnet-4-5-20250929</span>
+                
+                
+              </div>
+            </div>
+            <div class="confidence-bar">
+              <div class="confidence-track">
+                <div class="confidence-fill high" style="width: 100%"></div>
+              </div>
+              <span class="confidence-value">100%</span>
+            </div>
+          </div>
+        
+          <div class="stackmap-item">
+            <div class="stackmap-item-icon">→</div>
+            <div class="stackmap-item-content">
+              <div class="stackmap-item-title">multi-agent-orchestrator.ts:246</div>
+              <div class="stackmap-item-meta">
+                <span class="badge badge-cyan">Anthropic</span>
+                <span class="badge badge-purple">claude-sonnet-4-5-20250929</span>
+                
+                
+              </div>
+            </div>
+            <div class="confidence-bar">
+              <div class="confidence-track">
+                <div class="confidence-fill high" style="width: 100%"></div>
+              </div>
+              <span class="confidence-value">100%</span>
+            </div>
+          </div>
+        
+        
       </div>
-    `;
-  }
-
-  private renderStackMapModels(stackmap: StackMap): string {
-    return `
+    
+        
       <div class="stackmap-section">
-        <div class="stackmap-section-title">Models (${stackmap.models.length})</div>
-        ${stackmap.models.map(m => `
+        <div class="stackmap-section-title">Models (1)</div>
+        
           <div class="stackmap-item">
             <div class="stackmap-item-icon">◆</div>
             <div class="stackmap-item-content">
-              <div class="stackmap-item-title">${m.name}</div>
-              <div class="stackmap-item-meta">${m.provider} • ${m.callCount} calls • ~${this.formatTokens(m.estimatedTokensPerMonth)} tok/mo</div>
+              <div class="stackmap-item-title">claude-sonnet-4-5-20250929</div>
+              <div class="stackmap-item-meta">Anthropic • 5 calls • ~0 tok/mo</div>
             </div>
           </div>
-        `).join('')}
+        
       </div>
-    `;
-  }
-
-  private renderStackMapVendors(stackmap: StackMap): string {
-    return `
+    
+        
       <div class="stackmap-section">
-        <div class="stackmap-section-title">Vendors / Providers (${stackmap.vendors.length})</div>
-        ${stackmap.vendors.map(v => `
+        <div class="stackmap-section-title">Vendors / Providers (1)</div>
+        
           <div class="stackmap-item">
             <div class="stackmap-item-icon">●</div>
             <div class="stackmap-item-content">
-              <div class="stackmap-item-title">${v.name}</div>
-              <div class="stackmap-item-meta">${v.callCount} calls • ${v.sdkType} • Models: ${v.models.join(', ')}</div>
+              <div class="stackmap-item-title">Anthropic</div>
+              <div class="stackmap-item-meta">5 calls • direct SDK • Models: claude-sonnet-4-5-20250929</div>
             </div>
           </div>
-        `).join('')}
+        
       </div>
-    `;
-  }
-
-  private renderStackMapRuntimes(stackmap: StackMap): string {
-    if (stackmap.runtimes.length === 0) return '';
-    return `
+    
+        
       <div class="stackmap-section">
-        <div class="stackmap-section-title">Runtimes (${stackmap.runtimes.length})</div>
-        ${stackmap.runtimes.map(r => `
+        <div class="stackmap-section-title">Runtimes (1)</div>
+        
           <div class="stackmap-item">
             <div class="stackmap-item-icon">⚡</div>
             <div class="stackmap-item-content">
-              <div class="stackmap-item-title">${r.name}</div>
-              <div class="stackmap-item-meta">${r.vendor || ''} ${r.inferred ? '(inferred)' : ''}</div>
+              <div class="stackmap-item-title">TensorRT-LLM (inferred)</div>
+              <div class="stackmap-item-meta">Anthropic backend (inferred)</div>
             </div>
           </div>
-        `).join('')}
+        
       </div>
-    `;
-  }
-
-  private renderStackMapPatterns(stackmap: StackMap): string {
-    const patterns = [
-      { name: 'Retry Logic', detected: stackmap.patterns.hasRetry },
-      { name: 'Batching', detected: stackmap.patterns.hasBatching },
-      { name: 'Streaming', detected: stackmap.patterns.hasStreaming },
-      { name: 'Caching', detected: stackmap.patterns.hasCaching },
-      { name: 'Router / Model Switching', detected: stackmap.patterns.hasRouting },
-      { name: 'Fallback Chain', detected: stackmap.patterns.hasFallback },
-    ];
-    return `
+    
+        
       <div class="stackmap-section">
         <div class="stackmap-section-title">Patterns Detected</div>
         <div class="patterns-grid">
-          ${patterns.map(p => `
+          
             <div class="pattern-item">
-              <div class="pattern-indicator ${p.detected ? 'detected' : 'missing'}"></div>
-              <span class="pattern-label">${p.name}</span>
+              <div class="pattern-indicator missing"></div>
+              <span class="pattern-label">Retry Logic</span>
             </div>
-          `).join('')}
+          
+            <div class="pattern-item">
+              <div class="pattern-indicator missing"></div>
+              <span class="pattern-label">Batching</span>
+            </div>
+          
+            <div class="pattern-item">
+              <div class="pattern-indicator missing"></div>
+              <span class="pattern-label">Streaming</span>
+            </div>
+          
+            <div class="pattern-item">
+              <div class="pattern-indicator missing"></div>
+              <span class="pattern-label">Caching</span>
+            </div>
+          
+            <div class="pattern-item">
+              <div class="pattern-indicator missing"></div>
+              <span class="pattern-label">Router / Model Switching</span>
+            </div>
+          
+            <div class="pattern-item">
+              <div class="pattern-indicator missing"></div>
+              <span class="pattern-label">Fallback Chain</span>
+            </div>
+          
         </div>
       </div>
-    `;
-  }
+    
+      </div>
+    </section>
 
-  private renderPricingSection(pricing: PricingResult): string {
-    return `
+    <!-- Pricing Section -->
+    
       <section class="section animate-in delay-3">
         <div class="section-header">
           <div class="section-icon" style="background: rgba(63, 185, 80, 0.1);">💰</div>
@@ -837,121 +849,123 @@ export class ReportGenerator {
                 </tr>
               </thead>
               <tbody>
-                ${pricing.byVendor.map(v => `
+                
                   <tr>
-                    <td>${v.name}</td>
-                    <td>$${v.cost.toLocaleString()}/mo</td>
-                    <td>${v.percentage}%</td>
+                    <td>Anthropic</td>
+                    <td>$105/mo</td>
+                    <td>100%</td>
                     <td>
                       <div class="pricing-bar">
-                        <div class="pricing-bar-fill" style="width: ${v.percentage}%"></div>
+                        <div class="pricing-bar-fill" style="width: 100%"></div>
                       </div>
                     </td>
                   </tr>
-                `).join('')}
+                
               </tbody>
             </table>
           </div>
           
-          ${pricing.deltas && pricing.deltas.length > 0 ? `
+          
             <div class="stackmap-section">
               <div class="stackmap-section-title">Pricing Deltas</div>
-              ${pricing.deltas.map(d => `
+              
                 <div class="stackmap-item">
-                  <div class="stackmap-item-icon">${d.change < 0 ? '↓' : '↑'}</div>
+                  <div class="stackmap-item-icon">↑</div>
                   <div class="stackmap-item-content">
-                    <div class="stackmap-item-title">${d.vendor} ${d.model}</div>
-                    <div class="stackmap-item-meta">${d.change}% since ${d.date}</div>
+                    <div class="stackmap-item-title">Anthropic claude-3.5-sonnet</div>
+                    <div class="stackmap-item-meta">0% since Nov 2025</div>
                   </div>
                 </div>
-              `).join('')}
+              
             </div>
-          ` : ''}
           
-          ${pricing.alternatives && pricing.alternatives.length > 0 ? `
-            <div class="stackmap-section">
-              <div class="stackmap-section-title">Alternative Pricing Options</div>
-              <table class="pricing-table">
-                <thead>
-                  <tr>
-                    <th>Model</th>
-                    <th>Alternative Provider</th>
-                    <th>Est. Cost</th>
-                    <th>Savings</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${pricing.alternatives.map(a => `
-                    <tr>
-                      <td>${a.model}</td>
-                      <td>${a.provider}</td>
-                      <td>${a.cost}/mo</td>
-                      <td><span class="badge badge-green">${a.savings}</span></td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
-          ` : ''}
+          
+          
         </div>
       </section>
-    `;
-  }
+    
 
-  private renderSuggestionCard(suggestion: Suggestion): string {
-    return `
-      <div class="suggestion-card priority-${suggestion.priority}">
+    <!-- Suggestions Section -->
+    <section class="section animate-in delay-4">
+      <div class="section-header">
+        <div class="section-icon" style="background: rgba(247, 129, 102, 0.1);">💡</div>
+        <h2>Optimization Suggestions</h2>
+      </div>
+      
+      <div class="suggestion-card priority-high">
         <div class="suggestion-header">
           <div>
-            <div class="suggestion-title">${suggestion.issue}</div>
-            <div class="suggestion-location">📍 ${suggestion.location}</div>
+            <div class="suggestion-title">No caching detected for LLM calls</div>
+            <div class="suggestion-location">📍 src/core/stackmap-analyzer.ts:339</div>
           </div>
-          <span class="badge badge-${suggestion.priority === 'critical' ? 'orange' : suggestion.priority === 'high' ? 'yellow' : suggestion.priority === 'medium' ? 'cyan' : 'green'}">${suggestion.priority.toUpperCase()}</span>
+          <span class="badge badge-yellow">HIGH</span>
         </div>
-        <div class="suggestion-description">${suggestion.recommendation}</div>
+        <div class="suggestion-description">Add semantic caching for repeated prompts (Anthropic supports prompt caching)</div>
         <div class="suggestion-metrics">
-          ${suggestion.estimatedMonthlySavings ? `
-            <div class="suggestion-metric">
-              <div class="suggestion-metric-label">Est. Savings</div>
-              <div class="suggestion-metric-value">$${suggestion.estimatedMonthlySavings.toLocaleString()}/mo</div>
-            </div>
-          ` : ''}
+          
           <div class="suggestion-metric">
             <div class="suggestion-metric-label">Complexity</div>
-            <div class="suggestion-metric-value">${suggestion.complexity}</div>
+            <div class="suggestion-metric-value">low</div>
           </div>
           <div class="suggestion-metric">
             <div class="suggestion-metric-label">Confidence</div>
-            <div class="suggestion-metric-value">${Math.round(suggestion.confidence * 100)}%</div>
+            <div class="suggestion-metric-value">90%</div>
           </div>
-          ${suggestion.effortEstimate ? `
+          
             <div class="suggestion-metric">
               <div class="suggestion-metric-label">Effort</div>
-              <div class="suggestion-metric-value">${suggestion.effortEstimate}</div>
+              <div class="suggestion-metric-value">5-8 engineering days</div>
             </div>
-          ` : ''}
+          
         </div>
-        ${suggestion.templateId ? `
+        
           <div class="suggestion-template">
             <span class="suggestion-template-icon">📚</span>
-            <span class="suggestion-template-text">Template: <span class="suggestion-template-id">${suggestion.templateId}</span> ${suggestion.templateName ? `- ${suggestion.templateName}` : ''}</span>
+            <span class="suggestion-template-text">Template: <span class="suggestion-template-id">cross-layer-routing-caching</span> - Intelligent Model Routing with Semantic Caching</span>
           </div>
-        ` : ''}
-        ${suggestion.implementationSteps && suggestion.implementationSteps.length > 0 ? `
+        
+        
           <div style="margin-top: 16px;">
             <div class="stackmap-section-title" style="margin-bottom: 8px;">Implementation Steps</div>
             <ol style="margin-left: 20px; color: var(--text-secondary);">
-              ${suggestion.implementationSteps.map(step => `<li style="margin: 4px 0;">${step}</li>`).join('')}
+              <li style="margin: 4px 0;">Implement intelligent model router</li><li style="margin: 4px 0;">Implement semantic caching layer</li><li style="margin: 4px 0;">Integrate routing + caching pipeline</li>
             </ol>
           </div>
-        ` : ''}
+        
       </div>
-    `;
-  }
+    
+      <div class="suggestion-card priority-low">
+        <div class="suggestion-header">
+          <div>
+            <div class="suggestion-title">No retry logic detected</div>
+            <div class="suggestion-location">📍 src/core/stackmap-analyzer.ts:339</div>
+          </div>
+          <span class="badge badge-green">LOW</span>
+        </div>
+        <div class="suggestion-description">Add exponential backoff retry for API resilience</div>
+        <div class="suggestion-metrics">
+          
+          <div class="suggestion-metric">
+            <div class="suggestion-metric-label">Complexity</div>
+            <div class="suggestion-metric-value">low</div>
+          </div>
+          <div class="suggestion-metric">
+            <div class="suggestion-metric-label">Confidence</div>
+            <div class="suggestion-metric-value">85%</div>
+          </div>
+          
+        </div>
+        
+        
+      </div>
+    
+    </section>
 
-  private formatTokens(tokens: number): string {
-    if (tokens >= 1000000) return (tokens / 1000000).toFixed(1) + 'M';
-    if (tokens >= 1000) return (tokens / 1000).toFixed(0) + 'K';
-    return tokens.toString();
-  }
-}
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-logo">PeakInfer v0.95</div>
+      <div class="footer-text">Inference Intelligence Layer • Generated 2025-11-26T09:26:34.601Z</div>
+    </footer>
+  </div>
+</body>
+</html>

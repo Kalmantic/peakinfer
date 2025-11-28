@@ -14,6 +14,10 @@ import { fileURLToPath } from 'url';
 import { glob } from 'glob';
 import { OptimizationTemplate, EnvironmentProfile } from '../types/template.js';
 
+interface TemplateManagerOptions {
+  quiet?: boolean;
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -22,9 +26,11 @@ export class TemplateManager {
   private templatesLoaded = false;
   private cacheDir: string;
   private templateDirs: string[];
+  private quiet: boolean;
 
-  constructor(templateDirs?: string[]) {
+  constructor(templateDirs?: string[], options: TemplateManagerOptions = {}) {
     this.cacheDir = path.join(os.homedir(), '.peakinfer', 'templates');
+    this.quiet = options.quiet ?? false; // Set quiet BEFORE findTemplateDirs
     this.templateDirs = templateDirs || this.findTemplateDirs();
   }
 
@@ -32,7 +38,7 @@ export class TemplateManager {
    * Load all templates from directories and cache
    */
   async loadTemplates(): Promise<void> {
-    console.log('📋 Loading optimization templates...');
+    this.log('📋 Loading optimization templates...');
 
     // Ensure cache directory exists
     await ensureDir(this.cacheDir);
@@ -55,7 +61,7 @@ export class TemplateManager {
         await this.cacheTemplates();
       }
 
-      console.log(`✅ Loaded ${this.templates.size} optimization templates`);
+      this.log(`✅ Loaded ${this.templates.size} optimization templates`);
       this.templatesLoaded = true;
     } catch (error) {
       console.error('❌ Failed to load templates:', error instanceof Error ? error.message : String(error));
@@ -67,7 +73,7 @@ export class TemplateManager {
    * Load templates from a directory
    */
   private async loadTemplatesFromDirectory(dir: string): Promise<void> {
-    console.log(`  📁 Loading templates from ${dir}...`);
+    this.log(`  📁 Loading templates from ${dir}...`);
 
     // Find all markdown files
     const templateFiles = await glob('**/*.md', {
@@ -81,7 +87,7 @@ export class TemplateManager {
         const template = await this.parseTemplateFile(file);
         if (template) {
           this.templates.set(template.id, template);
-          console.log(`  ✅ Loaded: ${template.id} - ${template.name}`);
+          this.log(`  ✅ Loaded: ${template.id} - ${template.name}`);
         }
       } catch (error) {
         console.warn(`  ⚠️  Failed to parse ${file}:`, error instanceof Error ? error.message : String(error));
@@ -129,7 +135,7 @@ export class TemplateManager {
     const cacheFile = path.join(this.cacheDir, 'templates.json');
 
     if (await pathExists(cacheFile)) {
-      console.log('  📦 Loading templates from cache...');
+      this.log('  📦 Loading templates from cache...');
       const cached = await readJson(cacheFile);
       
       for (const template of cached) {
@@ -146,7 +152,7 @@ export class TemplateManager {
     const templates = Array.from(this.templates.values());
     
     await writeJson(cacheFile, templates, { spaces: 2 });
-    console.log(`  💾 Cached ${templates.length} templates to ${this.cacheDir}`);
+    this.log(`  💾 Cached ${templates.length} templates to ${this.cacheDir}`);
   }
 
   /**
@@ -159,23 +165,32 @@ export class TemplateManager {
       path.join(os.homedir(), '.peakinfer', 'templates'),
     ];
 
-    const foundDirs = possibleDirs.filter(dir => {
+    // Resolve to absolute paths and dedupe
+    const resolvedDirs = new Set<string>();
+    const foundDirs: string[] = [];
+
+    for (const dir of possibleDirs) {
       try {
-        // Use Node's built-in existsSync
-        const exists = existsSync(dir);
-        if (exists) {
-          console.log(`  📁 Found template directory: ${dir}`);
+        const resolvedDir = path.resolve(dir);
+        // Skip if already seen (deduplication)
+        if (resolvedDirs.has(resolvedDir)) {
+          continue;
         }
-        return exists;
+        resolvedDirs.add(resolvedDir);
+
+        const exists = existsSync(resolvedDir);
+        if (exists) {
+          this.log(`  📁 Found template directory: ${resolvedDir}`);
+          foundDirs.push(resolvedDir);
+        }
       } catch (err) {
-        console.log(`  ❌ Error checking ${dir}:`, err);
-        return false;
+        this.log(`  ❌ Error checking ${dir}:`, err);
       }
-    });
+    }
 
     if (foundDirs.length === 0) {
-      console.log(`  ⚠️  No template directories found. Searched:`);
-      possibleDirs.forEach(dir => console.log(`     - ${dir}`));
+      this.log(`  ⚠️  No template directories found. Searched:`);
+      possibleDirs.forEach(dir => this.log(`     - ${dir}`));
     }
 
     return foundDirs;
@@ -365,13 +380,13 @@ export class TemplateManager {
    * Sync templates from remote repository (future)
    */
   async syncTemplates(): Promise<void> {
-    console.log('🔄 Syncing templates...');
+    this.log('🔄 Syncing templates...');
     
     // For now, just reload from local directories
     this.templates.clear();
     await this.loadTemplates();
     
-    console.log('✅ Templates synced successfully');
+    this.log('✅ Templates synced successfully');
   }
 
   /**
@@ -382,7 +397,7 @@ export class TemplateManager {
     
     if (await pathExists(cacheFile)) {
       await remove(cacheFile);
-      console.log('✅ Template cache cleared');
+      this.log('✅ Template cache cleared');
     }
   }
 
@@ -409,6 +424,12 @@ export class TemplateManager {
       exists: false,
       cache_dir: this.cacheDir,
     };
+  }
+
+  private log(...args: unknown[]) {
+    if (!this.quiet) {
+      console.log(...args);
+    }
   }
 }
 
