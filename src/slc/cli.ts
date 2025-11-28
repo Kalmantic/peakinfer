@@ -1050,7 +1050,7 @@ environment:
 
   // Show version
   if (args.includes('--version') || args.includes('-v')) {
-    console.log('peakinfer v0.2.0');
+    console.log('peakinfer v0.2.1');
     process.exit(0);
   }
 
