@@ -50,6 +50,7 @@ Your task:
 1. Find every place in the codebase that makes calls to LLM providers
 2. Identify the full tech stack from Application layer down to Hardware
 3. Detect inference patterns (retry, batching, streaming, caching, routing, fallback, guardrails)
+4. Provide AGNOSTIC optimization suggestions. Do not bias towards the current provider. If a task is simple (e.g. summarization, extraction), suggest cheaper alternatives like Llama-3, Gemini Flash, or Claude Haiku.
 
 ## What to look for:
 
@@ -105,7 +106,8 @@ Return a JSON object with THREE fields:
       "runtime": "<runtime if detected or null>",
       "taskKind": "<chat|completion|embedding|image|audio|other>",
       "confidence": <0.0-1.0>,
-      "code": "<the actual code snippet>"
+      "code": "<the actual code snippet>",
+      "optimizationSuggestion": "<specific advice based on task complexity. Suggest the cheapest viable model regardless of provider (e.g. 'switch to Llama-3-8b or Gemini Flash for this simple task')>"
     }
   ],
   "techStack": {
@@ -395,6 +397,7 @@ function parseCallsitesArray(items: unknown[]): ClassifiedCallsite[] {
           whyProvider: String(reasoning?.whyProvider || item.code || ''),
           whyModel: String(reasoning?.whyModel || ''),
         },
+        optimizationSuggestion: item.optimizationSuggestion ? String(item.optimizationSuggestion) : undefined,
       };
     })
     .filter((cs) => cs.file && cs.line > 0);

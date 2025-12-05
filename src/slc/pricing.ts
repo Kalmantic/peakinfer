@@ -101,19 +101,22 @@ const DEFAULT_USAGE = {
 
 /** Suggestions for cost optimization by model */
 const MODEL_SUGGESTIONS: Record<string, string> = {
-  // OpenAI premium → budget alternatives
-  'gpt-4o': 'consider gpt-4o-mini for simpler tasks (94% cheaper)',
-  'gpt-4-turbo': 'migrate to gpt-4o for better performance at lower cost',
-  'o1': 'reserve for complex reasoning; use gpt-4o for general tasks',
-  'o1-mini': 'consider gpt-4o-mini for non-reasoning tasks',
-  // Anthropic premium → budget alternatives
+  // OpenAI premium → budget alternatives (Cross-provider)
+  'gpt-4o': 'consider gpt-4o-mini (94% cheaper) or Llama-3-70b via Groq for high speed',
+  'gpt-4-turbo': 'migrate to gpt-4o or Claude 3.5 Sonnet for better performance/cost',
+  'o1': 'reserve for complex reasoning; use gpt-4o or Claude 3.5 Sonnet for general tasks',
+  'o1-mini': 'consider gpt-4o-mini or Gemini Flash for non-reasoning tasks',
+  
+  // Anthropic premium
   'claude-3-opus': 'consider claude-3-5-sonnet for 80% savings with similar quality',
-  'claude-3-5-sonnet': 'consider claude-3-5-haiku for simpler tasks (73% cheaper)',
+  'claude-3-5-sonnet': 'consider claude-3-5-haiku or Llama-3-70b for simpler tasks',
   'claude-3-sonnet': 'upgrade to claude-3-5-sonnet for better quality at same price',
+  
   // Google
-  'gemini-1.5-pro': 'consider gemini-1.5-flash for 94% savings on simpler tasks',
+  'gemini-1.5-pro': 'consider gemini-1.5-flash (94% cheaper) or Llama-3-8b for extreme efficiency',
+  
   // Cohere
-  'command-r-plus': 'consider command-r for 94% savings on simpler tasks',
+  'command-r-plus': 'consider command-r or Llama-3-70b for simpler tasks',
 };
 
 // =============================================================================
@@ -190,54 +193,33 @@ function getStaticModelPrice(
   provider: string | null,
   model: string | null
 ): ModelPricing | null {
-  if (!model) return null;
+  if (!model || !provider) return null;
 
   // Normalize model name for matching
   const normalizedModel = normalizeModelName(model);
 
-  // Try exact provider match first
-  if (provider) {
-    const providerData = STATIC_PRICING_DATA[provider];
-    if (providerData) {
-      // Try exact model match
-      if (providerData[model]) {
-        return {
-          provider,
-          model,
-          inputPer1M: providerData[model].inputPer1M,
-          outputPer1M: providerData[model].outputPer1M,
-        };
-      }
-      // Try normalized match
-      if (providerData[normalizedModel]) {
-        return {
-          provider,
-          model: normalizedModel,
-          inputPer1M: providerData[normalizedModel].inputPer1M,
-          outputPer1M: providerData[normalizedModel].outputPer1M,
-        };
-      }
-    }
+  // Try exact provider match
+  const providerData = STATIC_PRICING_DATA[provider];
+  if (!providerData) return null;
+
+  // Try exact model match
+  if (providerData[model]) {
+    return {
+      provider,
+      model,
+      inputPer1M: providerData[model].inputPer1M,
+      outputPer1M: providerData[model].outputPer1M,
+    };
   }
 
-  // Search all providers for model match
-  for (const [providerName, models] of Object.entries(STATIC_PRICING_DATA)) {
-    if (models[model]) {
-      return {
-        provider: providerName,
-        model,
-        inputPer1M: models[model].inputPer1M,
-        outputPer1M: models[model].outputPer1M,
-      };
-    }
-    if (models[normalizedModel]) {
-      return {
-        provider: providerName,
-        model: normalizedModel,
-        inputPer1M: models[normalizedModel].inputPer1M,
-        outputPer1M: models[normalizedModel].outputPer1M,
-      };
-    }
+  // Try normalized match
+  if (providerData[normalizedModel]) {
+    return {
+      provider,
+      model: normalizedModel,
+      inputPer1M: providerData[normalizedModel].inputPer1M,
+      outputPer1M: providerData[normalizedModel].outputPer1M,
+    };
   }
 
   return null;
@@ -324,8 +306,10 @@ function calculateCallsiteCost(cs: ClassifiedCallsite): CostWithProvider {
   const lowCost = calculateMonthlyCost(pricing, DEFAULT_USAGE.low);
   const highCost = calculateMonthlyCost(pricing, DEFAULT_USAGE.high);
 
-  // Get optimization suggestion for this model (try both original and normalized)
-  const suggestion = MODEL_SUGGESTIONS[model] || MODEL_SUGGESTIONS[normalizedModel];
+  // Get optimization suggestion: prefer agent's dynamic analysis, fall back to static map
+  const suggestion = cs.optimizationSuggestion 
+    ? `(AI Analysis) ${cs.optimizationSuggestion}`
+    : (MODEL_SUGGESTIONS[model] || MODEL_SUGGESTIONS[normalizedModel]);
 
   return {
     file: cs.file,

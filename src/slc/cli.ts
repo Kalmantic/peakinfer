@@ -20,6 +20,14 @@ import {
   renderSuccessState,
   clearLoadingState,
 } from './renderer.js';
+import {
+  renderPRDZeroState,
+  renderPRDSuccessState,
+  renderPRDErrorState,
+  renderPRDPartialState,
+  DEFAULT_SDK_CHECKS,
+  type SDKCheckResult,
+} from './prd-renderer.js';
 import { generateHTMLReport } from './html-renderer.js';
 import type { ScanResult, StackMap, PricingSummary, TechStack } from './types.js';
 
@@ -111,7 +119,7 @@ interface AnalyzeOptions {
 /**
  * Run the complete analysis pipeline using AI agents.
  */
-export async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promise<void> {
+async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promise<void> {
   // Check API key first (friendly first-use experience)
   if (!checkApiKey()) {
     process.exit(1);
@@ -130,13 +138,47 @@ export async function analyze(targetPath: string, options: AnalyzeOptions = {}):
     process.exit(1);
   }
 
+  // Import progress utilities
+  const { ProgressManager, createAnimatedMessage } = await import('./progress.js');
+
+  // Initialize progress manager (outside try block so it can be accessed in catch)
+  const progress = new ProgressManager({
+    showTime: true,
+    color: true,
+  });
+
   try {
-    // Quick scan just for file count (fast, no API calls)
-    renderLoadingState(root, 'scanning files...');
-    const scanResult = await scan(root);
+
+    // Phase 1: Scanning codebase
+    progress.start('Scanning codebase...');
+
+    // Import ProgressBar for visual progress
+    const { ProgressBar } = await import('./progress.js');
+
+    // Create progress bar for file scanning (we'll update it as we scan)
+    let progressBar: InstanceType<typeof ProgressBar> | null = null;
+
+    const scanResult = await scan(root, {
+      onProgress: (current, total, currentFile) => {
+        // Initialize progress bar on first update
+        if (!progressBar && total > 0) {
+          progress.stop(); // Stop the spinner
+          progressBar = new ProgressBar(total, {
+            width: 40,
+            label: 'Scanning codebase'
+          });
+        }
+
+        // Update progress bar with current file info
+        if (progressBar) {
+          const fileName = currentFile ? currentFile.split('/').pop() || currentFile : '';
+          progressBar.update(current, fileName);
+        }
+      }
+    });
 
     if (scanResult.totalFiles === 0) {
-      clearLoadingState();
+      progress.stop();
       renderErrorState({
         code: 'NO_FILES',
         message: 'No supported source files found',
@@ -145,8 +187,28 @@ export async function analyze(targetPath: string, options: AnalyzeOptions = {}):
       process.exit(1);
     }
 
-    // Agent-based analysis (fast!)
-    renderLoadingState(root, `analyzing ${scanResult.totalFiles} files...`);
+    // Resume with regular progress indicator
+    if (!progressBar) {
+      // If we didn't use progress bar (small codebase), just update the spinner
+      progress.update(`Found ${scanResult.totalFiles} files to analyze`);
+    } else {
+      // Restart progress after progress bar
+      progress.start(`Found ${scanResult.totalFiles} files to analyze`);
+    }
+
+    // Phase 2: Pattern Detection
+    progress.startStep('detect-patterns', 'Detecting LLM usage patterns');
+
+    // Animated messages during analysis
+    const analysisMessages = [
+      'Scanning for OpenAI API calls...',
+      'Detecting Anthropic SDK usage...',
+      'Identifying LangChain patterns...',
+      'Mapping inference callsites...',
+      'Analyzing cost distribution...',
+    ];
+    const animatedMsg = createAnimatedMessage(analysisMessages);
+    animatedMsg.start(2000);
 
     // Scale maxTurns based on file count (more files = more exploration needed)
     const baseTurns = 30;
@@ -156,59 +218,123 @@ export async function analyze(targetPath: string, options: AnalyzeOptions = {}):
     const result = await analyzeWithAgent(root, {
       maxTurns,
       onProgress: (msg) => {
-        renderLoadingState(root, msg);
+        // Update progress with agent messages
+        if (msg.includes('Searching')) {
+          progress.update(msg, ['semantic analysis']);
+        } else if (msg.includes('Found')) {
+          progress.update(msg, ['validation']);
+        } else {
+          progress.update(msg);
+        }
       },
     });
 
+    // Stop animated messages
+    animatedMsg.stop();
+
+    // Complete pattern detection step
+    progress.completeStep('detect-patterns', 'success', `Found ${result.callsites.length} callsites`);
+
     const { callsites, stackMap, pricing, techStack, patterns, totalCostUsd, durationMs } = result;
 
-    // Write output files
-    const outputFiles = callsites.length > 0 ? writeOutputFiles(root, stackMap, pricing, options.html) : [];
+    // Phase 3: Risk Assessment
+    if (callsites.length > 0 && patterns) {
+      progress.startStep('risk-assessment', 'Assessing optimization risks');
 
-    // Write HTML report if requested
-    let htmlPath: string | null = null;
-    if (options.html && callsites.length > 0) {
-      htmlPath = writeHTMLReport(root, scanResult, stackMap, pricing, techStack);
-      if (htmlPath) {
-        outputFiles.push(htmlPath);
-      }
+      // Import risk detection
+      const { detectRisks } = await import('./recommender.js');
+      const riskAssessment = detectRisks(patterns, callsites);
+
+      const riskLevel = (riskAssessment as any).overallRisk ||
+        (riskAssessment.summary && typeof riskAssessment.summary === 'object' &&
+         'overallRisk' in riskAssessment.summary ?
+         (riskAssessment.summary as any).overallRisk : 'low');
+      const riskCount = riskAssessment.risks?.length || 0;
+      progress.completeStep('risk-assessment', riskCount > 0 ? 'warning' : 'success',
+        `${riskCount} potential risks identified (${riskLevel} overall risk)`);
     }
 
-    // Render results
-    clearLoadingState();
+    // Phase 4: Generating Reports
+    let outputFiles: string[] = [];
+    if (callsites.length > 0) {
+      progress.startStep('generate-reports', 'Generating reports');
 
+      // Write output files
+      outputFiles = writeOutputFiles(root, stackMap, pricing, options.html);
+
+      // Write HTML report if requested
+      let htmlPath: string | null = null;
+      if (options.html) {
+        htmlPath = writeHTMLReport(root, scanResult, stackMap, pricing, techStack);
+        if (htmlPath) {
+          outputFiles.push(htmlPath);
+        }
+      }
+
+      progress.completeStep('generate-reports', 'success', `Generated ${outputFiles.length} output files`);
+    }
+
+    // Complete the progress
+    progress.succeed(`Analysis complete in ${(durationMs / 1000).toFixed(1)}s`);
+
+    // Render results with PRD-aligned output format
     if (callsites.length === 0) {
-      renderZeroState(root);
+      // Build SDK check results from tech stack / detected patterns
+      const sdkChecks: SDKCheckResult[] = [
+        { name: 'OpenAI SDK', found: techStack?.application?.sdks?.some(s => s.toLowerCase().includes('openai')) || false },
+        { name: 'Anthropic SDK', found: techStack?.application?.sdks?.some(s => s.toLowerCase().includes('anthropic')) || false },
+        { name: 'LangChain', found: techStack?.application?.frameworks?.some(f => f.toLowerCase().includes('langchain')) || false },
+        { name: 'LlamaIndex', found: techStack?.application?.frameworks?.some(f => f.toLowerCase().includes('llama')) || false },
+        { name: 'vLLM', found: techStack?.serving?.runtimes?.some(r => r.toLowerCase().includes('vllm')) || false },
+        { name: 'Direct HTTP to inference APIs', found: false },
+      ];
+      renderPRDZeroState(scanResult, sdkChecks);
     } else {
-      renderSuccessState(scanResult, stackMap, pricing, techStack, outputFiles);
+      // PRD-aligned success state with box tables
+      renderPRDSuccessState(
+        scanResult,
+        callsites,
+        stackMap,
+        pricing,
+        techStack,
+        patterns,
+        outputFiles
+      );
 
       // Show analysis stats
-      console.log(`  analysis: ${(durationMs / 1000).toFixed(1)}s, $${totalCostUsd.toFixed(4)} API cost`);
+      console.log(`Analysis completed: ${(durationMs / 1000).toFixed(1)}s, $${totalCostUsd.toFixed(4)} API cost`);
       console.log('');
 
       // Open HTML report in browser if requested
-      if (htmlPath && options.open) {
-        openInBrowser(htmlPath);
+      if (options.html) {
+        const htmlPath = path.join(root, OUTPUT_HTML);
+        if (fs.existsSync(htmlPath) && options.open) {
+          openInBrowser(htmlPath);
+        }
       }
     }
   } catch (error) {
-    clearLoadingState();
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-    // Provide context-specific suggestions
-    let suggestion = 'Check your API key and network connection';
-    if (errorMessage.includes('error_max_turns')) {
-      suggestion = 'The codebase is large. Try analyzing a subdirectory, or the analysis may have partially completed - check the output files.';
-    } else if (errorMessage.includes('rate_limit')) {
-      suggestion = 'API rate limit reached. Wait a moment and try again.';
-    } else if (errorMessage.includes('authentication')) {
-      suggestion = 'Check your ANTHROPIC_API_KEY is valid.';
+    // Stop any progress indicators
+    if (typeof progress !== 'undefined') {
+      progress.fail('Analysis failed');
     }
 
-    renderErrorState({
-      code: 'API_ERROR',
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    // Determine error type for PRD-aligned output
+    let errorType: 'api_connection' | 'api_key' | 'rate_limit' | 'other' = 'other';
+    if (errorMessage.includes('authentication') || errorMessage.includes('ANTHROPIC_API_KEY')) {
+      errorType = 'api_key';
+    } else if (errorMessage.includes('rate_limit') || errorMessage.includes('429')) {
+      errorType = 'rate_limit';
+    } else if (errorMessage.includes('connection') || errorMessage.includes('network') || errorMessage.includes('ENOTFOUND')) {
+      errorType = 'api_connection';
+    }
+
+    // Use PRD-aligned error state
+    renderPRDErrorState({
+      type: errorType,
       message: errorMessage,
-      suggestion,
     });
     process.exit(1);
   }
@@ -730,8 +856,17 @@ async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'b
     process.exit(1);
   }
 
+  // Import progress utilities
+  const { ProgressManager, createAnimatedMessage, theme } = await import('./progress.js');
+
+  // Initialize progress manager
+  const progress = new ProgressManager({
+    showTime: true,
+    color: true,
+  });
+
   console.log(`
-  peakinfer recommend
+  ${theme.bold('peakinfer recommend')}
   ═══════════════════════════════════════════════════════════════
 `);
 
@@ -740,35 +875,68 @@ async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'b
     const { analyzeWithAgent } = await import('./agent-analyzer.js');
     const { generateRecommendations, generateReport, detectRisks, generatePatternsReport, generateRiskReport } = await import('./recommender.js');
 
-    // Phase 1: Fast agent-based analysis (same as `analyze` command)
-    console.log('  analyzing codebase...');
-    console.log(`  target: ${root}`);
-    console.log(`  prioritize: ${prioritize}`);
-    console.log('');
+    // Start progress
+    progress.start('Initializing recommendation engine...');
+    progress.update(`Target: ${root}`, [`Priority: ${prioritize}`]);
 
-    // Scale maxTurns based on codebase size (same as analyze command)
+    // Phase 1: Codebase Analysis
+    progress.startStep('analyze', 'Analyzing codebase for LLM usage');
+
+    // Scale maxTurns based on codebase size
     const { scan } = await import('./scanner.js');
-    const scanResult = await scan(root);
+    const { ProgressBar } = await import('./progress.js');
+
+    // Scan with progress bar
+    let progressBar: InstanceType<typeof ProgressBar> | null = null;
+
+    const scanResult = await scan(root, {
+      onProgress: (current, total, currentFile) => {
+        // Initialize progress bar on first update
+        if (!progressBar && total > 0) {
+          progressBar = new ProgressBar(total, {
+            width: 40,
+            label: 'Scanning codebase'
+          });
+        }
+
+        // Update progress bar with current file info
+        if (progressBar) {
+          const fileName = currentFile ? currentFile.split('/').pop() || currentFile : '';
+          progressBar.update(current, fileName);
+        }
+      }
+    });
+
     const baseTurns = 30;
     const extraTurns = Math.ceil(scanResult.totalFiles / 25) * 5;
     const maxTurns = Math.min(baseTurns + extraTurns, 100);
 
+    // Animated messages during analysis
+    const messages = [
+      'Scanning for API integrations...',
+      'Detecting inference patterns...',
+      'Analyzing cost distribution...',
+      'Identifying optimization opportunities...',
+    ];
+    const animatedMsg = createAnimatedMessage(messages);
+    animatedMsg.start(2500);
+
     const result = await analyzeWithAgent(root, {
       maxTurns,
       onProgress: (msg) => {
-        console.log(`     ${msg}`);
+        progress.update(msg);
       },
     });
 
+    animatedMsg.stop();
+
     const { callsites, techStack, patterns, totalCostUsd, durationMs } = result;
 
-    console.log(`  found ${callsites.length} LLM callsites in ${(durationMs / 1000).toFixed(1)}s`);
-    console.log(`  analysis cost: $${totalCostUsd.toFixed(4)}`);
+    progress.completeStep('analyze', 'success', `Found ${callsites.length} callsites`);
 
     if (callsites.length === 0) {
+      progress.fail('No LLM callsites detected');
       console.log(`
-  no LLM callsites detected
-
   no OpenAI, Anthropic, or other LLM API calls found.
 
   check:
@@ -779,33 +947,46 @@ async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'b
       process.exit(0);
     }
 
-    // Show detected tech stack
+    // Phase 2: Pattern Detection
+    progress.startStep('patterns', 'Detecting inference patterns');
+
+    // Show detected tech stack inline
     if (techStack) {
-      console.log('');
-      console.log('  tech stack:');
+      const techDetails = [];
       if (techStack.application?.sdks?.length) {
-        console.log(`    sdks: ${techStack.application.sdks.join(', ')}`);
+        techDetails.push(`SDKs: ${techStack.application.sdks.join(', ')}`);
       }
       if (techStack.application?.frameworks?.length) {
-        console.log(`    frameworks: ${techStack.application.frameworks.join(', ')}`);
+        techDetails.push(`Frameworks: ${techStack.application.frameworks.join(', ')}`);
       }
-      if (techStack.serving?.platforms?.length) {
-        console.log(`    platforms: ${techStack.serving.platforms.join(', ')}`);
-      }
+      progress.update('Tech stack identified', techDetails);
     }
 
-    // Phase 2: Show detected patterns
-    console.log('');
-    console.log(generatePatternsReport(patterns));
+    progress.completeStep('patterns', 'success', 'Patterns analyzed');
 
-    // Phase 3: Detect and show risks
+    // Phase 3: Risk Assessment
+    progress.startStep('risks', 'Assessing optimization risks');
     const riskAssessment = detectRisks(patterns, callsites);
-    console.log(generateRiskReport(riskAssessment));
+    const riskLevel = (riskAssessment as any).overallRisk || 'low';
+    const riskCount = riskAssessment.risks?.length || 0;
+    progress.completeStep('risks', riskCount > 0 ? 'warning' : 'success',
+      `${riskCount} risks identified (${riskLevel} overall)`);
 
     // Phase 4: Generate recommendations
+    progress.startStep('recommendations', 'Generating optimization recommendations');
     const summary = generateRecommendations(callsites, prioritize);
+    const recCount = summary.recommendations?.length || 0;
+    const savings = (summary as any).totalSavings || (summary as any).totalPotentialSavings || 0;
+    progress.completeStep('recommendations', 'success',
+      `${recCount} recommendations, $${savings.toFixed(0)}/mo potential savings`);
 
-    // Phase 5: Output report
+    // Complete progress
+    progress.succeed(`Analysis complete in ${(durationMs / 1000).toFixed(1)}s`);
+
+    // Phase 5: Display results
+    console.log('');
+    console.log(generatePatternsReport(patterns));
+    console.log(generateRiskReport(riskAssessment));
     console.log(generateReport(summary));
 
     // Write JSON output (include patterns and risks)
@@ -820,6 +1001,9 @@ async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'b
     console.log(`\n  output: ${outputPath}\n`);
 
   } catch (error) {
+    // Stop progress on error
+    progress.fail('Recommendation analysis failed');
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     // Provide context-specific suggestions
@@ -851,7 +1035,6 @@ async function prices(filterProvider?: string, refresh?: boolean): Promise<void>
   try {
     // Import pricing fetcher
     const {
-      initializePricing,
       getPricingInfo,
       refreshPricingCache,
       getGPUPricing,
@@ -859,7 +1042,7 @@ async function prices(filterProvider?: string, refresh?: boolean): Promise<void>
       getGPUPricingInfo,
       refreshGPUPricingCache,
     } = await import('./pricing-fetcher.js');
-    const { initPricingEngine, STATIC_PRICING_DATA } = await import('./pricing.js');
+    const { initPricingEngine } = await import('./pricing.js');
 
     // Optionally refresh cache
     if (refresh) {
@@ -990,6 +1173,13 @@ peakinfer prices
 }
 
 // =============================================================================
+// EXPORTS
+// =============================================================================
+
+// Export functions for use in other modules
+export { analyze, recommend, discover, profile, plan, report, templates, prices };
+
+// =============================================================================
 // CLI ENTRY POINT
 // =============================================================================
 
@@ -1050,7 +1240,7 @@ environment:
 
   // Show version
   if (args.includes('--version') || args.includes('-v')) {
-    console.log('peakinfer v0.2.1');
+    console.log('peakinfer v0.95');
     process.exit(0);
   }
 

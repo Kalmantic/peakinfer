@@ -62,6 +62,7 @@ export interface ClassifiedCallsite {
     whyProvider: string;
     whyModel: string;
   };
+  optimizationSuggestion?: string;
 }
 
 /** P3: Usage estimate (optional) */

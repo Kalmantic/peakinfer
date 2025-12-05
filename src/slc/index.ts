@@ -26,7 +26,7 @@ export { buildStackMap } from './stackmap.js';
 // Pricing — deterministic cost calculation
 export { calculatePricing, getModelPrice, PRICING_DATA } from './pricing.js';
 
-// Renderer — CLI output
+// Renderer — CLI output (legacy)
 export {
   renderZeroState,
   renderLoadingState,
@@ -36,6 +36,18 @@ export {
   clearLoadingState,
   formatCurrency,
 } from './renderer.js';
+
+// PRD-Aligned Renderer — Exact PRD v0.95 output format
+export {
+  renderPRDZeroState,
+  renderPRDSuccessState,
+  renderPRDErrorState,
+  renderPRDPartialState,
+  renderPRDLoadingState,
+  renderPRDLoadingComplete,
+  renderPRDLoadingFailed,
+  DEFAULT_SDK_CHECKS,
+} from './prd-renderer.js';
 
 // HTML Renderer — Beautiful reports
 export { generateHTMLReport } from './html-renderer.js';
