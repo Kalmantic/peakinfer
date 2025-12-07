@@ -1,0 +1,135 @@
+# Kubernetes GPU Inference Deployment
+# PeakInfer should detect: GPU requests, node selectors, resource limits
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-inference
+  namespace: ml-inference
+  labels:
+    app: vllm-inference
+    team: ml-platform
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: vllm-inference
+  template:
+    metadata:
+      labels:
+        app: vllm-inference
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-tesla-a100
+        gpu: "true"
+      containers:
+        - name: vllm
+          image: vllm/vllm-openai:latest
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              nvidia.com/gpu: 4
+              memory: "64Gi"
+              cpu: "16"
+            requests:
+              nvidia.com/gpu: 4
+              memory: "32Gi"
+              cpu: "8"
+          env:
+            - name: CUDA_VISIBLE_DEVICES
+              value: "0,1,2,3"
+            - name: NCCL_DEBUG
+              value: "INFO"
+          args:
+            - "--model"
+            - "meta-llama/Llama-3.1-70B-Instruct"
+            - "--tensor-parallel-size"
+            - "4"
+            - "--gpu-memory-utilization"
+            - "0.9"
+            - "--max-model-len"
+            - "8192"
+          volumeMounts:
+            - name: model-cache
+              mountPath: /root/.cache/huggingface
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: model-cache-pvc
+
+---
+# AMD GPU deployment for cost comparison
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inference-amd
+  namespace: ml-inference
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: inference-amd
+  template:
+    metadata:
+      labels:
+        app: inference-amd
+    spec:
+      containers:
+        - name: inference
+          image: rocm/pytorch:latest
+          resources:
+            limits:
+              amd.com/gpu: 8
+            requests:
+              amd.com/gpu: 8
+
+---
+# Embedding service - over-provisioned
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: embedding-service
+  namespace: ml-inference
+  annotations:
+    peakinfer/optimization: "over-provisioned - consider smaller GPU"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: embedding-service
+  template:
+    metadata:
+      labels:
+        app: embedding-service
+    spec:
+      containers:
+        - name: embeddings
+          image: sentence-transformers/all-MiniLM-L6-v2:latest
+          resources:
+            limits:
+              nvidia.com/gpu: 2  # Overkill for embeddings
+            requests:
+              nvidia.com/gpu: 2
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: vllm-inference-hpa
+  namespace: ml-inference
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vllm-inference
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: nvidia.com/gpu
+        target:
+          type: Utilization
+          averageUtilization: 80

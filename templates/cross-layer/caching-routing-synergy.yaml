@@ -1,0 +1,163 @@
+id: "caching-routing-synergy"
+name: "Semantic Caching + Model Routing Coordination"
+description: "Coordinate semantic caching with intelligent model routing for compound application-layer savings"
+category: "cross_layer_optimization"
+confidence: 0.91
+success_count: 789
+verified_environments: 42
+contributors: ["app_architect", "cache_specialist", "routing_engineer"]
+last_updated: "2025-01-16"
+
+environment_match:
+  application_type: ["api_service", "chatbot"]
+  query_variety: "high"
+  cache_hit_potential: ">25%"
+  task_complexity: "variable"
+  monthly_api_cost: ">$15K"
+
+optimization:
+  technique: "coordinated_caching_routing"
+  layers_involved: ["application"]
+  expected_cost_reduction: "65-80%"
+  expected_compound_benefit: "10-15% from coordination"
+  effort_estimate: "3-4 weeks"
+  risk_level: "low"
+
+coordination_strategy:
+  flow:
+    - step: 1
+      action: "semantic_cache_lookup"
+      description: "Check if semantically similar query exists in cache"
+      on_hit: "Return cached response immediately"
+      on_miss: "Continue to routing"
+
+    - step: 2
+      action: "task_classification"
+      description: "Classify query complexity and task type"
+      output: "task_category, complexity_score"
+
+    - step: 3
+      action: "intelligent_routing"
+      description: "Route to appropriate model based on classification"
+      routing_rules:
+        - condition: "complexity_score < 0.3"
+          target: "claude-haiku"
+          cost_per_token: 0.003
+        - condition: "complexity_score < 0.6"
+          target: "gpt-4o-mini"
+          cost_per_token: 0.01
+        - condition: "complexity_score >= 0.6"
+          target: "gpt-4o"
+          cost_per_token: 0.03
+
+    - step: 4
+      action: "cache_response"
+      description: "Store response in semantic cache for future queries"
+      cache_decision: "Cache if query is cacheable and response quality > threshold"
+
+  synergy_mechanisms:
+    - name: "Cache-informed routing"
+      description: "Frequent cache misses for a task type inform routing model training"
+      benefit: "5% improvement in routing accuracy"
+
+    - name: "Routing-optimized caching"
+      description: "Cache priority based on cost of routed model (cache expensive model responses more aggressively)"
+      benefit: "8% improvement in effective cache hit rate"
+
+    - name: "Quality-gated caching"
+      description: "Only cache responses from models that pass quality threshold"
+      benefit: "Maintains 98%+ cache quality"
+
+economics:
+  baseline_calculation:
+    all_premium_model_cost: "${monthly_requests} * 200 * 0.03"
+  with_caching_only:
+    effective_requests: "${monthly_requests} * 0.60"
+    cost_with_caching: "${effective_requests} * 200 * 0.03"
+    savings_from_caching: "${all_premium_model_cost} - ${cost_with_caching}"
+  with_routing_only:
+    weighted_cost_per_token: "(0.4 * 0.003) + (0.35 * 0.01) + (0.25 * 0.03)"
+    cost_with_routing: "${monthly_requests} * 200 * ${weighted_cost_per_token}"
+    savings_from_routing: "${all_premium_model_cost} - ${cost_with_routing}"
+  with_coordination:
+    coordinated_savings: "${savings_from_caching} + ${savings_from_routing} * 0.6 + ${synergy_bonus}"
+    synergy_bonus: "(${savings_from_caching} + ${savings_from_routing}) * 0.12"
+  implementation_cost:
+    engineering_hours: 200
+    hourly_rate: 200
+    total_cost: 40000
+
+implementation:
+  prerequisites:
+    - requirement: "Semantic caching infrastructure"
+      validation_command: "python scripts/test_cache_infrastructure.py"
+    - requirement: "Task classifier model"
+      validation_command: "python scripts/test_task_classifier.py --accuracy-threshold 0.93"
+    - requirement: "Multi-model API access"
+      validation_command: "python scripts/test_model_endpoints.py"
+
+  automated_steps:
+    - step_id: "caching_setup"
+      name: "Semantic Caching Setup"
+      executable: true
+      commands:
+        - "python scripts/setup_semantic_cache.py --similarity-threshold 0.90"
+        - "python scripts/configure_cache_policies.py --model-aware true"
+      validation:
+        command: "python scripts/test_caching.py --queries 100"
+        success_criteria: "cache_operational AND hit_rate > 0.25"
+        rollback_command: "python scripts/disable_caching.py"
+
+    - step_id: "routing_setup"
+      name: "Model Routing Setup"
+      executable: true
+      commands:
+        - "python scripts/deploy_task_classifier.py"
+        - "python scripts/configure_routing_rules.py --complexity-thresholds 0.3,0.6"
+      validation:
+        command: "python scripts/test_routing.py --queries 100"
+        success_criteria: "routing_accuracy > 0.93 AND cost_reduction > 0.4"
+        rollback_command: "python scripts/disable_routing.py"
+
+    - step_id: "coordination_setup"
+      name: "Coordination Layer Setup"
+      executable: true
+      commands:
+        - "python scripts/setup_coordination.py --cache-first true --route-on-miss true"
+        - "python scripts/configure_synergy_rules.py --cache-priority-by-model true"
+      validation:
+        command: "python scripts/test_coordination.py --queries 200"
+        success_criteria: "synergy_savings > 0.08 AND quality_score > 0.95"
+        rollback_command: "python scripts/disable_coordination.py"
+
+monitoring:
+  key_metrics:
+    - metric: "cache_hit_rate"
+      target: ">0.35"
+      alert_threshold: "<0.20"
+    - metric: "routing_accuracy"
+      target: ">0.93"
+      alert_threshold: "<0.88"
+    - metric: "cost_per_request"
+      target: "<${baseline_cost} * 0.25"
+      alert_threshold: ">${baseline_cost} * 0.40"
+    - metric: "synergy_multiplier"
+      target: ">1.10"
+      alert_threshold: "<1.05"
+
+  rollback_triggers:
+    - condition: "quality_score < 0.92 for 15 minutes"
+      action: "automatic_rollback"
+    - condition: "coordination_overhead > 100ms for 10 minutes"
+      action: "disable_coordination_only"
+
+results:
+  recent_implementations:
+    - environment: "legal_document_qa"
+      baseline_monthly_cost: 38000
+      with_caching_cost: 22800
+      with_routing_cost: 15200
+      coordinated_cost: 9120
+      total_reduction_percent: 76
+      synergy_contribution_percent: 14
+      implementation_days: 21

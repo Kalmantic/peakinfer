@@ -1,0 +1,107 @@
+# =============================================================================
+# PeakInfer Test Codebase - Python Dependencies
+# Tests dependency detection: LLM SDKs, frameworks, runtimes
+# =============================================================================
+
+# LLM Provider SDKs - Application Layer
+openai>=1.12.0
+anthropic>=0.18.0
+google-generativeai>=0.3.0
+cohere>=4.0.0
+together>=0.2.0
+groq>=0.4.0
+mistralai>=0.1.0
+
+# Orchestration Frameworks - Application Layer
+langchain>=0.1.0
+langchain-openai>=0.0.5
+langchain-anthropic>=0.1.0
+langchain-community>=0.0.20
+llama-index>=0.10.0
+haystack-ai>=2.0.0
+crewai>=0.1.0
+autogen>=0.2.0
+dspy-ai>=2.0.0
+
+# Serving Runtimes - Serving Layer
+vllm>=0.3.0
+sglang>=0.1.0
+text-generation>=0.6.0
+ollama>=0.1.0
+llama-cpp-python>=0.2.0
+mlx>=0.1.0
+
+# Gateway/Proxy - Serving Layer  
+litellm>=1.0.0
+portkey-ai>=1.0.0
+
+# Inference Optimization
+tensorrt-llm>=0.7.0
+deepspeed>=0.12.0
+accelerate>=0.25.0
+bitsandbytes>=0.42.0
+auto-gptq>=0.6.0
+autoawq>=0.1.0
+
+# Vector Stores (RAG)
+chromadb>=0.4.0
+faiss-cpu>=1.7.0
+pinecone-client>=3.0.0
+qdrant-client>=1.7.0
+weaviate-client>=4.0.0
+pgvector>=0.2.0
+
+# Embeddings
+sentence-transformers>=2.2.0
+
+# Observability
+langfuse>=2.0.0
+langsmith>=0.0.80
+arize-phoenix>=0.1.0
+promptlayer>=0.4.0
+
+# Guardrails
+nemoguardrails>=0.6.0
+guardrails-ai>=0.3.0
+llm-guard>=0.3.0
+
+# Evaluation
+ragas>=0.1.0
+trulens-eval>=0.22.0
+deepeval>=0.20.0
+promptfoo>=0.1.0
+
+# Caching
+redis>=5.0.0
+gptcache>=0.1.0
+diskcache>=5.6.0
+
+# Infrastructure
+ray[serve]>=2.9.0
+modal>=0.56.0
+kubernetes>=28.0.0
+boto3>=1.34.0
+google-cloud-aiplatform>=1.40.0
+azure-ai-ml>=1.12.0
+
+# Utilities
+tenacity>=8.2.0
+backoff>=2.2.0
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+httpx>=0.26.0
+aiohttp>=3.9.0
+numpy>=1.24.0
+pandas>=2.0.0
+torch>=2.1.0
+transformers>=4.36.0
+
+# Fine-tuning
+peft>=0.8.0
+trl>=0.7.0
+datasets>=2.16.0
+
+# Data
+tiktoken>=0.5.0
+tokenizers>=0.15.0
+

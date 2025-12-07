@@ -7,7 +7,7 @@ import { OptimizationTemplate, EnvironmentProfile, TemplateExecutionResult } fro
 import { EconomicsCalculator } from '../core/economics-calculator.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import * as fs from 'fs-extra';
+import fs from 'fs-extra';
 
 const execAsync = promisify(exec);
 

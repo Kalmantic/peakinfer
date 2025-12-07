@@ -1,0 +1,134 @@
+[
+  {
+    "provider": "modal",
+    "gpu": "H100 (80GB)",
+    "hourlyRate": 3.50,
+    "tokensPerSecond": 125,
+    "model": "llama-3.1-70b",
+    "servingStack": "vLLM",
+    "inputPer1M": 0.70,
+    "outputPer1M": 0.90,
+    "note": "H100 80GB SXM5, ~50% utilization assumed"
+  },
+  {
+    "provider": "modal",
+    "gpu": "A100 (80GB)",
+    "hourlyRate": 2.80,
+    "tokensPerSecond": 80,
+    "model": "llama-3.1-70b",
+    "servingStack": "vLLM",
+    "inputPer1M": 0.90,
+    "outputPer1M": 1.10,
+    "note": "A100 80GB SXM4, ~50% utilization assumed"
+  },
+  {
+    "provider": "modal",
+    "gpu": "A10G (24GB)",
+    "hourlyRate": 1.10,
+    "tokensPerSecond": 250,
+    "model": "llama-3.1-8b",
+    "servingStack": "vLLM",
+    "inputPer1M": 0.12,
+    "outputPer1M": 0.18,
+    "note": "A10G 24GB, optimized for smaller models"
+  },
+  {
+    "provider": "runpod",
+    "gpu": "H100 (80GB)",
+    "hourlyRate": 2.99,
+    "tokensPerSecond": 125,
+    "model": "llama-3.1-70b",
+    "servingStack": "vLLM",
+    "inputPer1M": 0.60,
+    "outputPer1M": 0.75,
+    "note": "Community Cloud pricing, ~50% utilization"
+  },
+  {
+    "provider": "runpod",
+    "gpu": "A100 (80GB)",
+    "hourlyRate": 1.99,
+    "tokensPerSecond": 80,
+    "model": "llama-3.1-70b",
+    "servingStack": "vLLM",
+    "inputPer1M": 0.65,
+    "outputPer1M": 0.80,
+    "note": "Community Cloud pricing, ~50% utilization"
+  },
+  {
+    "provider": "runpod",
+    "gpu": "RTX 4090 (24GB)",
+    "hourlyRate": 0.44,
+    "tokensPerSecond": 200,
+    "model": "llama-3.1-8b",
+    "servingStack": "vLLM",
+    "inputPer1M": 0.06,
+    "outputPer1M": 0.08,
+    "note": "Community Cloud, consumer GPU"
+  },
+  {
+    "provider": "lambda",
+    "gpu": "H100 (80GB)",
+    "hourlyRate": 2.49,
+    "tokensPerSecond": 125,
+    "model": "llama-3.1-70b",
+    "servingStack": "vLLM",
+    "inputPer1M": 0.50,
+    "outputPer1M": 0.65,
+    "note": "Lambda Cloud on-demand"
+  },
+  {
+    "provider": "lambda",
+    "gpu": "A100 (80GB)",
+    "hourlyRate": 1.29,
+    "tokensPerSecond": 80,
+    "model": "llama-3.1-70b",
+    "servingStack": "vLLM",
+    "inputPer1M": 0.42,
+    "outputPer1M": 0.52,
+    "note": "Lambda Cloud on-demand"
+  },
+  {
+    "provider": "together-serverless",
+    "gpu": "Serverless",
+    "hourlyRate": 0,
+    "tokensPerSecond": 150,
+    "model": "llama-3.1-70b",
+    "servingStack": "Together Runtime",
+    "inputPer1M": 0.88,
+    "outputPer1M": 0.88,
+    "note": "Serverless per-token pricing"
+  },
+  {
+    "provider": "fireworks-serverless",
+    "gpu": "Serverless",
+    "hourlyRate": 0,
+    "tokensPerSecond": 150,
+    "model": "llama-3.1-70b",
+    "servingStack": "Fireworks Runtime",
+    "inputPer1M": 0.90,
+    "outputPer1M": 0.90,
+    "note": "Serverless per-token pricing"
+  },
+  {
+    "provider": "vast.ai",
+    "gpu": "H100 (spot)",
+    "hourlyRate": 1.80,
+    "tokensPerSecond": 125,
+    "model": "llama-3.1-70b",
+    "servingStack": "vLLM",
+    "inputPer1M": 0.36,
+    "outputPer1M": 0.46,
+    "note": "Spot market, prices vary"
+  },
+  {
+    "provider": "vast.ai",
+    "gpu": "A100 (spot)",
+    "hourlyRate": 0.90,
+    "tokensPerSecond": 80,
+    "model": "llama-3.1-70b",
+    "servingStack": "vLLM",
+    "inputPer1M": 0.30,
+    "outputPer1M": 0.38,
+    "note": "Spot market, prices vary"
+  }
+]
