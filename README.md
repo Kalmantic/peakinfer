@@ -10,7 +10,7 @@ PeakInfer is a **Simple, Lovable, Complete** CLI tool that uses Claude-powered m
 
 ## What's New in v0.95.0
 
-- **SLC CLI**: New streamlined commands (`scan`, `recommend`, `price`) for quick analysis
+- **New Commands**: Streamlined commands (`scan`, `recommend`, `price`) for quick analysis
 - **StackMap Generation**: Visual inference topology mapping with provider/model breakdown
 - **Real-time Pricing**: Live pricing data from 15+ providers with freshness tracking
 - **Interactive Mode**: Guided workflows with progress indicators
@@ -41,22 +41,22 @@ PeakInfer provides:
 npm install -g @kalmantic/peakinfer
 ```
 
-### SLC Quick Analysis (New!)
+### Quick Analysis (New!)
 
 The fastest way to analyze your codebase:
 
 ```bash
 # Scan codebase for LLM inference patterns
-slc scan ./your-project
+peakinfer scan ./your-project
 
 # Get pricing analysis and cost breakdown
-slc price ./your-project
+peakinfer price ./your-project
 
 # Get AI-powered recommendations
-slc recommend ./your-project
+peakinfer recommend ./your-project
 
 # Interactive mode with guided workflow
-slc scan ./your-project --interactive
+peakinfer scan ./your-project --interactive
 ```
 
 **Output Example:**
@@ -160,15 +160,15 @@ PeakInfer uses **4 specialized Claude agents** orchestrated through the Anthropi
 
 ## Commands
 
-### SLC Commands (Quick Analysis)
+### Quick Analysis Commands
 
 | Command | Description |
 |---------|-------------|
-| `slc scan <path>` | Scan codebase for LLM inference callsites, generate StackMap |
-| `slc price <path>` | Analyze costs with real-time pricing from 15+ providers |
-| `slc recommend <path>` | Get AI-powered optimization recommendations |
-| `slc config` | Manage API keys and configuration |
-| `slc --interactive` | Launch interactive guided workflow |
+| `peakinfer scan <path>` | Scan codebase for LLM inference callsites, generate StackMap |
+| `peakinfer price <path>` | Analyze costs with real-time pricing from 15+ providers |
+| `peakinfer recommend <path>` | Get AI-powered optimization recommendations |
+| `peakinfer config` | Manage API keys and configuration |
+| `peakinfer --interactive` | Launch interactive guided workflow |
 
 ### Full Workflow Commands
 
