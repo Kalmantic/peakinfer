@@ -307,3 +307,105 @@ export interface RiskAssessment {
     low: number;
   };
 }
+
+// =============================================================================
+// STACKMAP KG TYPES (Knowledge Graph for defensibility asset)
+// =============================================================================
+
+/** Provider statistics in StackMapKG */
+export interface ProviderStats {
+  name: string;
+  callsiteCount: number;
+  modelDistribution: Record<string, number>;
+  patterns: string[];
+}
+
+/** SDK information */
+export interface SDKInfo {
+  name: string;
+  wrapperType: 'direct' | 'gateway' | 'framework' | 'litellm' | 'langchain' | 'llamaindex' | 'haystack' | 'dspy' | 'custom' | 'unknown';
+}
+
+/** Pattern statistics for StackMapKG */
+export interface PatternStats {
+  retry: { detected: boolean; count: number; types: string[] };
+  caching: { detected: boolean; count: number; types: string[] };
+  routing: { detected: boolean; count: number; types: string[] };
+  batching: { detected: boolean; count: number; types: string[] };
+  streaming: { detected: boolean; count: number; types: string[] };
+  fallback: { detected: boolean; count: number; types: string[] };
+  guardrails: { detected: boolean; count: number; types: string[] };
+}
+
+/** Scale metrics */
+export interface ScaleMetrics {
+  totalCallsites: number;
+  uniqueModels: number;
+  uniqueProviders: number;
+  estimatedMonthlyTokens: number;
+  estimatedMonthlyCost: number;
+  repoFiles: number;
+  repoLOC: number;
+}
+
+/** Maturity scores */
+export interface MaturityScores {
+  patternMaturity: number;
+  providerDiversity: number;
+  resilienceScore: number;
+  costOptimizationReadiness: number;
+}
+
+/** StackMapKG - the core defensibility asset */
+export interface StackMapKG {
+  stackId: string;
+  peakinferVersion: string;
+  generatedAt: string;
+  topology: {
+    providers: ProviderStats[];
+    sdks: SDKInfo[];
+    patterns: PatternStats;
+    primaryLanguage: Language;
+    languages: Record<string, number>;
+  };
+  scale: ScaleMetrics;
+  scores: MaturityScores;
+  pricingSnapshot?: {
+    date: string;
+    estimatedMonthlyCost: { low: number; high: number };
+    topProviderCosts: Array<{ provider: string; cost: number }>;
+  };
+}
+
+/** Feedback data for learning */
+export interface FeedbackData {
+  stackId: string;
+  sessionId: string;
+  updatedAt: string;
+  signals: Array<{
+    type: string;
+    value: unknown;
+    timestamp: string;
+  }>;
+}
+
+/** History entry for local storage */
+export interface HistoryEntry {
+  stackId: string;
+  path: string;
+  analyzedAt: string;
+  peakinferVersion: string;
+  summary: {
+    callsites: number;
+    providers: string[];
+    estimatedMonthlyCost: { low: number; high: number };
+    patternMaturity: number;
+  };
+}
+
+/** History index for local storage */
+export interface HistoryIndex {
+  version: string;
+  lastUpdated: string;
+  entries: HistoryEntry[];
+}
