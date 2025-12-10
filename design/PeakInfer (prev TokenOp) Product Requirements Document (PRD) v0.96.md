@@ -1,14 +1,14 @@
 
 
-# **PeakInfer Product Requirements Document (PRD) v0.95**
+# **PeakInfer Product Requirements Document (PRD) v0.96**
 
 **A Strategic, Defensible, Integrated SLC Product Specification**
 
-**Product:** PeakInfer  
- **Organization:** Kalmantic AI Labs  
- **Version:** 0.95  
- **Date:** Nov 2025  
- **Author:** Thiyagarajan Maruthavanan  
+**Product:** PeakInfer
+ **Organization:** Kalmantic AI Labs
+ **Version:** 0.96
+ **Date:** Dec 2025
+ **Author:** Thiyagarajan Maruthavanan (Claire Vo framework)  
  **Revision Theme:** *SLC Analyzer \+ Integrated Defensibility (StackMap KG \+ Pricing Delta Engine)*
 
 # **1\. Vision & North Star**
@@ -694,7 +694,7 @@ ASCII diagram showing:
 ```
 $ peakinfer analyze .
 
-PeakInfer v0.94
+PeakInfer v0.96
 
 Scanned: 847 files (12,340 LOC)
 Languages: Python, TypeScript
@@ -722,7 +722,7 @@ Nothing to map. Exiting.
 ```
 $ peakinfer analyze .
 
-PeakInfer v0.94
+PeakInfer v0.96
 
 Connecting to Claude Code SDK...    ✓
 Scanning codebase...                ████████░░  82%
@@ -734,7 +734,7 @@ Scanning codebase...                ████████░░  82%
 ```
 $ peakinfer analyze .
 
-PeakInfer v0.94
+PeakInfer v0.96
 
 Scanned: 847 files (12,340 LOC)
 Languages: Python, TypeScript
@@ -775,7 +775,7 @@ Run `peakinfer pricing` for detailed cost breakdown.
 ```
 $ peakinfer analyze .
 
-PeakInfer v0.94
+PeakInfer v0.96
 
 Connecting to Claude Code SDK...    ✗
 
@@ -798,7 +798,7 @@ Cached StackMaps remain available:
 ```
 $ peakinfer analyze .
 
-PeakInfer v0.94
+PeakInfer v0.96
 
 Scanned: 847 files (12,340 LOC)
 Skipped: 3 files (parse errors)
@@ -818,7 +818,7 @@ Warning: Skipped files may contain undetected LLM calls.
 ```
 $ peakinfer analyze .
 
-PeakInfer v0.94
+PeakInfer v0.96
 
 Scanned: 847 files (12,340 LOC)
 Languages: Python, TypeScript

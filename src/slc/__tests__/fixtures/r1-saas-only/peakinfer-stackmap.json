@@ -1,0 +1,49 @@
+{
+  "root": "/Users/thiyagarajanm/AIProjects/peakinfer/src/slc/__tests__/fixtures/r1-saas-only",
+  "tree": [
+    {
+      "name": "app.py",
+      "path": "app.py",
+      "type": "file",
+      "callsites": [
+        {
+          "line": 15,
+          "pattern": "openai.chat",
+          "provider": "openai",
+          "model": "gpt-4o"
+        },
+        {
+          "line": 23,
+          "pattern": "anthropic.chat",
+          "provider": "anthropic",
+          "model": "claude-3-5-sonnet-20241022"
+        },
+        {
+          "line": 32,
+          "pattern": "openai.chat",
+          "provider": "openai",
+          "model": "gpt-4o-mini"
+        },
+        {
+          "line": 43,
+          "pattern": "openai.embedding",
+          "provider": "openai",
+          "model": "text-embedding-3-small"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "totalCallsites": 4,
+    "providers": [
+      "anthropic",
+      "openai"
+    ],
+    "models": [
+      "claude-3-5-sonnet-20241022",
+      "gpt-4o",
+      "gpt-4o-mini",
+      "text-embedding-3-small"
+    ]
+  }
+}

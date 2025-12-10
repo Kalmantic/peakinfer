@@ -114,6 +114,7 @@ function checkApiKey(): boolean {
 interface AnalyzeOptions {
   html?: boolean;
   open?: boolean;
+  output?: 'json' | 'text';  // Output format: json for machine-readable, text for human-readable
 }
 
 /**
@@ -276,6 +277,41 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
 
     // Complete the progress
     progress.succeed(`Analysis complete in ${(durationMs / 1000).toFixed(1)}s`);
+
+    // JSON output mode - machine-readable format for testing and automation
+    if (options.output === 'json') {
+      const jsonOutput = {
+        success: true,
+        state: callsites.length === 0 ? 'empty' : 'success',
+        scan: {
+          totalFiles: scanResult.totalFiles,
+          totalLines: scanResult.totalLines,
+          languages: scanResult.languages,
+        },
+        callsites: callsites.map(cs => ({
+          id: cs.id,
+          file: cs.file,
+          line: cs.line,
+          provider: cs.provider,
+          model: cs.model,
+          taskKind: cs.taskKind,
+          isStreaming: cs.isStreaming,
+          confidence: cs.confidence,
+        })),
+        stackMap,
+        pricing,
+        techStack,
+        patterns,
+        outputFiles,
+        metadata: {
+          durationMs,
+          totalCostUsd,
+          version: '0.96',
+        },
+      };
+      console.log(JSON.stringify(jsonOutput, null, 2));
+      return;
+    }
 
     // Render results with PRD-aligned output format
     if (callsites.length === 0) {
@@ -1209,6 +1245,7 @@ recommend options:
 analyze options:
   --html                      generate an html report
   --open                      open html report in browser
+  --output <format>           output format: text (default) or json
 
 prices options:
   --refresh                   refresh cache from LiteLLM
@@ -1224,6 +1261,7 @@ report options:
 examples:
   peakinfer analyze .                        # quick start - analyze current directory
   peakinfer analyze ./my-project --html      # with html report
+  peakinfer analyze . --output json          # machine-readable json output
   peakinfer recommend ./my-project           # find cost optimization opportunities
   peakinfer recommend . --prioritize latency # prioritize latency over cost
   peakinfer prices openai                    # show openai model prices
@@ -1240,14 +1278,16 @@ environment:
 
   // Show version
   if (args.includes('--version') || args.includes('-v')) {
-    console.log('peakinfer v0.95');
+    console.log('0.2.1');
     process.exit(0);
   }
 
   // Parse options
+  const outputArg = getArgValue(args, '--output');
   const options: AnalyzeOptions = {
     html: args.includes('--html') || args.includes('--open'),
     open: args.includes('--open'),
+    output: outputArg === 'json' ? 'json' : 'text',
   };
 
   // Filter out options to get positional args

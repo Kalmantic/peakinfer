@@ -1,0 +1,3327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PeakInfer Test Report - 12/10/2025, 12:18:04 PM</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-bg-hover: #273548;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --primary: #3b82f6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    h1 {
+      font-size: 1.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .logo { font-size: 2rem; }
+    .meta { color: var(--text-muted); font-size: 0.85rem; text-align: right; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .summary-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      text-align: center;
+    }
+    .summary-card.status {
+      border-color: #10b981;
+      box-shadow: 0 0 30px #10b98130;
+    }
+    .summary-value { font-size: 2.25rem; font-weight: 700; }
+    .summary-label { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .success { color: var(--success); }
+    .danger { color: var(--danger); }
+
+    .section { margin-bottom: 2.5rem; }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid var(--border);
+    }
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .section-badge {
+      background: var(--primary);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .test-suite {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+    }
+    .suite-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      background: rgba(255,255,255,0.02);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .suite-header:hover { background: var(--card-bg-hover); }
+    .suite-name { font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .suite-stats { display: flex; gap: 1rem; font-size: 0.85rem; align-items: center; }
+    .suite-tests { display: none; }
+    .suite-tests.expanded { display: block; }
+
+    .test-item {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid var(--border);
+      transition: background 0.2s;
+    }
+    .test-item:hover { background: rgba(255,255,255,0.02); }
+    .test-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .test-title {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      flex: 1;
+    }
+    .test-icon { font-size: 1.1rem; margin-top: 2px; }
+    .test-name { font-weight: 500; }
+    .test-meta {
+      display: flex;
+      gap: 0.75rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .test-details {
+      margin-top: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
+    .test-detail-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.4rem;
+    }
+    .test-detail-row:last-child { margin-bottom: 0; }
+    .test-detail-label {
+      color: var(--text-muted);
+      min-width: 100px;
+      font-weight: 500;
+    }
+    .test-detail-value { color: var(--text); }
+    .category-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .prd-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .prd-link:hover { text-decoration: underline; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: var(--card-bg);
+      border-radius: 8px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.8rem;
+    }
+
+    .footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+    .footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1><span class="logo">⚡</span> PeakInfer Test Report</h1>
+      <div class="meta">
+        <div>Generated: 12/10/2025, 12:18:04 PM</div>
+        <div>Version: 0.2.1 | Vitest 3.2.4</div>
+      </div>
+    </header>
+
+    <div class="summary-grid">
+      <div class="summary-card status">
+        <div class="summary-value" style="color: #10b981">✓</div>
+        <div class="summary-label">ALL TESTS PASSED</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value">97</div>
+        <div class="summary-label">Total Tests</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value success">97</div>
+        <div class="summary-label">Passed</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value ">0</div>
+        <div class="summary-label">Failed</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value">100.0%</div>
+        <div class="summary-label">Pass Rate</div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <strong style="margin-right: 0.5rem;">Categories:</strong>
+      
+        <span class="legend-item"><span>🔒</span> <span style="color: #3b82f6">Core Validation</span></span>
+      
+        <span class="legend-item"><span>✅</span> <span style="color: #10b981">Quality Control</span></span>
+      
+        <span class="legend-item"><span>📁</span> <span style="color: #8b5cf6">File Detection</span></span>
+      
+        <span class="legend-item"><span>💰</span> <span style="color: #f59e0b">Cost Estimation</span></span>
+      
+        <span class="legend-item"><span>💵</span> <span style="color: #f59e0b">Pricing Data</span></span>
+      
+        <span class="legend-item"><span>🗺️</span> <span style="color: #06b6d4">StackMap</span></span>
+      
+        <span class="legend-item"><span>🖥️</span> <span style="color: #ec4899">User Interface</span></span>
+      
+        <span class="legend-item"><span>🤖</span> <span style="color: #6366f1">AI Integration</span></span>
+      
+        <span class="legend-item"><span>⌨️</span> <span style="color: #14b8a6">CLI Functional</span></span>
+      
+        <span class="legend-item"><span>🔍</span> <span style="color: #f97316">Detection</span></span>
+      
+        <span class="legend-item"><span>🔐</span> <span style="color: #ef4444">Security</span></span>
+      
+        <span class="legend-item"><span>⚡</span> <span style="color: #eab308">Performance</span></span>
+      
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <h2 class="section-title">Unit Tests</h2>
+        <span class="section-badge">97 tests</span>
+      </div>
+      
+      <div class="test-suite">
+        <div class="suite-header">
+          <span class="suite-name">
+            <span class="success">✓</span>
+            detector.test.ts
+            <span class="arrow" style="color: var(--text-muted); font-size: 0.8rem;">▶</span>
+          </span>
+          <div class="suite-stats">
+            <span class="success">11 passed</span>
+            
+            <span style="color: var(--text-muted)">2007ms</span>
+          </div>
+        </div>
+        <div class="suite-tests">
+          
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should send correctly structured P1 prompt</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #6366f120; color: #6366f1">
+                  🤖 AI Integration
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Verifies the AI detection prompt follows the correct format for Claude API</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">Prompt includes file content, instructions, and expected JSON schema</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Section 6 - AI Detection</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should return validated callsites from P1 response</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should return validated callsites from P1 response</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should filter low-confidence callsites</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should filter low-confidence callsites</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should return empty array on API error</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1002ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should return empty array on API error</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should return empty array on malformed response</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should return empty array on malformed response</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should send correctly structured P2 prompt</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should send correctly structured P2 prompt</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should return classified callsite with normalized provider</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should return classified callsite with normalized provider</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should return null for low-confidence classification</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should return null for low-confidence classification</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should return null on API error</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1001ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should return null on API error</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should throw error if API key is missing</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should throw error if API key is missing</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should create detector with valid API key</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should create detector with valid API key</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+        </div>
+      </div>
+  
+      <div class="test-suite">
+        <div class="suite-header">
+          <span class="suite-name">
+            <span class="success">✓</span>
+            prd-renderer.test.ts
+            <span class="arrow" style="color: var(--text-muted); font-size: 0.8rem;">▶</span>
+          </span>
+          <div class="suite-stats">
+            <span class="success">14 passed</span>
+            
+            <span style="color: var(--text-muted)">25ms</span>
+          </div>
+        </div>
+        <div class="suite-tests">
+          
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show version header</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>14ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show version header</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show scan summary</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show scan summary</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show "Checked for:" list</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show "Checked for:" list</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show troubleshooting tips</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show troubleshooting tips</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show STACKMAP box</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show STACKMAP box</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show CALLSITES section</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show CALLSITES section</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show MODELS section</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show MODELS section</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show VENDORS / PROVIDERS section</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show VENDORS / PROVIDERS section</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show PRICING SUMMARY box</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show PRICING SUMMARY box</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show HOTSPOTS box</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>2ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show HOTSPOTS box</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show next commands</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show next commands</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show API connection error</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show API connection error</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show API key error with setup instructions</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>3ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show API key error with setup instructions</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show cached StackMaps available</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show cached StackMaps available</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+        </div>
+      </div>
+  
+      <div class="test-suite">
+        <div class="suite-header">
+          <span class="suite-name">
+            <span class="success">✓</span>
+            pricing.test.ts
+            <span class="arrow" style="color: var(--text-muted); font-size: 0.8rem;">▶</span>
+          </span>
+          <div class="suite-stats">
+            <span class="success">14 passed</span>
+            
+            <span style="color: var(--text-muted)">9ms</span>
+          </div>
+        </div>
+        <div class="suite-tests">
+          
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should contain OpenAI models</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should contain OpenAI models</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should contain Anthropic models</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should contain Anthropic models</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should have input and output prices per 1M tokens</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should have input and output prices per 1M tokens</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should return pricing for known model</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #f59e0b20; color: #f59e0b">
+                  💵 Pricing Data
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates model pricing lookup from the pricing database</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">Returns correct input/output prices per million tokens</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Section 7 - Pricing Data</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should return null for unknown provider</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should return null for unknown provider</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should return null for unknown model</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should return null for unknown model</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should handle null provider/model</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should handle null provider/model</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should return empty summary for empty callsites</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>2ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should return empty summary for empty callsites</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should calculate costs for single callsite</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #f59e0b20; color: #f59e0b">
+                  💰 Cost Estimation
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Tests the pricing calculation engine for individual LLM API calls</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">Cost is calculated using provider pricing * estimated tokens</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Section 7 - Pricing Engine</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should aggregate costs by provider</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should aggregate costs by provider</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should calculate percentages by provider</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should calculate percentages by provider</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should identify most expensive model</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should identify most expensive model</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should generate hotspots sorted by cost</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should generate hotspots sorted by cost</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should handle unknown models gracefully</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should handle unknown models gracefully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+        </div>
+      </div>
+  
+      <div class="test-suite">
+        <div class="suite-header">
+          <span class="suite-name">
+            <span class="success">✓</span>
+            renderer.test.ts
+            <span class="arrow" style="color: var(--text-muted); font-size: 0.8rem;">▶</span>
+          </span>
+          <div class="suite-stats">
+            <span class="success">20 passed</span>
+            
+            <span style="color: var(--text-muted)">25ms</span>
+          </div>
+        </div>
+        <div class="suite-tests">
+          
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should render friendly message when no callsites found</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>2ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should render friendly message when no callsites found</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show the scanned path</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show the scanned path</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should suggest common reasons</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should suggest common reasons</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show scanning progress</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show scanning progress</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should be able to show file being analyzed</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should be able to show file being analyzed</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should render error message</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should render error message</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show suggestion for fixing</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show suggestion for fixing</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should include error code</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should include error code</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show partial results with warning</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show partial results with warning</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should render summary header</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #ec489920; color: #ec4899">
+                  🖥️ User Interface
+                </span>
+                <span>15ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates CLI output formatting for successful analysis</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">Output contains properly formatted summary with all sections</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Section 8 - CLI Output</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show scan statistics</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show scan statistics</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should list providers found</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should list providers found</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show StackMap before pricing (per Design Doc)</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show StackMap before pricing (per Design Doc)</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should render callsites with indentation (no boxes)</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>2ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should render callsites with indentation (no boxes)</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should show pricing range</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should show pricing range</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should use lowercase style</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should use lowercase style</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should format small amounts</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should format small amounts</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should format larger amounts</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should format larger amounts</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should format zero</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should format zero</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should handle decimals correctly</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should handle decimals correctly</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+        </div>
+      </div>
+  
+      <div class="test-suite">
+        <div class="suite-header">
+          <span class="suite-name">
+            <span class="success">✓</span>
+            scanner.test.ts
+            <span class="arrow" style="color: var(--text-muted); font-size: 0.8rem;">▶</span>
+          </span>
+          <div class="suite-stats">
+            <span class="success">16 passed</span>
+            
+            <span style="color: var(--text-muted)">25ms</span>
+          </div>
+        </div>
+        <div class="suite-tests">
+          
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should return empty result for empty directory</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>3ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should return empty result for empty directory</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should detect Python files</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #8b5cf620; color: #8b5cf6">
+                  📁 File Detection
+                </span>
+                <span>2ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Verifies the scanner correctly identifies and catalogs Python source files</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">Python files (.py) are detected with correct metadata</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Section 4 - File Scanner</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should detect TypeScript files</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #8b5cf620; color: #8b5cf6">
+                  📁 File Detection
+                </span>
+                <span>4ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Verifies the scanner correctly identifies TypeScript source files</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">TypeScript files (.ts/.tsx) are detected with correct metadata</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Section 4 - File Scanner</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should detect JavaScript files</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should detect JavaScript files</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should scan nested directories</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>4ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should scan nested directories</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should ignore node_modules by default</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should ignore node_modules by default</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should ignore .git directory</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should ignore .git directory</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should ignore dist and build directories</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should ignore dist and build directories</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should count total lines correctly</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should count total lines correctly</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should return relative paths</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should return relative paths</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should track scan duration</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should track scan duration</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should handle files with no extension as unknown</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should handle files with no extension as unknown</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should detect Go files</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should detect Go files</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should detect Java files</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should detect Java files</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should throw for non-existent path</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should throw for non-existent path</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should handle permission errors gracefully</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should handle permission errors gracefully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+        </div>
+      </div>
+  
+      <div class="test-suite">
+        <div class="suite-header">
+          <span class="suite-name">
+            <span class="success">✓</span>
+            stackmap.test.ts
+            <span class="arrow" style="color: var(--text-muted); font-size: 0.8rem;">▶</span>
+          </span>
+          <div class="suite-stats">
+            <span class="success">9 passed</span>
+            
+            <span style="color: var(--text-muted)">12ms</span>
+          </div>
+        </div>
+        <div class="suite-tests">
+          
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should return empty stackmap for empty callsites</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #06b6d420; color: #06b6d4">
+                  🗺️ StackMap
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Tests edge case handling when no LLM calls are detected</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">Returns valid empty StackMap structure without errors</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Section 5 - StackMap Generation</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should build tree with single file</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should build tree with single file</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should build nested tree for files in subdirectories</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should build nested tree for files in subdirectories</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should group multiple callsites in same file</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should group multiple callsites in same file</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should generate summary with unique providers</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>8ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should generate summary with unique providers</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should generate summary with unique models</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should generate summary with unique models</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should handle null models in summary</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should handle null models in summary</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should sort callsites by line number within file</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should sort callsites by line number within file</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should generate pattern string for callsites</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should generate pattern string for callsites</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+        </div>
+      </div>
+  
+      <div class="test-suite">
+        <div class="suite-header">
+          <span class="suite-name">
+            <span class="success">✓</span>
+            validator.test.ts
+            <span class="arrow" style="color: var(--text-muted); font-size: 0.8rem;">▶</span>
+          </span>
+          <div class="suite-stats">
+            <span class="success">13 passed</span>
+            
+            <span style="color: var(--text-muted)">4ms</span>
+          </div>
+        </div>
+        <div class="suite-tests">
+          
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should accept valid P1 response</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #3b82f620; color: #3b82f6">
+                  🔒 Core Validation
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates that the P1 (Phase 1) detection response from Claude API contains properly structured callsite data</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">Response object contains valid callsites array with required fields (file, line, type)</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Section 6 - Detection System</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should filter out low confidence callsites (< 0.4)</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #10b98120; color: #10b981">
+                  ✅ Quality Control
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Ensures low-confidence detection results are filtered to maintain precision > 97%</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">Callsites with confidence < 0.4 are excluded from output</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Section 6 - Quality Gates (precision ≥97%)</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should reject response without callsites array</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should reject response without callsites array</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should reject malformed callsite entries</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should reject malformed callsite entries</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should handle null/undefined input</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should handle null/undefined input</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should accept valid P2 response</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should accept valid P2 response</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should filter out low confidence responses (< 0.4)</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should filter out low confidence responses (< 0.4)</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should normalize provider names</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should normalize provider names</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should handle missing optional fields</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>1ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should handle missing optional fields</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should lowercase provider names</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should lowercase provider names</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should normalize common variations</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should normalize common variations</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should handle null/undefined</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should handle null/undefined</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+          <div class="test-item">
+            <div class="test-header">
+              <div class="test-title">
+                <span class="test-icon success">✓</span>
+                <span class="test-name">should pass through unknown providers</span>
+              </div>
+              <div class="test-meta">
+                <span class="category-badge" style="background: #64748b20; color: #64748b">
+                  📋 default
+                </span>
+                <span>0ms</span>
+              </div>
+            </div>
+            <div class="test-details">
+              <div class="test-detail-row">
+                <span class="test-detail-label">Description:</span>
+                <span class="test-detail-value">Validates: should pass through unknown providers</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">Pass Criteria:</span>
+                <span class="test-detail-value">All assertions passed successfully</span>
+              </div>
+              <div class="test-detail-row">
+                <span class="test-detail-label">PRD Reference:</span>
+                <span class="test-detail-value"><span class="prd-link">PRD Test Suite</span></span>
+              </div>
+              
+            </div>
+          </div>
+  
+        </div>
+      </div>
+  
+    </div>
+
+    <div class="footer">
+      <p>PeakInfer SLC v1 Test Report</p>
+      <p>Test Document Reference: <a href="https://github.com/kalmantic/peakinfer/blob/main/design/test-document.md">PRD Test Cases v0.96</a></p>
+      <p>Report generated by test-results/generate-html-report.cjs</p>
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll('.suite-header').forEach(header => {
+      header.addEventListener('click', () => {
+        header.nextElementSibling.classList.toggle('expanded');
+        const arrow = header.querySelector('.arrow');
+        if (arrow) arrow.textContent = header.nextElementSibling.classList.contains('expanded') ? '▼' : '▶';
+      });
+    });
+  </script>
+</body>
+</html>

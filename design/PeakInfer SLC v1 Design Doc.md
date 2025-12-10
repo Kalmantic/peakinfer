@@ -238,7 +238,7 @@ Here is the **complete specification**.
 Purpose: create oriented context.
 
 ```
-PeakInfer v0.95 — Inference Analysis
+PeakInfer v0.96 — Inference Analysis
 ```
 
 ### **2. Scan Summary**

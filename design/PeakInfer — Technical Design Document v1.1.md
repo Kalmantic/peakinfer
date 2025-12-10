@@ -1,7 +1,7 @@
 # **PeakInfer — Technical Design Document v1.1**
 
 **Claude-First Detection Architecture \+ Modular Prompt Suite**  
- *(Mapped to PRD v0.95 and Design Doc SLC v1)*
+ *(Mapped to PRD v0.96 and Design Doc SLC v1)*
 
 ---
 

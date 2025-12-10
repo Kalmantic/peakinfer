@@ -1,0 +1,71 @@
+{
+  "estimatedRange": {
+    "low": 1.847,
+    "high": 79.55
+  },
+  "mostExpensiveModel": "claude-3-5-sonnet-20241022",
+  "byProvider": [
+    {
+      "provider": "anthropic",
+      "cost": 45,
+      "percentage": 57
+    },
+    {
+      "provider": "openai",
+      "cost": 34.550000000000004,
+      "percentage": 43
+    }
+  ],
+  "byModel": [
+    {
+      "model": "claude-3-5-sonnet-20241022",
+      "cost": 45
+    },
+    {
+      "model": "gpt-4o",
+      "cost": 32.5
+    },
+    {
+      "model": "gpt-4o-mini",
+      "cost": 1.95
+    },
+    {
+      "model": "text-embedding-3-small",
+      "cost": 0.1
+    }
+  ],
+  "hotspots": [
+    {
+      "file": "app.py",
+      "line": 23,
+      "model": "claude-3-5-sonnet-20241022",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Claude 3.5 Sonnet ($3.00/1M input) is premium pricing. For simple chat without advanced reasoning or complex instruction following, use Claude Haiku ($0.25/1M), GPT-4o-mini ($0.15/1M), Gemini Flash ($0.075/1M), or Llama-3-8b on Together AI ($0.20/1M) for 12-40x cost savings."
+    },
+    {
+      "file": "app.py",
+      "line": 15,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) GPT-4o ($2.50/1M input) is expensive for simple chat. For basic conversational tasks without advanced reasoning, switch to GPT-4o-mini ($0.15/1M), Claude Haiku ($0.25/1M), Gemini Flash ($0.075/1M), or Llama-3-8b via Together AI ($0.20/1M) for 10-33x cost savings."
+    },
+    {
+      "file": "app.py",
+      "line": 32,
+      "model": "gpt-4o-mini",
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "(AI Analysis) GPT-4o-mini is cost-effective but has limited streaming speed (~80 tok/s). For ultra-low latency streaming use cases, consider Groq with Llama-3-8b (free tier, ~600 tok/s), Gemini Flash ($0.075/1M, ~300 tok/s), or Fireworks AI Llama-3 ($0.20/1M, ~400 tok/s) for 4-8x faster streaming at similar or lower cost."
+    },
+    {
+      "file": "app.py",
+      "line": 43,
+      "model": "text-embedding-3-small",
+      "estimatedMonthlyLow": 0.002,
+      "estimatedMonthlyHigh": 0.1,
+      "suggestion": "(AI Analysis) text-embedding-3-small ($0.02/1M) is already cost-effective. For even lower costs at scale, consider Voyage AI embed-v2 ($0.01/1M), Cohere embed-english-light-v3.0 ($0.01/1M), or self-host nomic-embed-text via Ollama for zero API costs with comparable quality for RAG/search use cases."
+    }
+  ]
+}

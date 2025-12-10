@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-Based on analysis of [InferenceMAX](https://github.com/InferenceMAX/InferenceMAX) benchmarking methodology and the existing PRD v0.95, this document proposes updates to position PeakInfer as the **Inference Control Plane** — the intelligence layer that enables engineers to make data-driven decisions across:
+Based on analysis of [InferenceMAX](https://github.com/InferenceMAX/InferenceMAX) benchmarking methodology and the existing PRD v0.96, this document proposes updates to position PeakInfer as the **Inference Control Plane** — the intelligence layer that enables engineers to make data-driven decisions across:
 
 1. **Cost** — Normalized $/M tokens across deployment types
 2. **Latency** — Time to first token, tokens/second/user (interactivity)
