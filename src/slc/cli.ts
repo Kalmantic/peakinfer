@@ -59,7 +59,7 @@ function renderSetupGuide(): void {
   peakinfer
 
   analyzes your codebase for LLM API calls,
-  estimates costs, and suggests optimizations.
+  profiles performance, and suggests optimizations.
 
   setup:
 
@@ -115,17 +115,13 @@ interface AnalyzeOptions {
   html?: boolean;
   open?: boolean;
   output?: 'json' | 'text';  // Output format: json for machine-readable, text for human-readable
+  cached?: boolean;  // View cached results without API call (offline mode)
 }
 
 /**
  * Run the complete analysis pipeline using AI agents.
  */
 async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promise<void> {
-  // Check API key first (friendly first-use experience)
-  if (!checkApiKey()) {
-    process.exit(1);
-  }
-
   // Resolve to absolute path
   const root = path.resolve(targetPath);
 
@@ -136,6 +132,71 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
       message: `Path does not exist: ${root}`,
       suggestion: 'Check the path and try again',
     });
+    process.exit(1);
+  }
+
+  // Handle cached mode (offline-friendly, no API key needed)
+  if (options.cached) {
+    const { readCacheSync, getCacheAge, formatCacheTimestamp } = await import('./cache.js');
+    const cached = readCacheSync(root);
+
+    if (!cached) {
+      console.log(`
+  No cached analysis found.
+
+  Run a fresh analysis first:
+    peakinfer analyze ${targetPath}
+
+  Then view cached results anytime (no API key needed):
+    peakinfer analyze ${targetPath} --cached
+`);
+      process.exit(0);
+    }
+
+    console.log(`
+  Loading cached analysis...
+  Cached: ${getCacheAge(cached)} (${formatCacheTimestamp(cached)})
+`);
+
+    // Render cached results
+    if (options.output === 'json') {
+      const jsonOutput = {
+        success: true,
+        state: 'cached',
+        cached: {
+          timestamp: cached.timestamp,
+          age: getCacheAge(cached),
+        },
+        callsites: cached.callsites,
+        stackMap: cached.stackMap,
+        pricing: cached.pricing,
+        techStack: cached.techStack,
+        patterns: cached.patterns,
+      };
+      console.log(JSON.stringify(jsonOutput, null, 2));
+    } else {
+      // Render using PRD success state
+      renderPRDSuccessState(
+        {
+          root: cached.targetPath,
+          files: [],
+          durationMs: 0,
+          ...(cached.scan || { totalFiles: 0, totalLines: 0, languages: {} }),
+        },
+        cached.callsites as any,
+        cached.stackMap,
+        cached.pricing,
+        cached.techStack,
+        cached.patterns,
+        []
+      );
+      console.log(`  (cached from ${formatCacheTimestamp(cached)})`);
+    }
+    return;
+  }
+
+  // Check API key for fresh analysis
+  if (!checkApiKey()) {
     process.exit(1);
   }
 
@@ -150,33 +211,10 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
 
   try {
 
-    // Phase 1: Scanning codebase
-    progress.start('Scanning codebase...');
+    // Phase 1: Quick file scan (no progress bar, just spinner)
+    progress.start('Discovering files...');
 
-    // Import ProgressBar for visual progress
-    const { ProgressBar } = await import('./progress.js');
-
-    // Create progress bar for file scanning (we'll update it as we scan)
-    let progressBar: InstanceType<typeof ProgressBar> | null = null;
-
-    const scanResult = await scan(root, {
-      onProgress: (current, total, currentFile) => {
-        // Initialize progress bar on first update
-        if (!progressBar && total > 0) {
-          progress.stop(); // Stop the spinner
-          progressBar = new ProgressBar(total, {
-            width: 40,
-            label: 'Scanning codebase'
-          });
-        }
-
-        // Update progress bar with current file info
-        if (progressBar) {
-          const fileName = currentFile ? currentFile.split('/').pop() || currentFile : '';
-          progressBar.update(current, fileName);
-        }
-      }
-    });
+    const scanResult = await scan(root);
 
     if (scanResult.totalFiles === 0) {
       progress.stop();
@@ -188,55 +226,105 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
       process.exit(1);
     }
 
-    // Resume with regular progress indicator
-    if (!progressBar) {
-      // If we didn't use progress bar (small codebase), just update the spinner
-      progress.update(`Found ${scanResult.totalFiles} files to analyze`);
-    } else {
-      // Restart progress after progress bar
-      progress.start(`Found ${scanResult.totalFiles} files to analyze`);
-    }
+    // Show scan complete
+    progress.succeed(`Found ${scanResult.totalFiles} files to analyze`);
 
-    // Phase 2: Pattern Detection
-    progress.startStep('detect-patterns', 'Detecting LLM usage patterns');
-
-    // Animated messages during analysis
-    const analysisMessages = [
-      'Scanning for OpenAI API calls...',
-      'Detecting Anthropic SDK usage...',
-      'Identifying LangChain patterns...',
-      'Mapping inference callsites...',
-      'Analyzing cost distribution...',
-    ];
-    const animatedMsg = createAnimatedMessage(analysisMessages);
-    animatedMsg.start(2000);
+    // Phase 2: Connect to Claude Code SDK (PRD format)
+    process.stdout.write('\nConnecting to Claude Code SDK...    ');
 
     // Scale maxTurns based on file count (more files = more exploration needed)
-    const baseTurns = 30;
-    const extraTurns = Math.ceil(scanResult.totalFiles / 25) * 5;
-    const maxTurns = Math.min(baseTurns + extraTurns, 100); // Cap at 100 turns
+    // Increased base from 30 to 50 for thorough analysis
+    const baseTurns = 50;
+    const extraTurns = Math.ceil(scanResult.totalFiles / 20) * 5;
+    const maxTurns = Math.min(baseTurns + extraTurns, 150); // Cap at 150 turns
+
+    // Track current file being analyzed for tree-style display
+    let lastFilePath = '';
+
+    // Track if SDK connection checkmark was shown
+    let sdkConnected = false;
 
     const result = await analyzeWithAgent(root, {
       maxTurns,
       onProgress: (msg) => {
-        // Update progress with agent messages
-        if (msg.includes('Searching')) {
-          progress.update(msg, ['semantic analysis']);
-        } else if (msg.includes('Found')) {
-          progress.update(msg, ['validation']);
-        } else {
-          progress.update(msg);
+        // Parse the progress message format: "Turn X/Y: ToolName → filename"
+        const turnMatch = msg.match(/Turn (\d+)\/(\d+):/);
+        const fileMatch = msg.match(/→\s*(.+)$/);
+
+        if (turnMatch) {
+          const currentTurn = parseInt(turnMatch[1], 10);
+          const totalTurns = parseInt(turnMatch[2], 10);
+          // Cap at 99% until we're truly done - agent may exceed maxTurns estimate
+          const percent = Math.min(Math.floor((currentTurn / totalTurns) * 100), 99);
+
+          // Build progress bar (PRD format: ████████░░)
+          const barWidth = 10;
+          const filled = Math.floor((percent / 100) * barWidth);
+          const empty = barWidth - filled;
+          const bar = '█'.repeat(filled) + '░'.repeat(empty);
+
+          // Extract file/directory being analyzed
+          let currentFile = '';
+          if (fileMatch) {
+            const filePath = fileMatch[1].trim();
+            // Extract directory or file name for display - truncate long patterns
+            const parts = filePath.split('/');
+            if (parts.length > 2) {
+              // Show parent directory + file: src/agents/analyzer.ts
+              currentFile = parts.slice(-2).join('/');
+            } else {
+              currentFile = filePath;
+            }
+            // Truncate long filenames/patterns to 28 chars
+            if (currentFile.length > 28) {
+              currentFile = currentFile.substring(0, 25) + '...';
+            }
+            lastFilePath = currentFile;
+          } else if (lastFilePath) {
+            currentFile = lastFilePath;
+          }
+
+          // First turn shows the SDK connected checkmark
+          if (!sdkConnected) {
+            console.log('✓');
+            sdkConnected = true;
+          }
+
+          // Only update display if running in TTY
+          if (process.stdout.isTTY) {
+            // Clear line and write PRD-style progress
+            process.stdout.write('\r\x1b[K');
+            process.stdout.write(`Analyzing codebase...               ${bar}  ${percent.toString().padStart(2)}%`);
+
+            // Show current file on next line (tree-style)
+            if (currentFile) {
+              process.stdout.write(`\n  └─ ${currentFile.padEnd(30)} analyzing`);
+              process.stdout.write('\x1b[F'); // Move cursor back up one line
+            }
+          } else {
+            // Non-TTY: just print progress periodically
+            if (currentTurn % 10 === 0 || currentTurn === 1) {
+              console.log(`Analyzing... ${percent}% (${currentFile || 'scanning'})`);
+            }
+          }
         }
       },
     });
 
-    // Stop animated messages
-    animatedMsg.stop();
-
-    // Complete pattern detection step
-    progress.completeStep('detect-patterns', 'success', `Found ${result.callsites.length} callsites`);
+    // Clear the progress display and show completion
+    if (process.stdout.isTTY) {
+      process.stdout.write('\r\x1b[K'); // Clear current line
+      process.stdout.write('\n');       // Move to next line
+      process.stdout.write('\r\x1b[K'); // Clear that line too (the file line)
+    }
+    console.log(`Analyzing codebase...               ${'█'.repeat(10)}  100%  ✓`);
 
     const { callsites, stackMap, pricing, techStack, patterns, totalCostUsd, durationMs } = result;
+    console.log(`Found ${callsites.length} LLM callsites`);
+    console.log(''); // Blank line before next phase
+
+    // Re-initialize progress manager for remaining phases
+    progress.start('Processing results...');
 
     // Phase 3: Risk Assessment
     if (callsites.length > 0 && patterns) {
@@ -277,6 +365,35 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
 
     // Complete the progress
     progress.succeed(`Analysis complete in ${(durationMs / 1000).toFixed(1)}s`);
+
+    // Cache results for offline viewing
+    try {
+      const { writeCacheSync } = await import('./cache.js');
+      writeCacheSync(root, {
+        targetPath: root,
+        callsites: callsites.map(cs => ({
+          id: cs.id,
+          file: cs.file,
+          line: cs.line,
+          provider: cs.provider || 'unknown',
+          model: cs.model || 'unknown',
+          taskKind: cs.taskKind,
+          isStreaming: cs.isStreaming ?? undefined,
+          confidence: cs.confidence,
+        })),
+        stackMap,
+        pricing,
+        techStack,
+        patterns,
+        scan: {
+          totalFiles: scanResult.totalFiles,
+          totalLines: scanResult.totalLines,
+          languages: scanResult.languages,
+        },
+      });
+    } catch {
+      // Silently fail cache write (non-critical)
+    }
 
     // JSON output mode - machine-readable format for testing and automation
     if (options.output === 'json') {
@@ -355,6 +472,14 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
       progress.fail('Analysis failed');
     }
 
+    // Debug: log the full error for troubleshooting
+    if (process.env.DEBUG) {
+      console.error('\n[DEBUG] Full error:', error);
+      if (error instanceof Error && error.stack) {
+        console.error('[DEBUG] Stack trace:', error.stack);
+      }
+    }
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     // Determine error type for PRD-aligned output
@@ -365,6 +490,20 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
       errorType = 'rate_limit';
     } else if (errorMessage.includes('connection') || errorMessage.includes('network') || errorMessage.includes('ENOTFOUND')) {
       errorType = 'api_connection';
+    }
+
+    // JSON output mode - machine-readable error format
+    if (options.output === 'json') {
+      const jsonOutput = {
+        success: false,
+        state: 'error',
+        error: {
+          type: errorType,
+          message: errorMessage,
+        },
+      };
+      console.log(JSON.stringify(jsonOutput, null, 2));
+      process.exit(1);
     }
 
     // Use PRD-aligned error state
@@ -506,9 +645,9 @@ async function discover(targetPath: string, collectors: string[]): Promise<void>
 
     // Print summary
     console.log('\n  ✅ Discovery complete\n');
-    console.log(`  📊 Events collected: ${result.totalEvents || 0}`);
-    console.log(`  💾 Output: ${path.join(root, 'events.jsonl')}`);
-    console.log(`  💰 Estimated monthly cost: $${(result.estimatedMonthlyCost || 0).toLocaleString()}`);
+    console.log(`  Events collected: ${result.totalEvents || 0}`);
+    console.log(`  Output: ${path.join(root, 'events.jsonl')}`);
+    console.log(`  Estimated monthly throughput: ${(result.estimatedMonthlyThroughput || 0).toLocaleString()} req/s`);
     console.log('');
     console.log('  next steps:');
     console.log('    peakinfer profile events.jsonl    # cluster workloads');
@@ -577,7 +716,7 @@ async function profile(eventsFile: string): Promise<void> {
     if (result.clusters && result.clusters.length > 0) {
       console.log('  top workload clusters:');
       for (const cluster of result.clusters.slice(0, 5)) {
-        console.log(`    • ${cluster.name}: ${cluster.eventCount} events, $${cluster.monthlyCost?.toFixed(0) || 0}/mo`);
+        console.log(`    - ${cluster.name}: ${cluster.eventCount} events, ${cluster.avgLatencyMs?.toFixed(0) || 0}ms avg latency`);
       }
       console.log('');
     }
@@ -643,15 +782,15 @@ async function plan(constraintsFile?: string): Promise<void> {
       constraintsFile,
     });
 
-    console.log('\n  ✅ Planning complete\n');
-    console.log(`  📊 Optimization opportunities: ${result.opportunities?.length || 0}`);
-    console.log(`  💰 Potential monthly savings: $${(result.totalPotentialSavings || 0).toLocaleString()}`);
+    console.log('\n  Planning complete\n');
+    console.log(`  Optimization opportunities: ${result.opportunities?.length || 0}`);
+    console.log(`  Potential throughput gain: ${(result.totalPotentialThroughputGain || 0).toLocaleString()}x`);
     console.log('');
 
     if (result.opportunities && result.opportunities.length > 0) {
       console.log('  top opportunities:');
       for (const opp of result.opportunities.slice(0, 5)) {
-        console.log(`    • ${opp.title}: $${opp.monthlySavings?.toFixed(0) || 0}/mo savings`);
+        console.log(`    - ${opp.title}: ${opp.throughputGain?.toFixed(1) || 0}x throughput improvement`);
       }
       console.log('');
     }
@@ -739,7 +878,7 @@ async function report(format: string, outputDir: string): Promise<void> {
       {
         metadata: { source: 'cli', timestamp: new Date().toISOString() },
         configSummary: {
-          application: { runtimes: [], total_monthly_cost: 0 },
+          application: { runtimes: [], total_monthly_throughput: 0 },
           serving: {},
           infrastructure: {},
         },
@@ -806,8 +945,8 @@ async function templates(subCommand: string, templateId?: string): Promise<void>
       for (const [category, temps] of byCategory) {
         console.log(`  ${category}:`);
         for (const t of temps.slice(0, 5)) {
-          const savings = t.optimization?.expected_cost_reduction || 'varies';
-          console.log(`    • ${t.id}: ${t.name} (${savings})`);
+          const gain = t.optimization?.expected_throughput_improvement || 'varies';
+          console.log(`    - ${t.id}: ${t.name} (${gain})`);
         }
         if (temps.length > 5) {
           console.log(`    ... and ${temps.length - 5} more`);
@@ -823,15 +962,15 @@ async function templates(subCommand: string, templateId?: string): Promise<void>
       const template = engine.getTemplate(templateId);
 
       if (!template) {
-        console.log(`\n  ❌ Template not found: ${templateId}\n`);
+        console.log(`\n  Template not found: ${templateId}\n`);
         console.log('  Run "peakinfer templates list" to see available templates\n');
         process.exit(1);
       }
 
       console.log(`
-┌─────────────────────────────────────────────────────────────┐
-│  ${template.name}
-└─────────────────────────────────────────────────────────────┘
+-------------------------------------------------------------
+  ${template.name}
+-------------------------------------------------------------
 
   ID: ${template.id}
   Category: ${template.category}
@@ -841,17 +980,17 @@ async function templates(subCommand: string, templateId?: string): Promise<void>
     ${template.description || 'No description'}
 
   Expected Impact:
-    • Cost Reduction: ${template.optimization?.expected_cost_reduction || 'varies'}
-    • Throughput: ${template.optimization?.expected_throughput_improvement || 'varies'}
-    • Risk Level: ${template.optimization?.risk_level || 'medium'}
-    • Effort: ${template.optimization?.effort_estimate || 'varies'}
+    - Throughput Improvement: ${template.optimization?.expected_throughput_improvement || 'varies'}
+    - Latency Reduction: ${template.optimization?.expected_latency_reduction || 'varies'}
+    - Risk Level: ${template.optimization?.risk_level || 'medium'}
+    - Effort: ${template.optimization?.effort_estimate || 'varies'}
 
   Implementation:
     Prerequisites: ${template.implementation?.prerequisites?.length || 0} items
     Automated Steps: ${template.implementation?.automated_steps?.length || 0} steps
 
-  Economics:
-    Implementation Cost: $${template.economics?.implementation_cost?.total_cost?.toLocaleString() || 0}
+  Performance Metrics:
+    Implementation Effort: ${template.economics?.implementation_effort?.effort_hours?.toLocaleString() || 0} hours
 `);
 
     } else {
@@ -868,16 +1007,16 @@ async function templates(subCommand: string, templateId?: string): Promise<void>
 }
 
 // =============================================================================
-// RECOMMEND COMMAND - Codebase Analysis + Cost Optimization Recommendations
+// RECOMMEND COMMAND - Codebase Analysis + Performance Optimization Recommendations
 // =============================================================================
 
 /**
  * Analyze codebase and generate optimization recommendations.
  *
  * Uses agent-based analysis (same as `analyze` command)
- * Flow: Agent Analysis → Recommender → Report
+ * Flow: Agent Analysis -> Recommender -> Report
  */
-async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'balanced' = 'cost'): Promise<void> {
+async function recommend(targetPath: string, prioritize: 'throughput' | 'latency' | 'balanced' = 'throughput'): Promise<void> {
   if (!checkApiKey()) {
     process.exit(1);
   }
@@ -951,7 +1090,7 @@ async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'b
     const messages = [
       'Scanning for API integrations...',
       'Detecting inference patterns...',
-      'Analyzing cost distribution...',
+      'Analyzing performance distribution...',
       'Identifying optimization opportunities...',
     ];
     const animatedMsg = createAnimatedMessage(messages);
@@ -1012,9 +1151,9 @@ async function recommend(targetPath: string, prioritize: 'cost' | 'latency' | 'b
     progress.startStep('recommendations', 'Generating optimization recommendations');
     const summary = generateRecommendations(callsites, prioritize);
     const recCount = summary.recommendations?.length || 0;
-    const savings = (summary as any).totalSavings || (summary as any).totalPotentialSavings || 0;
+    const throughputGain = (summary as any).totalThroughputGain || (summary as any).totalPotentialThroughputGain || 0;
     progress.completeStep('recommendations', 'success',
-      `${recCount} recommendations, $${savings.toFixed(0)}/mo potential savings`);
+      `${recCount} recommendations, ${throughputGain.toFixed(1)}x potential throughput gain`);
 
     // Complete progress
     progress.succeed(`Analysis complete in ${(durationMs / 1000).toFixed(1)}s`);
@@ -1141,7 +1280,7 @@ peakinfer prices
     const maxPerProvider = filterProvider ? 50 : 5;
 
     for (const [provider, models] of byProvider) {
-      // Sort by cost (most expensive first)
+      // Sort by throughput rate (highest first)
       models.sort((a, b) => (b.inputPer1M + b.outputPer1M) - (a.inputPer1M + a.outputPer1M));
 
       for (const m of models.slice(0, maxPerProvider)) {
@@ -1226,59 +1365,42 @@ function main(): void {
   // Show help
   if (args.includes('--help') || args.includes('-h')) {
     console.log(`
-peakinfer — llm inference intelligence
+peakinfer — llm inference performance optimization
 
 usage:
-  peakinfer analyze <path>         quick codebase analysis (recommended start)
-  peakinfer recommend <path>       analyze + recommend cost optimizations
-  peakinfer prices [provider]      show pricing data source and model prices
-  peakinfer discover <path>        full discovery with collectors
-  peakinfer profile <events.jsonl> profile inference workloads
-  peakinfer plan [--constraints]   create optimization plan
-  peakinfer report [--format html] generate reports
-  peakinfer templates [list|info]  browse optimization templates
-  peakinfer --help                 show this help
-
-recommend options:
-  --prioritize <mode>           cost (default), latency, or balanced
+  peakinfer analyze <path>       analyze codebase for LLM usage + performance
+  peakinfer recommend <path>     analyze and show optimization recommendations
+  peakinfer prices [provider]    show model pricing data
+  peakinfer benchmark [provider] show model performance benchmarks
+  peakinfer templates [list|info] browse optimization templates
+  peakinfer --help               show this help
 
 analyze options:
-  --html                      generate an html report
-  --open                      open html report in browser
-  --output <format>           output format: text (default) or json
+  --html                generate html report
+  --open                open html report in browser
+  --output <format>     output format: text (default) or json
+  --cached              view previous analysis (offline, no API key needed)
 
-prices options:
-  --refresh                   refresh cache from LiteLLM
-
-discover options:
-  --collectors <list>         collectors to use (snowflake,databricks,terraform,codebase)
-  --output <dir>              output directory for events.jsonl
-
-report options:
-  --format <fmt>              output format: html, markdown, json (default: all)
-  --output <dir>              output directory
+benchmark options:
+  --refresh             refresh cache from sources
 
 examples:
-  peakinfer analyze .                        # quick start - analyze current directory
-  peakinfer analyze ./my-project --html      # with html report
-  peakinfer analyze . --output json          # machine-readable json output
-  peakinfer recommend ./my-project           # find cost optimization opportunities
-  peakinfer recommend . --prioritize latency # prioritize latency over cost
-  peakinfer prices openai                    # show openai model prices
-  peakinfer prices --refresh                 # refresh pricing from LiteLLM
-  peakinfer discover . --collectors codebase # full codebase discovery
-  peakinfer templates list                   # list available templates
-  peakinfer report --format html             # generate html report
+  peakinfer analyze .              # analyze current directory
+  peakinfer analyze . --html       # with html report
+  peakinfer analyze . --cached     # view last analysis (offline)
+  peakinfer analyze . --output json # machine-readable output
+  peakinfer benchmark openai       # show openai model benchmarks
+  peakinfer templates list         # browse optimization templates
 
 environment:
-  ANTHROPIC_API_KEY           required for analysis
+  ANTHROPIC_API_KEY     required for fresh analysis (not --cached)
 `);
     process.exit(0);
   }
 
   // Show version
   if (args.includes('--version') || args.includes('-v')) {
-    console.log('0.2.1');
+    console.log('0.95.0');
     process.exit(0);
   }
 
@@ -1288,6 +1410,7 @@ environment:
     html: args.includes('--html') || args.includes('--open'),
     open: args.includes('--open'),
     output: outputArg === 'json' ? 'json' : 'text',
+    cached: args.includes('--cached'),
   };
 
   // Filter out options to get positional args
@@ -1296,38 +1419,43 @@ environment:
   // Parse command
   const command = positionalArgs[0];
 
-  if (command === 'analyze') {
+  // Simplified commands (removed stubs for SLC compliance)
+  const simplifiedCommands = ['discover', 'profile', 'plan', 'report'];
+
+  if (command === 'analyze' || command === 'recommend') {
+    // 'recommend' is an alias for 'analyze' (both show recommendations)
     const targetPath = positionalArgs[1] || '.';
     analyze(targetPath, options);
-  } else if (command === 'recommend') {
-    const targetPath = positionalArgs[1] || '.';
-    const prioritizeArg = getArgValue(args, '--prioritize') as 'cost' | 'latency' | 'balanced' | undefined;
-    const prioritize = prioritizeArg || 'cost';
-    recommend(targetPath, prioritize);
-  } else if (command === 'discover') {
-    const targetPath = positionalArgs[1] || '.';
-    const collectors = getArgValue(args, '--collectors') || 'codebase';
-    discover(targetPath, collectors.split(','));
-  } else if (command === 'profile') {
-    const eventsFile = positionalArgs[1];
-    if (!eventsFile) {
-      console.error('error: profile requires events file path');
-      console.error('usage: peakinfer profile <events.jsonl>');
-      process.exit(1);
-    }
-    profile(eventsFile);
-  } else if (command === 'plan') {
-    const constraintsFile = getArgValue(args, '--constraints');
-    plan(constraintsFile);
-  } else if (command === 'report') {
-    const format = getArgValue(args, '--format') || 'all';
-    const outputDir = getArgValue(args, '--output') || '.';
-    report(format, outputDir);
+  } else if (simplifiedCommands.includes(command)) {
+    // Friendly message for removed commands
+    console.log(`
+  '${command}' has been simplified.
+
+  Use instead:
+    peakinfer analyze .        # full analysis with recommendations
+    peakinfer analyze . --cached   # view previous analysis offline
+
+  For pricing info:
+    peakinfer prices           # model pricing data
+`);
+    process.exit(0);
   } else if (command === 'templates') {
     const subCommand = positionalArgs[1] || 'list';
     const templateId = positionalArgs[2];
+    // Only 'list' and 'info' are available (SLC: no stub commands)
+    if (subCommand !== 'list' && subCommand !== 'info') {
+      console.log(`
+  Unknown templates subcommand: ${subCommand}
+
+  Available commands:
+    peakinfer templates list              # browse all templates
+    peakinfer templates info <template>   # view template details
+`);
+      process.exit(1);
+    }
     templates(subCommand, templateId);
-  } else if (command === 'prices') {
+  } else if (command === 'prices' || command === 'benchmark') {
+    // 'benchmark' is an alias for 'prices' (both show model pricing/performance data)
     const filterProvider = positionalArgs[1];
     const refresh = args.includes('--refresh');
     prices(filterProvider, refresh);

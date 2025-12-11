@@ -1,0 +1,376 @@
+{
+  "version": "1.1.0",
+  "description": "Complete PRD coverage: Real-world repos for PeakInfer robustness testing across all layers",
+  "prd_reference": "PeakInfer PRD v0.96 - Section 12 Integrations",
+
+  "data_platforms": {
+    "description": "Enterprise data platforms with LLM features (PRD: Databricks, Snowflake)",
+    "repos": [
+      {
+        "name": "databricks-sdk-py",
+        "url": "https://github.com/databricks/databricks-sdk-py",
+        "expected_providers": ["databricks"],
+        "expected_patterns": ["serving_endpoints", "foundation_models"],
+        "prd_reference": "DET-308: Databricks SDK, /serving-endpoints/",
+        "priority": 1
+      },
+      {
+        "name": "databricks-ml-examples",
+        "url": "https://github.com/databricks/databricks-ml-examples",
+        "expected_providers": ["databricks"],
+        "expected_patterns": ["model_serving", "mosaic_ml"],
+        "priority": 1
+      },
+      {
+        "name": "snowflake-ml-python",
+        "url": "https://github.com/snowflakedb/snowflake-ml-python",
+        "expected_providers": ["snowflake"],
+        "expected_patterns": ["cortex", "snowpark_ml"],
+        "prd_reference": "DET-309: snowflake.cortex",
+        "priority": 1
+      },
+      {
+        "name": "sfguide-getting-started-with-cortex",
+        "url": "https://github.com/Snowflake-Labs/sfguide-getting-started-with-cortex",
+        "expected_providers": ["snowflake"],
+        "expected_patterns": ["cortex_complete", "cortex_embed"],
+        "priority": 2
+      }
+    ]
+  },
+
+  "benchmarking": {
+    "description": "Inference benchmarking frameworks (PRD: InferenceMAX alignment)",
+    "repos": [
+      {
+        "name": "InferenceMAX",
+        "url": "https://github.com/InferenceMAX/InferenceMAX",
+        "expected_patterns": ["benchmark_serving", "throughput", "ttft"],
+        "prd_reference": "Section 9: InferenceMAX Alignment",
+        "priority": 1
+      },
+      {
+        "name": "llmperf",
+        "url": "https://github.com/ray-project/llmperf",
+        "expected_providers": ["openai", "anthropic", "together", "anyscale"],
+        "expected_patterns": ["load_test", "throughput_bench"],
+        "priority": 2
+      }
+    ]
+  },
+
+  "application_layer": {
+    "description": "SDK and API usage patterns",
+    "repos": [
+      {
+        "name": "langchain",
+        "url": "https://github.com/langchain-ai/langchain",
+        "sparse_paths": ["libs/langchain/langchain", "libs/partners"],
+        "expected_providers": ["openai", "anthropic", "together", "fireworks", "cohere"],
+        "expected_patterns": ["streaming", "agents", "chains", "callbacks"],
+        "priority": 1
+      },
+      {
+        "name": "llama_index",
+        "url": "https://github.com/run-llama/llama_index",
+        "sparse_paths": ["llama-index-core", "llama-index-integrations"],
+        "expected_providers": ["openai", "anthropic", "cohere"],
+        "expected_patterns": ["embeddings", "completions", "rag"],
+        "priority": 1
+      },
+      {
+        "name": "openai-cookbook",
+        "url": "https://github.com/openai/openai-cookbook",
+        "expected_providers": ["openai"],
+        "expected_patterns": ["function_calling", "streaming", "embeddings", "vision"],
+        "priority": 1
+      },
+      {
+        "name": "anthropic-cookbook",
+        "url": "https://github.com/anthropics/anthropic-cookbook",
+        "expected_providers": ["anthropic"],
+        "expected_patterns": ["tools", "streaming", "vision"],
+        "priority": 1
+      },
+      {
+        "name": "vercel-ai",
+        "url": "https://github.com/vercel/ai",
+        "sparse_paths": ["packages/ai", "packages/openai", "packages/anthropic"],
+        "expected_providers": ["openai", "anthropic", "google"],
+        "expected_patterns": ["streaming", "useChat", "generateText"],
+        "priority": 1
+      },
+      {
+        "name": "litellm",
+        "url": "https://github.com/BerriAI/litellm",
+        "sparse_paths": ["litellm"],
+        "expected_providers": ["openai", "anthropic", "together", "cerebras", "groq", "fireworks"],
+        "expected_patterns": ["proxy", "router", "fallback"],
+        "priority": 1
+      },
+      {
+        "name": "instructor",
+        "url": "https://github.com/jxnl/instructor",
+        "expected_providers": ["openai", "anthropic"],
+        "expected_patterns": ["structured_output", "function_calling"],
+        "priority": 2
+      },
+      {
+        "name": "autogpt",
+        "url": "https://github.com/Significant-Gravitas/AutoGPT",
+        "sparse_paths": ["autogpt"],
+        "expected_providers": ["openai", "anthropic"],
+        "expected_patterns": ["agents", "tools", "memory"],
+        "priority": 2
+      }
+    ]
+  },
+
+  "serving_layer": {
+    "description": "Self-hosted inference servers and optimizations",
+    "repos": [
+      {
+        "name": "vllm",
+        "url": "https://github.com/vllm-project/vllm",
+        "sparse_paths": ["vllm"],
+        "expected_patterns": ["engine_config", "sampling_params", "async_llm_engine"],
+        "serving_tech": "vllm",
+        "priority": 1
+      },
+      {
+        "name": "tensorrt-llm",
+        "url": "https://github.com/NVIDIA/TensorRT-LLM",
+        "sparse_paths": ["tensorrt_llm", "examples"],
+        "expected_patterns": ["build_config", "runtime", "quantization"],
+        "serving_tech": "tensorrt",
+        "priority": 1
+      },
+      {
+        "name": "sglang",
+        "url": "https://github.com/sgl-project/sglang",
+        "sparse_paths": ["python/sglang"],
+        "expected_patterns": ["runtime", "server", "sampling"],
+        "serving_tech": "sglang",
+        "priority": 1
+      },
+      {
+        "name": "text-generation-inference",
+        "url": "https://github.com/huggingface/text-generation-inference",
+        "sparse_paths": ["server", "router"],
+        "expected_patterns": ["model_config", "generation_config"],
+        "serving_tech": "tgi",
+        "priority": 1
+      },
+      {
+        "name": "ollama",
+        "url": "https://github.com/ollama/ollama",
+        "sparse_paths": ["api", "server"],
+        "expected_patterns": ["modelfile", "api_generate"],
+        "serving_tech": "ollama",
+        "priority": 2
+      },
+      {
+        "name": "localai",
+        "url": "https://github.com/mudler/LocalAI",
+        "sparse_paths": ["core", "pkg"],
+        "expected_patterns": ["backend_config", "model_loader"],
+        "serving_tech": "localai",
+        "priority": 2
+      },
+      {
+        "name": "lmdeploy",
+        "url": "https://github.com/InternLM/lmdeploy",
+        "sparse_paths": ["lmdeploy"],
+        "expected_patterns": ["turbomind", "pytorch_engine"],
+        "serving_tech": "lmdeploy",
+        "priority": 2
+      }
+    ]
+  },
+
+  "infrastructure_layer": {
+    "description": "GPU scheduling, cloud infrastructure, Terraform",
+    "repos": [
+      {
+        "name": "skypilot",
+        "url": "https://github.com/skypilot-org/skypilot",
+        "sparse_paths": ["sky"],
+        "expected_patterns": ["spot_instances", "gpu_scheduling", "multi_cloud"],
+        "infra_tech": ["aws", "gcp", "azure", "kubernetes"],
+        "priority": 1
+      },
+      {
+        "name": "ray",
+        "url": "https://github.com/ray-project/ray",
+        "sparse_paths": ["python/ray/serve", "python/ray/llm"],
+        "expected_patterns": ["ray_serve", "deployment", "autoscaling"],
+        "infra_tech": ["ray", "kubernetes"],
+        "priority": 1
+      },
+      {
+        "name": "substratus",
+        "url": "https://github.com/substratusai/substratus",
+        "expected_patterns": ["k8s_manifests", "gpu_resources"],
+        "infra_tech": ["kubernetes"],
+        "priority": 2
+      },
+      {
+        "name": "coreweave-examples",
+        "url": "https://github.com/coreweave/kubernetes-cloud",
+        "expected_patterns": ["gpu_pods", "inference_service"],
+        "infra_tech": ["kubernetes", "coreweave"],
+        "priority": 2
+      },
+      {
+        "name": "llm-on-ray",
+        "url": "https://github.com/intel/llm-on-ray",
+        "expected_patterns": ["ray_config", "model_serving"],
+        "infra_tech": ["ray"],
+        "priority": 2
+      }
+    ]
+  },
+
+  "alternative_providers": {
+    "description": "Non-OpenAI/Anthropic provider SDKs (PRD Section 12)",
+    "repos": [
+      {
+        "name": "cerebras-cloud-sdk",
+        "url": "https://github.com/Cerebras/cerebras-cloud-sdk-python",
+        "expected_providers": ["cerebras"],
+        "prd_reference": "DET-208, DET-509: Cerebras Cloud, WSE",
+        "priority": 1
+      },
+      {
+        "name": "together-python",
+        "url": "https://github.com/togethercomputer/together-python",
+        "expected_providers": ["together"],
+        "prd_reference": "DET-201: Together AI",
+        "priority": 1
+      },
+      {
+        "name": "groq-python",
+        "url": "https://github.com/groq/groq-python",
+        "expected_providers": ["groq"],
+        "prd_reference": "DET-207, DET-508: Groq Cloud, LPU",
+        "priority": 1
+      },
+      {
+        "name": "fireworks-python",
+        "url": "https://github.com/fw-ai/fireworks-ai-python",
+        "expected_providers": ["fireworks"],
+        "prd_reference": "DET-202: Fireworks AI",
+        "priority": 1
+      },
+      {
+        "name": "mistral-python",
+        "url": "https://github.com/mistralai/client-python",
+        "expected_providers": ["mistral"],
+        "priority": 2
+      },
+      {
+        "name": "cohere-python",
+        "url": "https://github.com/cohere-ai/cohere-python",
+        "expected_providers": ["cohere"],
+        "priority": 2
+      }
+    ]
+  },
+
+  "serverless_providers": {
+    "description": "Serverless inference platforms (PRD: Modal, RunPod)",
+    "repos": [
+      {
+        "name": "modal-examples",
+        "url": "https://github.com/modal-labs/modal-examples",
+        "expected_providers": ["modal"],
+        "expected_patterns": ["stub_function", "gpu_decorator", "modal_toml"],
+        "prd_reference": "DET-204: Modal decorator, @stub.function",
+        "priority": 1
+      },
+      {
+        "name": "runpod-python",
+        "url": "https://github.com/runpod/runpod-python",
+        "expected_providers": ["runpod"],
+        "expected_patterns": ["serverless_handler", "endpoint"],
+        "prd_reference": "PRD: RunPod SDK, endpoints",
+        "priority": 1
+      },
+      {
+        "name": "baseten-examples",
+        "url": "https://github.com/basetenlabs/truss-examples",
+        "expected_providers": ["baseten"],
+        "expected_patterns": ["truss_config", "model_serving"],
+        "prd_reference": "DET-203: Baseten SDK, Truss configs",
+        "priority": 1
+      }
+    ]
+  },
+
+  "neocloud_providers": {
+    "description": "GPU cloud providers (PRD: Anyscale, Lambda, CoreWeave)",
+    "repos": [
+      {
+        "name": "anyscale-examples",
+        "url": "https://github.com/anyscale/templates",
+        "expected_providers": ["anyscale"],
+        "expected_patterns": ["ray_serve", "anyscale_config"],
+        "prd_reference": "DET-206: Anyscale SDK, Ray Serve",
+        "priority": 1
+      },
+      {
+        "name": "coreweave-kubernetes",
+        "url": "https://github.com/coreweave/kubernetes-cloud",
+        "expected_patterns": ["gpu_pods", "inference_service", "virtualserver"],
+        "infra_tech": ["kubernetes", "coreweave"],
+        "prd_reference": "PRD: CoreWeave API, coreweave.com",
+        "priority": 1
+      },
+      {
+        "name": "lambda-cloud-examples",
+        "url": "https://github.com/LambdaLabsML/examples",
+        "expected_patterns": ["gpu_instance", "lambda_config"],
+        "infra_tech": ["lambda"],
+        "prd_reference": "PRD: Lambda cloud configs",
+        "priority": 2
+      }
+    ]
+  },
+
+  "terraform_infrastructure": {
+    "description": "Terraform GPU infrastructure examples (PRD: OUT-044)",
+    "repos": [
+      {
+        "name": "terraform-aws-sagemaker",
+        "url": "https://github.com/aws-samples/amazon-sagemaker-secure-mlops",
+        "expected_patterns": ["gpu_type", "instance_type", "ml_instance"],
+        "infra_tech": ["terraform", "aws"],
+        "prd_reference": "OUT-044: Terraform GPU detection",
+        "priority": 1
+      },
+      {
+        "name": "terraform-google-vertex",
+        "url": "https://github.com/GoogleCloudPlatform/vertex-ai-samples",
+        "expected_patterns": ["accelerator_type", "machine_type"],
+        "infra_tech": ["terraform", "gcp"],
+        "priority": 2
+      },
+      {
+        "name": "gpu-operator",
+        "url": "https://github.com/NVIDIA/gpu-operator",
+        "expected_patterns": ["gpu_resources", "nvidia_driver"],
+        "infra_tech": ["kubernetes", "nvidia"],
+        "priority": 2
+      }
+    ]
+  },
+
+  "assertions": {
+    "no_crash": "PeakInfer must not crash on any repo",
+    "finds_callsites": "Must detect at least 1 callsite in repos with expected_providers",
+    "correct_provider": "Detected provider must match expected_providers",
+    "reasonable_time": "Analysis must complete in < 60s for sparse clones",
+    "valid_json": "JSON output must be valid and parseable",
+    "cost_estimate": "Must produce cost estimates for detected callsites"
+  }
+}

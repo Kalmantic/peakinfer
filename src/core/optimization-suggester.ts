@@ -97,11 +97,11 @@ export class OptimizationSuggester {
           complexity: opportunity.implementationComplexity
         }],
         codeSnippets: await this.generateCachingCodeSnippet(opportunity, codebase),
-        estimatedMonthlySavings: opportunity.estimatedSavings,
-        estimatedAnnualSavings: opportunity.estimatedSavings * 12,
+        estimatedMonthlyGain: opportunity.estimatedGain,
+        estimatedAnnualGain: opportunity.estimatedGain * 12,
         implementationComplexity: opportunity.implementationComplexity,
         implementationTimeHours: opportunity.implementationComplexity === 'low' ? 4 : opportunity.implementationComplexity === 'medium' ? 8 : 16,
-        roi: (opportunity.estimatedSavings * 12) / (200 * (opportunity.implementationComplexity === 'low' ? 4 : 8)),
+        roi: (opportunity.estimatedGain * 12) / (200 * (opportunity.implementationComplexity === 'low' ? 4 : 8)),
         confidence: opportunity.confidence,
         implementationSteps: [
           'Install semantic caching library (e.g., Redis + embeddings)',
@@ -113,8 +113,8 @@ export class OptimizationSuggester {
         requiredChanges: [],
         prerequisites: ['Redis server', 'Embedding model for semantic similarity'],
         rollbackPlan: 'Remove cache wrapper, revert to direct API calls',
-        priorityScore: this.calculatePriorityScore(opportunity.estimatedSavings, opportunity.implementationComplexity, opportunity.confidence),
-        priorityLevel: opportunity.estimatedSavings > 1000 ? 'high' : opportunity.estimatedSavings > 500 ? 'medium' : 'low',
+        priorityScore: this.calculatePriorityScore(opportunity.estimatedGain, opportunity.implementationComplexity, opportunity.confidence),
+        priorityLevel: opportunity.estimatedGain > 1000 ? 'high' : opportunity.estimatedGain > 500 ? 'medium' : 'low',
         detectedAt: new Date().toISOString()
       });
     }
@@ -132,6 +132,7 @@ export class OptimizationSuggester {
       }
 
       for (const [file, calls] of byFile.entries()) {
+        const monthlyGain = 100 * calls.length;
         suggestions.push({
           id: `error-handling-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           title: 'Add Error Handling for LLM Calls',
@@ -146,11 +147,11 @@ export class OptimizationSuggester {
             complexity: 'low'
           }],
           codeSnippets: await this.generateErrorHandlingSnippet(calls[0]),
-          estimatedMonthlySavings: 100 * calls.length, // Prevent costs from unhandled errors
-          estimatedAnnualSavings: 1200 * calls.length,
+          estimatedMonthlyGain: monthlyGain,
+          estimatedAnnualGain: monthlyGain * 12,
           implementationComplexity: 'low',
           implementationTimeHours: 2,
-          roi: (1200 * calls.length) / (200 * 2),
+          roi: (monthlyGain * 12) / (200 * 2),
           confidence: 0.9,
           implementationSteps: [
             'Wrap LLM calls in try-catch blocks',
@@ -162,7 +163,7 @@ export class OptimizationSuggester {
           requiredChanges: [],
           prerequisites: [],
           rollbackPlan: 'Remove try-catch wrappers if causing issues',
-          priorityScore: this.calculatePriorityScore(100 * calls.length, 'low', 0.9),
+          priorityScore: this.calculatePriorityScore(monthlyGain, 'low', 0.9),
           priorityLevel: 'medium',
           detectedAt: new Date().toISOString()
         });
@@ -200,17 +201,17 @@ export class OptimizationSuggester {
           explanation: optimization.description,
           category: 'modify'
         }],
-        estimatedMonthlySavings: optimization.estimatedSavings,
-        estimatedAnnualSavings: optimization.estimatedSavings * 12,
+        estimatedMonthlyGain: optimization.estimatedGain,
+        estimatedAnnualGain: optimization.estimatedGain * 12,
         implementationComplexity: optimization.implementationEffort,
         implementationTimeHours: optimization.implementationEffort === 'low' ? 2 : optimization.implementationEffort === 'medium' ? 6 : 12,
-        roi: (optimization.estimatedSavings * 12) / (200 * (optimization.implementationEffort === 'low' ? 2 : 6)),
+        roi: (optimization.estimatedGain * 12) / (200 * (optimization.implementationEffort === 'low' ? 2 : 6)),
         confidence: 0.75,
         implementationSteps: ['Review code', 'Apply optimization', 'Test changes', 'Monitor results'],
         requiredChanges: [],
         prerequisites: [],
         rollbackPlan: 'Revert code changes',
-        priorityScore: this.calculatePriorityScore(optimization.estimatedSavings, optimization.implementationEffort, 0.75),
+        priorityScore: this.calculatePriorityScore(optimization.estimatedGain, optimization.implementationEffort, 0.75),
         priorityLevel: optimization.priority,
         detectedAt: new Date().toISOString()
       });
@@ -240,8 +241,8 @@ export class OptimizationSuggester {
           template_id: template.id,
           affectedFiles: [], // Will be populated by AI analysis
           codeSnippets: [],
-          estimatedMonthlySavings: this.estimateTemplateSavings(template, context),
-          estimatedAnnualSavings: this.estimateTemplateSavings(template, context) * 12,
+          estimatedMonthlyGain: this.estimateTemplateGain(template, context),
+          estimatedAnnualGain: this.estimateTemplateGain(template, context) * 12,
           implementationComplexity: template.optimization.risk_level as any,
           implementationTimeHours: this.parseEffortEstimate(template.optimization.effort_estimate),
           roi: 0, // Will be calculated
@@ -300,7 +301,7 @@ ${codebaseContext}
 ${JSON.stringify(context.discoveryResult.configSummary, null, 2)}
 
 ## Available Templates:
-${context.templates.slice(0, 5).map(t => `- ${t.id}: ${t.name} (${t.optimization.expected_cost_reduction})`).join('\n')}
+${context.templates.slice(0, 5).map(t => `- ${t.id}: ${t.name} (${t.optimization.expected_throughput_improvement})`).join('\n')}
 
 Provide recommendations as a JSON array with format:
 [{
@@ -351,11 +352,11 @@ Provide recommendations as a JSON array with format:
           complexity: 'medium' as const
         })) || [],
         codeSnippets: [],
-        estimatedMonthlySavings: rec.estimatedMonthlySavings || 1000,
-        estimatedAnnualSavings: (rec.estimatedMonthlySavings || 1000) * 12,
+        estimatedMonthlyGain: rec.estimatedMonthlySavings || rec.estimatedMonthlyGain || 1000,
+        estimatedAnnualGain: (rec.estimatedMonthlySavings || rec.estimatedMonthlyGain || 1000) * 12,
         implementationComplexity: 'medium' as const,
         implementationTimeHours: rec.implementationHours || 8,
-        roi: ((rec.estimatedMonthlySavings || 1000) * 12) / (200 * (rec.implementationHours || 8)),
+        roi: ((rec.estimatedMonthlySavings || rec.estimatedMonthlyGain || 1000) * 12) / (200 * (rec.implementationHours || 8)),
         confidence: 0.8,
         implementationSteps: rec.implementationSteps || [],
         requiredChanges: [],
@@ -379,9 +380,9 @@ Provide recommendations as a JSON array with format:
     return suggestions
       .map(s => ({
         ...s,
-        roi: s.estimatedAnnualSavings / (200 * s.implementationTimeHours),
+        roi: s.estimatedAnnualGain / (200 * s.implementationTimeHours),
         priorityScore: this.calculatePriorityScore(
-          s.estimatedMonthlySavings,
+          s.estimatedMonthlyGain,
           s.implementationComplexity,
           s.confidence
         )
@@ -393,15 +394,15 @@ Provide recommendations as a JSON array with format:
    * Calculate priority score (0-100)
    */
   private calculatePriorityScore(
-    savings: number,
+    gain: number,
     complexity: 'low' | 'medium' | 'high',
     confidence: number
   ): number {
-    const savingsScore = Math.min(savings / 100, 50); // Max 50 points for savings
+    const gainScore = Math.min(gain / 100, 50); // Max 50 points for gain
     const complexityScore = complexity === 'low' ? 30 : complexity === 'medium' ? 20 : 10;
     const confidenceScore = confidence * 20; // Max 20 points for confidence
 
-    return Math.min(savingsScore + complexityScore + confidenceScore, 100);
+    return Math.min(gainScore + complexityScore + confidenceScore, 100);
   }
 
   /**
@@ -409,20 +410,20 @@ Provide recommendations as a JSON array with format:
    */
   private generateReport(suggestions: OptimizationSuggestion[], context: SuggestionContext): SuggestionReport {
     // Calculate quick wins and strategic initiatives
-    const quickWins = suggestions.filter(s => 
+    const quickWins = suggestions.filter(s =>
       s.implementationComplexity === 'low' && s.roi > 10
     );
 
-    const strategicInitiatives = suggestions.filter(s => 
-      s.estimatedMonthlySavings > 1000 || s.layer === 'cross-layer'
+    const strategicInitiatives = suggestions.filter(s =>
+      s.estimatedMonthlyGain > 1000 || s.layer === 'cross-layer'
     );
 
     const summary: SuggestionSummary = {
       totalOpportunities: suggestions.length,
       byLayer: this.groupByLayer(suggestions),
       byPriority: this.groupByPriority(suggestions),
-      totalMonthlySavings: suggestions.reduce((sum, s) => sum + s.estimatedMonthlySavings, 0),
-      totalAnnualSavings: suggestions.reduce((sum, s) => sum + s.estimatedAnnualSavings, 0),
+      totalMonthlyGain: suggestions.reduce((sum, s) => sum + s.estimatedMonthlyGain, 0),
+      totalAnnualGain: suggestions.reduce((sum, s) => sum + s.estimatedAnnualGain, 0),
       averageImplementationTime: suggestions.reduce((sum, s) => sum + s.implementationTimeHours, 0) / suggestions.length,
       quickWins: quickWins.slice(0, 5),
       strategicInitiatives: strategicInitiatives.slice(0, 5)
@@ -434,7 +435,7 @@ Provide recommendations as a JSON array with format:
       metadata: {
         generatedAt: new Date().toISOString(),
         totalSuggestions: suggestions.length,
-        totalEstimatedSavings: summary.totalMonthlySavings,
+        totalEstimatedGain: summary.totalMonthlyGain,
         averageROI: suggestions.reduce((sum, s) => sum + s.roi, 0) / suggestions.length,
         codebaseScanned: context.codebaseAnalysis ? context.discoveryResult.metadata.codebase_path || 'Yes' : 'No'
       }
@@ -490,16 +491,16 @@ Provide recommendations as a JSON array with format:
     return Math.min(score, 1.0);
   }
 
-  private estimateTemplateSavings(template: OptimizationTemplate, context: SuggestionContext): number {
-    // Parse expected cost reduction
-    const reduction = template.optimization.expected_cost_reduction || '20-40%';
-    const match = reduction.match(/(\d+)-?(\d+)?%?/);
+  private estimateTemplateGain(template: OptimizationTemplate, context: SuggestionContext): number {
+    // Parse expected throughput improvement
+    const improvement = template.optimization.expected_throughput_improvement || '20-40%';
+    const match = improvement.match(/(\d+)-?(\d+)?%?/);
     if (!match) return 1000;
 
     const percentage = parseInt(match[1]) / 100;
-    const totalCost = context.discoveryResult.configSummary.application.total_monthly_cost;
+    const totalThroughput = context.discoveryResult.configSummary.application.total_monthly_throughput;
 
-    return totalCost * percentage;
+    return totalThroughput * percentage;
   }
 
   private parseEffortEstimate(effort: string): number {

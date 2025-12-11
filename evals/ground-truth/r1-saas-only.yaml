@@ -1,0 +1,48 @@
+# Ground Truth: R1 - SaaS-Only LLM Repo
+# Manually labeled LLM inference callsites
+# Reviewer: Human expert
+# Last updated: 2024-12-10
+
+fixture: r1-saas-only/app.py
+description: Pure SaaS API calls (OpenAI + Anthropic SDKs)
+total_callsites: 4
+
+callsites:
+  - line: 15
+    function: chat_with_openai
+    type: chat_completion
+    provider: openai
+    model: gpt-4o
+    sdk: openai.ChatCompletion.create
+    confidence: 1.0
+
+  - line: 23
+    function: chat_with_anthropic
+    type: chat_completion
+    provider: anthropic
+    model: claude-3-5-sonnet-20241022
+    sdk: anthropic.messages.create
+    confidence: 1.0
+
+  - line: 32
+    function: streaming_openai
+    type: chat_completion_streaming
+    provider: openai
+    model: gpt-4o-mini
+    sdk: openai.ChatCompletion.create
+    confidence: 1.0
+
+  - line: 43
+    function: get_embedding
+    type: embedding
+    provider: openai
+    model: text-embedding-3-small
+    sdk: openai.embeddings.create
+    confidence: 1.0
+
+# Non-callsites (should NOT be detected)
+non_callsites:
+  - line: 8
+    reason: "Client initialization, not inference"
+  - line: 11
+    reason: "Client initialization, not inference"

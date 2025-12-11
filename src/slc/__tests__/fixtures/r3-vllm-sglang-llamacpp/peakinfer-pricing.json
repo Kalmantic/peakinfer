@@ -1,0 +1,101 @@
+{
+  "estimatedRange": {
+    "low": 0.21950000000000003,
+    "high": 10.11
+  },
+  "mostExpensiveModel": "llama-3.1-8b-instruct.Q4_K_M.gguf",
+  "byProvider": [
+    {
+      "provider": "groq",
+      "throughput": 9.059999999999999,
+      "percentage": 90
+    },
+    {
+      "provider": "nscale",
+      "throughput": 1.05,
+      "percentage": 10
+    }
+  ],
+  "byModel": [
+    {
+      "model": "llama-3.1-8b-instruct.Q4_K_M.gguf",
+      "throughput": 9.059999999999999
+    },
+    {
+      "model": "meta-llama/Llama-3.1-8B-Instruct",
+      "throughput": 1.05
+    }
+  ],
+  "hotspots": [
+    {
+      "file": "src/slc/__tests__/fixtures/r3-vllm-sglang-llamacpp/vllm_service.py",
+      "line": 20,
+      "model": "llama-3.1-8b-instruct.Q4_K_M.gguf",
+      "estimatedThroughputLow": 0.0985,
+      "estimatedThroughputHigh": 4.529999999999999,
+      "estimatedMonthlyLow": 0.0985,
+      "estimatedMonthlyHigh": 4.529999999999999,
+      "suggestion": "[AI Suggestion - verify with your usage data] Q4_K_M quantization is good balance. For extreme latency requirements (<50ms TTFT), consider Q4_0 or Q3_K_S. For batch workloads, vLLM will outperform. llama.cpp is ideal for single-request, low-latency scenarios."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r3-vllm-sglang-llamacpp/vllm_service.py",
+      "line": 40,
+      "model": "llama-3.1-8b-instruct.Q4_K_M.gguf",
+      "estimatedThroughputLow": 0.0985,
+      "estimatedThroughputHigh": 4.529999999999999,
+      "estimatedMonthlyLow": 0.0985,
+      "estimatedMonthlyHigh": 4.529999999999999,
+      "suggestion": "[AI Suggestion - verify with your usage data] llama.cpp excels at low latency for single requests. For simple tasks (summarization, extraction, classification), consider smaller models like Llama-3.2-3B or Gemma-2-2B at similar quality with 2-3x lower latency."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r3-vllm-sglang-llamacpp/vllm_service.py",
+      "line": 10,
+      "model": "meta-llama/Llama-3.1-8B-Instruct",
+      "estimatedThroughputLow": 0.0045000000000000005,
+      "estimatedThroughputHigh": 0.21,
+      "estimatedMonthlyLow": 0.0045000000000000005,
+      "estimatedMonthlyHigh": 0.21,
+      "suggestion": "[AI Suggestion - verify with your usage data] Model already optimized for efficiency (8B parameters). Consider quantization (Q4/Q8) via llama.cpp for lower latency/cost if quality permits. Enable continuous batching and PagedAttention in vLLM for throughput optimization."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r3-vllm-sglang-llamacpp/vllm_service.py",
+      "line": 28,
+      "model": "meta-llama/Llama-3.1-8B-Instruct",
+      "estimatedThroughputLow": 0.0045000000000000005,
+      "estimatedThroughputHigh": 0.21,
+      "estimatedMonthlyLow": 0.0045000000000000005,
+      "estimatedMonthlyHigh": 0.21,
+      "suggestion": "[AI Suggestion - verify with your usage data] For single-prompt inference, consider switching to streaming mode to reduce TTFT (time to first token). For production, batch multiple requests using the batch_inference function already defined."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r3-vllm-sglang-llamacpp/vllm_service.py",
+      "line": 17,
+      "model": "meta-llama/Llama-3.1-8B-Instruct",
+      "estimatedThroughputLow": 0.0045000000000000005,
+      "estimatedThroughputHigh": 0.21,
+      "estimatedMonthlyLow": 0.0045000000000000005,
+      "estimatedMonthlyHigh": 0.21,
+      "suggestion": "[AI Suggestion - verify with your usage data] SGLang offers RadixAttention for better prefix caching. Use it for repeated prefix patterns (e.g., system prompts, RAG contexts). SGLang typically has 2-3x lower latency than vLLM for structured generation tasks."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r3-vllm-sglang-llamacpp/vllm_service.py",
+      "line": 33,
+      "model": "meta-llama/Llama-3.1-8B-Instruct",
+      "estimatedThroughputLow": 0.0045000000000000005,
+      "estimatedThroughputHigh": 0.21,
+      "estimatedMonthlyLow": 0.0045000000000000005,
+      "estimatedMonthlyHigh": 0.21,
+      "suggestion": "[AI Suggestion - verify with your usage data] SGLang is ideal for structured generation (JSON, constrained outputs). If task is simple chat/completion, consider routing to vLLM for better throughput or llama.cpp for lower latency."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r3-vllm-sglang-llamacpp/vllm_service.py",
+      "line": 49,
+      "model": "meta-llama/Llama-3.1-8B-Instruct",
+      "estimatedThroughputLow": 0.0045000000000000005,
+      "estimatedThroughputHigh": 0.21,
+      "estimatedMonthlyLow": 0.0045000000000000005,
+      "estimatedMonthlyHigh": 0.21,
+      "suggestion": "[AI Suggestion - verify with your usage data] Excellent batching pattern. Consider implementing continuous batching via vLLM's async API to maximize GPU utilization. For offline batch workloads, OpenAI Batch API may be 50% cheaper if quality requirements match."
+    }
+  ]
+}

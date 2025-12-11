@@ -1,0 +1,149 @@
+# Ground Truth: R15 - Mixture of Experts
+# Manually labeled LLM inference callsites
+# Reviewer: Human expert
+# Last updated: 2024-12-10
+
+fixture: r15-moe/mixture_of_experts.py
+description: MoE architectures (Mixtral, DeepSeek, custom routing)
+total_callsites: 18
+
+callsites:
+  # Mixtral via Together AI
+  - line: 18
+    function: mixtral_completion
+    type: chat_completion
+    provider: together
+    model: mistralai/Mixtral-8x7B-Instruct-v0.1
+    sdk: together.chat.completions.create
+    confidence: 1.0
+
+  - line: 27
+    function: mixtral_8x22b_completion
+    type: chat_completion
+    provider: together
+    model: mistralai/Mixtral-8x22B-Instruct-v0.1
+    sdk: together.chat.completions.create
+    confidence: 1.0
+
+  # DeepSeek MoE
+  - line: 37
+    function: deepseek_moe_completion
+    type: chat_completion
+    provider: together
+    model: deepseek-ai/deepseek-moe-16b-chat
+    sdk: together.chat.completions.create
+    confidence: 1.0
+
+  # Qwen MoE
+  - line: 47
+    function: qwen_moe_completion
+    type: chat_completion
+    provider: together
+    model: Qwen/Qwen1.5-MoE-A2.7B-Chat
+    sdk: together.chat.completions.create
+    confidence: 1.0
+
+  # vLLM with MoE
+  - line: 68
+    function: vllm_mixtral_completion
+    type: text_generation
+    provider: self-hosted
+    model: mistralai/Mixtral-8x7B-Instruct-v0.1
+    sdk: vllm.LLM.generate
+    confidence: 1.0
+
+  # Custom MoE Router - routing call
+  - line: 91
+    function: LLMMoERouter._route
+    type: chat_completion
+    provider: openai
+    model: gpt-4o-mini
+    sdk: openai.chat.completions.create
+    confidence: 1.0
+    notes: "Router selection call"
+
+  # Custom MoE Router - expert queries (OpenAI)
+  - line: 120
+    function: LLMMoERouter._query_expert
+    type: chat_completion
+    provider: openai
+    model: gpt-4o
+    sdk: openai.chat.completions.create
+    confidence: 1.0
+
+  # Custom MoE Router - expert queries (Anthropic)
+  - line: 126
+    function: LLMMoERouter._query_expert
+    type: chat_completion
+    provider: anthropic
+    model: claude-3-5-sonnet-20241022
+    sdk: anthropic.messages.create
+    confidence: 1.0
+
+  # Custom MoE Router - expert queries (Together)
+  - line: 133
+    function: LLMMoERouter._query_expert
+    type: chat_completion
+    provider: together
+    model: mistralai/Mixtral-8x7B-Instruct-v0.1
+    sdk: together.chat.completions.create
+    confidence: 1.0
+
+  # Custom MoE Router - aggregation
+  - line: 150
+    function: LLMMoERouter._aggregate
+    type: chat_completion
+    provider: openai
+    model: gpt-4o
+    sdk: openai.chat.completions.create
+    confidence: 1.0
+
+  # Sparse MoE - routing scores
+  - line: 201
+    function: SparseMoE._compute_routing_scores
+    type: chat_completion
+    provider: openai
+    model: gpt-4o-mini
+    sdk: openai.chat.completions.create
+    confidence: 1.0
+
+  # Sparse MoE - expert queries (in loop)
+  - line: 242
+    function: SparseMoE.complete
+    type: chat_completion
+    provider: openai
+    model: gpt-4o-mini
+    sdk: openai.chat.completions.create
+    confidence: 1.0
+
+  # Sparse MoE - final synthesis
+  - line: 263
+    function: SparseMoE.complete
+    type: chat_completion
+    provider: openai
+    model: gpt-4o
+    sdk: openai.chat.completions.create
+    confidence: 1.0
+
+  # Direct Mistral API
+  - line: 279
+    function: mistral_moe_api
+    type: chat_completion
+    provider: mistral
+    model: open-mixtral-8x7b
+    sdk: requests.post
+    confidence: 0.9
+    notes: "Raw HTTP call to Mistral API"
+
+# Non-callsites
+non_callsites:
+  - line: 8
+    reason: "OpenAI client init"
+  - line: 12
+    reason: "Anthropic client init"
+  - line: 57
+    reason: "vLLM model loading"
+  - line: 63
+    reason: "SamplingParams creation"
+  - line: 75
+    reason: "Class __init__"

@@ -211,7 +211,7 @@ export class ManualCollector extends BaseCollector {
       raw.model &&
       raw.input_tokens !== undefined &&
       raw.output_tokens !== undefined &&
-      raw.cost_usd !== undefined
+      raw.throughput_tps !== undefined
     );
   }
 

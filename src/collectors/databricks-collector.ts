@@ -307,7 +307,7 @@ export class DatabricksCollector extends BaseCollector {
       input_tokens: inputTokens,
       output_tokens: outputTokens,
       latency_ms: latencyMs,
-      cost_usd: this.calculateDatabricksCost(inputTokens, outputTokens, latencyMs),
+      throughput_tps: this.computeThroughput(inputTokens, outputTokens, latencyMs),
       endpoint: `${this.databricksConfig.connection?.workspace_id || 'workspace'}.databricks.com`,
       region: this.extractRegion(),
       tenant: tenant,
@@ -481,7 +481,7 @@ export class DatabricksCollector extends BaseCollector {
       input_tokens: 0, // Unknown for batch jobs
       output_tokens: 0,
       latency_ms: durationMs,
-      cost_usd: this.calculateJobCost(durationMs),
+      throughput_tps: 0, // Unknown for batch jobs
       endpoint: `${this.databricksConfig.connection?.workspace_id || 'workspace'}.databricks.com`,
       region: this.extractRegion(),
       tenant: job.creator_user_name || 'default',
@@ -495,29 +495,12 @@ export class DatabricksCollector extends BaseCollector {
   }
 
   /**
-   * Calculate Databricks serving endpoint cost
+   * Calculate throughput in tokens per second
    */
-  private calculateDatabricksCost(inputTokens: number, outputTokens: number, latencyMs: number): number {
+  private computeThroughput(inputTokens: number, outputTokens: number, latencyMs: number): number {
+    if (latencyMs <= 0) return 0;
     const totalTokens = inputTokens + outputTokens;
-
-    // Databricks Model Serving pricing (approximate)
-    // Base: $0.0002 per 1000 tokens
-    const tokenCost = (totalTokens / 1000) * 0.0002;
-
-    // DBU/compute costs based on duration
-    const computeCost = (latencyMs / 1000) * 0.0005;
-
-    return tokenCost + computeCost;
-  }
-
-  /**
-   * Calculate job cost based on duration
-   */
-  private calculateJobCost(durationMs: number): number {
-    // DBU cost for job compute (approximate: $0.40 per DBU-hour)
-    const hours = durationMs / (1000 * 60 * 60);
-    const estimatedDBUs = 2; // Assume average 2 DBU cluster
-    return hours * estimatedDBUs * 0.40;
+    return (totalTokens / latencyMs) * 1000; // tokens per second
   }
 
   /**

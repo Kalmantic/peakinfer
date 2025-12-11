@@ -17,12 +17,12 @@ import {
   InfrastructureConfig,
   InfrastructureResource,
   GPUInventory,
-  CostEstimate,
+  CapacityEstimate,
 } from '../types/collectors.js';
 
 const execAsync = promisify(exec);
 
-// GPU instance type mappings for cost calculations
+// GPU instance type mappings for throughput calculations
 const GPU_INSTANCE_SPECS: Record<string, { gpu: string; count: number; hourly: number }> = {
   // AWS
   'p5.48xlarge': { gpu: 'H100', count: 8, hourly: 98.32 },
@@ -111,11 +111,11 @@ export class TerraformCollector extends BaseCollector {
       // Log results
       const resources = this.infrastructureConfig.resources.length;
       const gpus = this.infrastructureConfig.gpu_inventory.length;
-      const totalCost = this.calculateTotalCost();
+      const totalCapacity = this.calculateTotalCapacity();
 
       console.log(`  ✅ Analyzed ${resources} infrastructure resources`);
       console.log(`  🖥️  Found ${gpus} GPU configurations`);
-      console.log(`  💰 Total monthly infrastructure cost: $${totalCost.toLocaleString()}`);
+      console.log(`  ⚡ Total monthly inference capacity: ${totalCapacity.toLocaleString()} tps`);
 
       // Terraform collector doesn't produce inference events
       // Infrastructure config is accessed via getInfrastructureConfig()
@@ -210,16 +210,16 @@ export class TerraformCollector extends BaseCollector {
       }
     }
 
-    // Extract GPU inventory and calculate costs
+    // Extract GPU inventory and calculate capacity
     const gpuInventory = this.extractGPUInventory(resources);
-    const costEstimates = this.generateCostEstimates(resources);
+    const capacityEstimates = this.generateCapacityEstimates(resources);
 
     // Extract network topology
     const networkTopology = this.extractNetworkTopology(resources);
 
     return {
       resources,
-      cost_estimates: costEstimates,
+      capacity_estimates: capacityEstimates,
       gpu_inventory: gpuInventory,
       network_topology: networkTopology,
     };
@@ -478,7 +478,7 @@ export class TerraformCollector extends BaseCollector {
           gpu_type: gpuSpec.gpu,
           gpu_count: gpuSpec.count,
           memory_gb: this.getGPUMemory(gpuSpec.gpu) * gpuSpec.count,
-          hourly_cost: hourlyRate,
+          hourly_throughput: hourlyRate,
           region: resource.attributes.availability_zone ||
                   resource.attributes.zone ||
                   resource.attributes.location ||
@@ -510,10 +510,10 @@ export class TerraformCollector extends BaseCollector {
   }
 
   /**
-   * Generate cost estimates for resources
+   * Generate capacity estimates for resources
    */
-  private generateCostEstimates(resources: InfrastructureResource[]): CostEstimate[] {
-    const estimates: CostEstimate[] = [];
+  private generateCapacityEstimates(resources: InfrastructureResource[]): CapacityEstimate[] {
+    const estimates: CapacityEstimate[] = [];
 
     for (const resource of resources) {
       const instanceType = resource.attributes.instance_type ||
@@ -537,7 +537,7 @@ export class TerraformCollector extends BaseCollector {
       // Calculate optimization potential
       let optimizationPotential = 0;
       if (!isSpot) {
-        // Can save by using spot instances
+        // Can gain by using spot instances
         optimizationPotential = SPOT_DISCOUNTS[provider] || 0.5;
       }
 
@@ -550,8 +550,8 @@ export class TerraformCollector extends BaseCollector {
       estimates.push({
         resource_id: resource.name,
         resource_type: resource.type,
-        hourly_cost: hourlyRate,
-        monthly_cost: monthlyRate,
+        hourly_throughput: hourlyRate,
+        monthly_throughput: monthlyRate,
         optimization_potential: optimizationPotential,
       });
     }
@@ -593,13 +593,13 @@ export class TerraformCollector extends BaseCollector {
   }
 
   /**
-   * Calculate total infrastructure cost
+   * Calculate total infrastructure capacity (throughput)
    */
-  private calculateTotalCost(): number {
+  private calculateTotalCapacity(): number {
     if (!this.infrastructureConfig) return 0;
 
-    return this.infrastructureConfig.cost_estimates.reduce(
-      (sum, estimate) => sum + estimate.monthly_cost,
+    return this.infrastructureConfig.capacity_estimates.reduce(
+      (sum, estimate) => sum + estimate.monthly_throughput,
       0
     );
   }
@@ -612,11 +612,11 @@ export class TerraformCollector extends BaseCollector {
 
     const recommendations: string[] = [];
 
-    for (const estimate of this.infrastructureConfig.cost_estimates) {
+    for (const estimate of this.infrastructureConfig.capacity_estimates) {
       if (estimate.optimization_potential > 0.3) {
-        const savings = estimate.monthly_cost * estimate.optimization_potential;
+        const gain = estimate.monthly_throughput * estimate.optimization_potential;
         recommendations.push(
-          `${estimate.resource_id}: Could save $${savings.toFixed(2)}/month ` +
+          `${estimate.resource_id}: Could gain ${gain.toFixed(0)} tps/month ` +
           `(${(estimate.optimization_potential * 100).toFixed(0)}%) by using spot/preemptible instances`
         );
       }
@@ -625,7 +625,7 @@ export class TerraformCollector extends BaseCollector {
     // Check for multi-region optimization
     if (this.infrastructureConfig.network_topology?.multi_region) {
       recommendations.push(
-        'Consider using a single region for inference workloads to reduce latency and cross-region data transfer costs'
+        'Consider using a single region for inference workloads to reduce latency and improve throughput'
       );
     }
 

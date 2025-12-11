@@ -63,6 +63,8 @@ export interface ClassifiedCallsite {
     whyModel: string;
   };
   optimizationSuggestion?: string;
+  /** True if this callsite has actual usage data (from events.jsonl) */
+  hasUsageData?: boolean;
 }
 
 /** P3: Usage estimate (optional) */
@@ -107,35 +109,50 @@ export interface StackMap {
 }
 
 // =============================================================================
-// PRICING TYPES
+// PERFORMANCE BENCHMARK TYPES
 // =============================================================================
 
-/** Pricing for a model */
-export interface ModelPricing {
+/** Performance benchmark for a model */
+export interface ModelBenchmark {
   provider: string;
   model: string;
-  inputPer1M: number;     // $ per 1M input tokens
-  outputPer1M: number;    // $ per 1M output tokens
+  throughputPer1K: number;     // tokens per second per 1K requests
+  latencyP50Ms: number;        // P50 latency in ms
 }
 
-/** Cost estimate for a callsite */
-export interface CallsiteCost {
+/** Performance estimate for a callsite */
+export interface CallsitePerformance {
   file: string;
   line: number;
   model: string;
+  estimatedThroughputLow: number;
+  estimatedThroughputHigh: number;
+  // Backward compatibility aliases
   estimatedMonthlyLow: number;
   estimatedMonthlyHigh: number;
   suggestion?: string;  // Optimization suggestion for this hotspot
 }
 
-/** Pricing summary */
+/** Performance summary */
 export interface PricingSummary {
   estimatedRange: { low: number; high: number };
-  mostExpensiveModel: string | null;
-  byProvider: Array<{ provider: string; cost: number; percentage: number }>;
-  byModel: Array<{ model: string; cost: number }>;
-  hotspots: CallsiteCost[];
+  highestLatencyModel?: string | null;
+  mostExpensiveModel?: string | null;  // Backward compatibility alias
+  byProvider: Array<{ provider: string; throughput: number; percentage: number }>;
+  byModel: Array<{ model: string; throughput: number }>;
+  hotspots: CallsitePerformance[];
 }
+
+/** Model pricing/benchmark data */
+export interface ModelPricing {
+  provider: string;
+  model: string;
+  inputPer1M: number;
+  outputPer1M: number;
+}
+
+/** Backward compatibility alias for CallsitePerformance */
+export type CallsiteCost = CallsitePerformance;
 
 // =============================================================================
 // ANALYSIS STATE (Design Doc — 5 states)
@@ -259,7 +276,7 @@ export interface InferencePatterns {
   routing: {
     detected: boolean;
     instances: PatternInstance[];
-    type?: 'static' | 'cost_based' | 'latency_based' | 'quality_based' | 'cascade' | 'ab_test' | 'other';
+    type?: 'static' | 'performance_based' | 'latency_based' | 'quality_based' | 'cascade' | 'ab_test' | 'other';
   };
 
   /** Fallback chain patterns */
@@ -288,7 +305,7 @@ export type RiskSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 export interface DetectedRisk {
   id: string;
   severity: RiskSeverity;
-  category: 'reliability' | 'cost' | 'security' | 'vendor_lock_in' | 'performance' | 'compliance';
+  category: 'reliability' | 'performance' | 'security' | 'vendor_lock_in' | 'latency' | 'compliance';
   title: string;
   description: string;
   affectedFiles: string[];
@@ -343,7 +360,7 @@ export interface ScaleMetrics {
   uniqueModels: number;
   uniqueProviders: number;
   estimatedMonthlyTokens: number;
-  estimatedMonthlyCost: number;
+  estimatedMonthlyThroughput: number;
   repoFiles: number;
   repoLOC: number;
 }
@@ -353,7 +370,7 @@ export interface MaturityScores {
   patternMaturity: number;
   providerDiversity: number;
   resilienceScore: number;
-  costOptimizationReadiness: number;
+  performanceOptimizationReadiness: number;
 }
 
 /** StackMapKG - the core defensibility asset */
@@ -370,10 +387,16 @@ export interface StackMapKG {
   };
   scale: ScaleMetrics;
   scores: MaturityScores;
+  performanceSnapshot?: {
+    date: string;
+    estimatedMonthlyThroughput: { low: number; high: number };
+    topProviderLatencies: Array<{ provider: string; avgLatencyMs: number }>;
+  };
+  // Backward compatibility alias
   pricingSnapshot?: {
     date: string;
-    estimatedMonthlyCost: { low: number; high: number };
-    topProviderCosts: Array<{ provider: string; cost: number }>;
+    estimatedMonthlyThroughput: { low: number; high: number };
+    topProviderLatencies: Array<{ provider: string; avgLatencyMs: number }>;
   };
 }
 
@@ -398,7 +421,7 @@ export interface HistoryEntry {
   summary: {
     callsites: number;
     providers: string[];
-    estimatedMonthlyCost: { low: number; high: number };
+    estimatedMonthlyThroughput: { low: number; high: number };
     patternMaturity: number;
   };
 }

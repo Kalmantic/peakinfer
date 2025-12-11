@@ -102,6 +102,14 @@ function formatPercent(value: number): string {
   return Math.round(value) + '%';
 }
 
+/** Format throughput (tokens per second) */
+function formatThroughput(tps: number): string {
+  return tps.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }) + ' tps';
+}
+
 // =============================================================================
 // ZERO STATE — No LLM calls detected
 // =============================================================================
@@ -351,8 +359,8 @@ Found ${callsites.length} inference callsites across ${countUniqueFiles(callsite
 
   // Next commands
   console.log(`
-Run \`peakinfer pricing --detailed\` for GPU-level cost modeling.
-Run \`peakinfer diff old.json new.json\` to compare changes.
+Run \`peakinfer prices\` for model pricing data.
+Run \`peakinfer templates list\` to browse optimization strategies.
 `);
 }
 
@@ -547,9 +555,9 @@ function renderPricingBox(pricing: PricingSummary): void {
   if (pricing.byProvider.length > 0) {
     console.log(boxRow('By vendor:'));
     for (const p of pricing.byProvider) {
-      const costStr = formatCurrency(p.cost).padStart(10);
+      const throughputStr = formatThroughput(p.throughput).padStart(10);
       const pctStr = `(${formatPercent(p.percentage)})`.padStart(6);
-      console.log(boxRow(`   ├──► ${p.provider.padEnd(15)} ${costStr}    ${pctStr}`));
+      console.log(boxRow(`   ├──► ${p.provider.padEnd(15)} ${throughputStr}    ${pctStr}`));
     }
     console.log(boxEmpty());
   }
@@ -558,8 +566,8 @@ function renderPricingBox(pricing: PricingSummary): void {
   if (pricing.byModel.length > 0) {
     console.log(boxRow('By model:'));
     for (const m of pricing.byModel.slice(0, 4)) {
-      const costStr = formatCurrency(m.cost).padStart(10);
-      console.log(boxRow(`   ├──► ${(m.model || 'unknown').padEnd(15)} ${costStr}`));
+      const throughputStr = formatThroughput(m.throughput).padStart(10);
+      console.log(boxRow(`   ├──► ${(m.model || 'unknown').padEnd(15)} ${throughputStr}`));
     }
     console.log(boxEmpty());
   }
@@ -573,10 +581,10 @@ function renderPricingBox(pricing: PricingSummary): void {
   console.log(boxEmpty());
 
   // ALTERNATIVE PRICING section
-  console.log(boxRow('ALTERNATIVE PRICING (same models, different providers)'));
+  console.log(boxRow('ALTERNATIVE PRICING'));
   console.log(boxRow('   │'));
-  console.log(boxRow('   ├──► Run `peakinfer pricing --alternatives` for comparison'));
-  console.log(boxRow('   └──► Self-hosted TCO available with `peakinfer pricing --tco`'));
+  console.log(boxRow('   ├──► Run `peakinfer prices` for provider pricing comparison'));
+  console.log(boxRow('   └──► Run `peakinfer templates list` for optimization strategies'));
   console.log(boxEmpty());
 
   console.log(boxBottom());
@@ -595,13 +603,21 @@ function renderHotspotsBox(hotspots: CallsiteCost[]): void {
   console.log(boxSep());
   console.log(boxEmpty());
 
+  // SLC: Add disclaimer for AI-generated suggestions
+  const hasAISuggestions = hotspots.some(h => h.suggestion?.includes('[AI Suggestion'));
+  if (hasAISuggestions) {
+    console.log(boxRow('NOTE: AI suggestions below are based on code analysis only.'));
+    console.log(boxRow('Actual usage patterns may differ. Verify with your metrics.'));
+    console.log(boxEmpty());
+  }
+
   for (const h of hotspots.slice(0, 3)) {
     const costRange = formatCurrencyRange(h.estimatedMonthlyLow, h.estimatedMonthlyHigh);
     console.log(boxRow(`⚠  ${h.file}:${h.line}`));
     console.log(boxRow(`   └─ ${h.model || 'unknown'}, ${costRange}/mo`));
 
     if (h.suggestion) {
-      console.log(boxRow(`   └─ Suggestion: ${h.suggestion}`));
+      console.log(boxRow(`   └─ ${h.suggestion}`));
     }
 
     console.log(boxEmpty());

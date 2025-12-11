@@ -98,8 +98,8 @@ export function renderPatternsSummary(patterns: InferencePatterns | any): void {
     console.log(chalk.green(`  ${indicators.quickWin} Quick Optimization Wins:`));
     for (const opp of patterns.optimizationOpportunities.slice(0, 3)) {
       console.log(`     • ${opp.description}`);
-      if (opp.estimatedSavings) {
-        console.log(chalk.green(`        Potential savings: ${opp.estimatedSavings}`));
+      if (opp.estimatedGain) {
+        console.log(chalk.green(`        Potential gain: ${opp.estimatedGain}`));
       }
     }
     console.log('');
@@ -308,13 +308,13 @@ export function renderOptimizationOpportunities(summary: RecommendationSummary):
  * Render a single recommendation.
  */
 function renderRecommendation(rec: any): void {
-  const savings = rec.estimatedSavings || rec.monthlySavings || 0;
-  const savingsStr = savings > 0 ? chalk.green(`$${savings.toFixed(0)}/mo`) : '';
+  const gain = rec.estimatedGain || rec.monthlyGain || 0;
+  const gainStr = gain > 0 ? chalk.green(`${gain.toFixed(0)} tps/mo`) : '';
 
   console.log(`     • ${rec.title || rec.name || rec.description}`);
 
-  if (savingsStr) {
-    console.log(`        Savings: ${savingsStr}`);
+  if (gainStr) {
+    console.log(`        Performance Gain: ${gainStr}`);
   }
 
   if (rec.implementation) {

@@ -702,7 +702,7 @@ export class CodebaseCollector extends BaseCollector {
               model,
               callPattern: line.trim(),
               context,
-              estimatedCost: 0.05, // Default estimate
+              estimatedThroughput: 100, // Default tokens per second estimate
               hasCaching: this.hasCaching(context),
               hasErrorHandling: this.hasErrorHandling(context, language),
               hasRetry: /retry|attempt/i.test(context),
@@ -749,7 +749,7 @@ export class CodebaseCollector extends BaseCollector {
         file: fileAnalysis.file,
         lineNumber: fileAnalysis.llmApiCalls[0].lineNumber,
         recommendation: 'Add semantic caching to reduce redundant LLM calls',
-        estimatedSavings: fileAnalysis.llmApiCalls.length * 0.05 * 1000 * 0.4, // 40% cache hit rate assumption
+        estimatedGain: fileAnalysis.llmApiCalls.length * 100 * 0.4, // 40% cache hit rate assumption - throughput gain
         implementationComplexity: 'low',
         affectedCalls: fileAnalysis.llmApiCalls.length,
         cacheType: 'semantic',
@@ -776,7 +776,7 @@ export class CodebaseCollector extends BaseCollector {
           type: 'error-handling',
           description: 'Add error handling for LLM API call',
           currentCode: call.callPattern,
-          estimatedSavings: 100, // Avoid costs from unhandled errors
+          estimatedGain: 100, // Throughput improvement from avoiding unhandled errors
           implementationEffort: 'low',
           priority: 'medium'
         });
@@ -791,7 +791,7 @@ export class CodebaseCollector extends BaseCollector {
         type: 'caching',
         description: 'Implement caching layer for LLM calls',
         currentCode: 'No caching detected',
-        estimatedSavings: fileAnalysis.llmApiCalls.length * 50,
+        estimatedGain: fileAnalysis.llmApiCalls.length * 50,
         implementationEffort: 'medium',
         priority: 'high',
         templateId: 'semantic-caching-optimization'
@@ -870,7 +870,7 @@ export class CodebaseCollector extends BaseCollector {
           provider: call.apiProvider,
           occurrences: 0,
           files: [],
-          estimatedMonthlyCost: 0,
+          estimatedMonthlyThroughput: 0,
           averageContextLength: 0,
           usageType: 'unknown'
         });
@@ -881,7 +881,7 @@ export class CodebaseCollector extends BaseCollector {
       if (!pattern.files.includes(call.file)) {
         pattern.files.push(call.file);
       }
-      pattern.estimatedMonthlyCost += call.estimatedCost * 1000; // Assume 1000 calls/month per location
+      pattern.estimatedMonthlyThroughput += call.estimatedThroughput * 1000; // Assume 1000 calls/month per location
     }
 
     return Array.from(usageMap.values());

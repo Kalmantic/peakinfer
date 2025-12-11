@@ -1,6 +1,6 @@
 /**
  * Economics Calculator - Implements TokenSqueeze economic principles in template formulas
- * Calculates baseline costs, projected savings, and ROI using template economics models
+ * Calculates baseline performance, projected gains, and ROI using template economics models
  */
 
 import { OptimizationTemplate, EnvironmentProfile, EconomicsModel } from '../types/template.js';
@@ -16,9 +16,9 @@ export class EconomicsCalculator {
 
     const baseline = await this.calculateBaseline(template, environment);
     const impact = {
-      cost_reduction_percent: template.optimization.cost_reduction || 0.15,
-      performance_improvement_percent: template.optimization.performance_improvement || 0.20,
-      monthly_savings: baseline.cost_per_month * (template.optimization.cost_reduction || 0.15),
+      throughput_improvement_percent: template.optimization.throughput_improvement || 0.15,
+      latency_improvement_percent: template.optimization.latency_improvement || 0.20,
+      monthly_gain: baseline.throughput_per_month * (template.optimization.throughput_improvement || 0.15),
       roi_estimate: 2.5 // Simple default ROI
     };
 
@@ -29,7 +29,7 @@ export class EconomicsCalculator {
    * Calculate baseline economics from template and environment
    */
   async calculateBaseline(template: OptimizationTemplate, environment: EnvironmentProfile): Promise<Record<string, number>> {
-    console.log("    📊 Economics Engine: Calculating baseline costs...");
+    console.log("    📊 Economics Engine: Calculating baseline performance...");
 
     // Extract environment variables for formula evaluation
     this.extractEnvironmentVariables(environment);
@@ -55,15 +55,15 @@ export class EconomicsCalculator {
     baseline.context_length_tax = this.calculateContextLengthTax(environment);
     baseline.batch_efficiency = this.calculateBatchEfficiency(environment);
 
-    console.log(`    📊 Baseline Economics: Monthly cost ${this.formatCurrency(baseline.monthly_cost || 0)}`);
+    console.log(`    📊 Baseline Economics: Monthly throughput ${(baseline.monthly_throughput || 0).toLocaleString()} tps`);
     return baseline;
   }
 
   /**
    * Calculate projected improvements from template
    */
-  async calculateProjectedSavings(template: OptimizationTemplate, baseline: Record<string, number>): Promise<Record<string, number>> {
-    console.log("    💰 Economics Engine: Calculating projected savings...");
+  async calculateProjectedGain(template: OptimizationTemplate, baseline: Record<string, number>): Promise<Record<string, number>> {
+    console.log("    📈 Economics Engine: Calculating projected performance gain...");
 
     const projected: Record<string, number> = {};
     const economics = template.economics;
@@ -86,21 +86,21 @@ export class EconomicsCalculator {
       }
     }
 
-    // Calculate savings
-    if (economics.projected_savings) {
-      for (const [key, formula] of Object.entries(economics.projected_savings)) {
+    // Calculate performance gains
+    if (economics.projected_gain) {
+      for (const [key, formula] of Object.entries(economics.projected_gain)) {
         try {
           const value = this.evaluateFormula(formula, this.environmentVars);
           projected[key] = value;
         } catch (error) {
-          console.warn(`      ⚠️  Could not calculate savings ${key}: ${error instanceof Error ? error.message : String(error)}`);
+          console.warn(`      ⚠️  Could not calculate gain ${key}: ${error instanceof Error ? error.message : String(error)}`);
           projected[key] = 0;
         }
       }
     }
 
-    const monthlySavings = projected.monthly_savings || 0;
-    console.log(`    💰 Projected Savings: ${this.formatCurrency(monthlySavings)}/month`);
+    const monthlyGain = projected.monthly_gain || 0;
+    console.log(`    📈 Projected Gain: ${monthlyGain.toLocaleString()} throughput/month`);
 
     return projected;
   }
@@ -109,16 +109,16 @@ export class EconomicsCalculator {
    * Calculate ROI from baseline, optimized metrics, and economics model
    */
   calculateROI(baseline: Record<string, number>, optimized: Record<string, number>, economics: EconomicsModel): number {
-    const baselineCost = baseline.monthly_cost || baseline.baseline_monthly_cost || 0;
-    const optimizedCost = optimized.monthly_cost || optimized.optimized_monthly_cost || baselineCost;
-    const monthlySavings = baselineCost - optimizedCost;
-    const annualSavings = monthlySavings * 12;
+    const baselineThroughput = baseline.monthly_throughput || baseline.baseline_monthly_throughput || 0;
+    const optimizedThroughput = optimized.monthly_throughput || optimized.optimized_monthly_throughput || baselineThroughput;
+    const monthlyGain = optimizedThroughput - baselineThroughput;
+    const annualGain = monthlyGain * 12;
 
-    const implementationCost = economics.implementation_cost.total_cost;
+    const implementationEffort = economics.implementation_effort.total_effort;
 
-    if (implementationCost === 0) return 0;
+    if (implementationEffort === 0) return 0;
 
-    const roi = ((annualSavings - implementationCost) / implementationCost) * 100;
+    const roi = ((annualGain - implementationEffort) / implementationEffort) * 100;
     return Math.round(roi * 100) / 100; // Round to 2 decimal places
   }
 
@@ -143,19 +143,19 @@ export class EconomicsCalculator {
     const gpu = environment.infrastructure.gpu_inventory[0];
     if (gpu) {
       this.environmentVars.set('gpu_memory_gb', gpu.memory_gb);
-      this.environmentVars.set('gpu_hourly_cost', gpu.cost_per_hour);
+      this.environmentVars.set('gpu_hourly_rate', gpu.cost_per_hour);
       this.environmentVars.set('gpu_count', environment.infrastructure.gpu_inventory.length);
     }
 
-    this.environmentVars.set('monthly_cost', environment.infrastructure.cost_breakdown.total_monthly);
+    this.environmentVars.set('monthly_throughput', environment.infrastructure.cost_breakdown.total_monthly);
 
     // TokenSqueeze Economic Variables
     this.environmentVars.set('memory_bandwidth_gbps', environment.infrastructure.memory_analysis.bandwidth_efficiency * 3350); // H100 theoretical
     this.environmentVars.set('context_length_avg', environment.application.context_analysis.average_length);
 
-    // Common Cost Variables
+    // Common Performance Variables
     this.environmentVars.set('hourly_rate', 200); // Engineering hourly rate
-    this.environmentVars.set('current_cost_per_token', 0.004); // Default per-token cost
+    this.environmentVars.set('current_throughput_per_token', 0.004); // Default throughput per token
   }
 
   /**
@@ -231,16 +231,16 @@ export class EconomicsCalculator {
     const avgContextLength = environment.application.context_analysis.average_length;
     const kvCachePerToken = 1; // MB per token for KV cache
 
-    // Monthly cost of KV cache
+    // Monthly overhead of KV cache on throughput
     const kvCacheMemoryGB = (avgContextLength * kvCachePerToken) / 1024;
     const concurrentUsers = environment.serving.performance_metrics.batch_efficiency * 64; // Estimate based on batch efficiency
     const totalKVMemoryGB = kvCacheMemoryGB * concurrentUsers;
 
     const gpu = environment.infrastructure.gpu_inventory[0];
     const memoryUtilizationForKV = totalKVMemoryGB / (gpu?.memory_gb || 80);
-    const costPerHour = gpu?.cost_per_hour || 4;
+    const ratePerHour = gpu?.cost_per_hour || 4;
 
-    return memoryUtilizationForKV * costPerHour * 24 * 30; // Monthly KV cache tax
+    return memoryUtilizationForKV * ratePerHour * 24 * 30; // Monthly KV cache throughput overhead
   }
 
   /**
@@ -273,30 +273,30 @@ export class EconomicsCalculator {
     baseline: Record<string, number>,
     projected: Record<string, number>
   ): string {
-    const monthlySavings = projected.monthly_savings || 0;
-    const annualSavings = monthlySavings * 12;
-    const implementationCost = template.economics.implementation_cost.total_cost;
+    const monthlyGain = projected.monthly_gain || 0;
+    const annualGain = monthlyGain * 12;
+    const implementationEffort = template.economics.implementation_effort.total_effort;
     const roi = this.calculateROI(baseline, projected, template.economics);
-    const paybackMonths = implementationCost / monthlySavings;
+    const paybackMonths = implementationEffort / monthlyGain;
 
     return `
 📊 Economics Report: ${template.name}
 
-💰 Financial Impact:
-   • Monthly Savings: ${this.formatCurrency(monthlySavings)}
-   • Annual Savings: ${this.formatCurrency(annualSavings)}
-   • Implementation Cost: ${this.formatCurrency(implementationCost)}
+📈 Performance Impact:
+   • Monthly Gain: ${monthlyGain.toLocaleString()} throughput
+   • Annual Gain: ${annualGain.toLocaleString()} throughput
+   • Implementation Effort: ${implementationEffort} hours
    • ROI: ${roi.toFixed(1)}%
    • Payback Period: ${paybackMonths.toFixed(1)} months
 
 🔧 TokenSqueeze Metrics:
    • Memory Bandwidth Utilization: ${baseline.memory_bandwidth_utilization?.toFixed(2)}%
    • Arithmetic Intensity: ${baseline.arithmetic_intensity?.toFixed(2)} FLOP/byte
-   • Context Length Tax: ${this.formatCurrency(baseline.context_length_tax || 0)}/month
+   • Context Length Overhead: ${(baseline.context_length_tax || 0).toLocaleString()} tps/month
    • Batch Efficiency: ${baseline.batch_efficiency?.toFixed(1)}%
 
-⚡ Performance Impact:
-   • Expected Cost Reduction: ${template.optimization.expected_cost_reduction}
+⚡ Expected Improvements:
+   • Expected Latency Reduction: ${template.optimization.expected_latency_improvement}
    • Expected Throughput Improvement: ${template.optimization.expected_throughput_improvement}
    • Implementation Effort: ${template.optimization.effort_estimate}
    • Risk Level: ${template.optimization.risk_level}

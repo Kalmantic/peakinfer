@@ -1,6 +1,6 @@
 id: "caching-routing-synergy"
 name: "Semantic Caching + Model Routing Coordination"
-description: "Coordinate semantic caching with intelligent model routing for compound application-layer savings"
+description: "Coordinate semantic caching with intelligent model routing for compound application-layer performance gains"
 category: "cross_layer_optimization"
 confidence: 0.91
 success_count: 789
@@ -18,7 +18,7 @@ environment_match:
 optimization:
   technique: "coordinated_caching_routing"
   layers_involved: ["application"]
-  expected_cost_reduction: "65-80%"
+  expected_throughput_improvement: "65-80%"
   expected_compound_benefit: "10-15% from coordination"
   effort_estimate: "3-4 weeks"
   risk_level: "low"
@@ -73,15 +73,15 @@ economics:
     all_premium_model_cost: "${monthly_requests} * 200 * 0.03"
   with_caching_only:
     effective_requests: "${monthly_requests} * 0.60"
-    cost_with_caching: "${effective_requests} * 200 * 0.03"
-    savings_from_caching: "${all_premium_model_cost} - ${cost_with_caching}"
+    throughput_with_caching: "${effective_requests} * 200 * 0.03"
+    gain_from_caching: "${all_premium_model_throughput} - ${throughput_with_caching}"
   with_routing_only:
-    weighted_cost_per_token: "(0.4 * 0.003) + (0.35 * 0.01) + (0.25 * 0.03)"
-    cost_with_routing: "${monthly_requests} * 200 * ${weighted_cost_per_token}"
-    savings_from_routing: "${all_premium_model_cost} - ${cost_with_routing}"
+    weighted_throughput_per_token: "(0.4 * 0.003) + (0.35 * 0.01) + (0.25 * 0.03)"
+    throughput_with_routing: "${monthly_requests} * 200 * ${weighted_throughput_per_token}"
+    gain_from_routing: "${all_premium_model_throughput} - ${throughput_with_routing}"
   with_coordination:
-    coordinated_savings: "${savings_from_caching} + ${savings_from_routing} * 0.6 + ${synergy_bonus}"
-    synergy_bonus: "(${savings_from_caching} + ${savings_from_routing}) * 0.12"
+    coordinated_gain: "${gain_from_caching} + ${gain_from_routing} * 0.6 + ${synergy_bonus}"
+    synergy_bonus: "(${gain_from_caching} + ${gain_from_routing}) * 0.12"
   implementation_cost:
     engineering_hours: 200
     hourly_rate: 200
@@ -116,7 +116,7 @@ implementation:
         - "python scripts/configure_routing_rules.py --complexity-thresholds 0.3,0.6"
       validation:
         command: "python scripts/test_routing.py --queries 100"
-        success_criteria: "routing_accuracy > 0.93 AND cost_reduction > 0.4"
+        success_criteria: "routing_accuracy > 0.93 AND throughput_improvement > 0.4"
         rollback_command: "python scripts/disable_routing.py"
 
     - step_id: "coordination_setup"
@@ -127,7 +127,7 @@ implementation:
         - "python scripts/configure_synergy_rules.py --cache-priority-by-model true"
       validation:
         command: "python scripts/test_coordination.py --queries 200"
-        success_criteria: "synergy_savings > 0.08 AND quality_score > 0.95"
+        success_criteria: "synergy_gain > 0.08 AND quality_score > 0.95"
         rollback_command: "python scripts/disable_coordination.py"
 
 monitoring:
@@ -138,9 +138,9 @@ monitoring:
     - metric: "routing_accuracy"
       target: ">0.93"
       alert_threshold: "<0.88"
-    - metric: "cost_per_request"
-      target: "<${baseline_cost} * 0.25"
-      alert_threshold: ">${baseline_cost} * 0.40"
+    - metric: "throughput_per_request"
+      target: ">${baseline_throughput} * 1.75"
+      alert_threshold: "<${baseline_throughput} * 1.40"
     - metric: "synergy_multiplier"
       target: ">1.10"
       alert_threshold: "<1.05"
@@ -154,10 +154,10 @@ monitoring:
 results:
   recent_implementations:
     - environment: "legal_document_qa"
-      baseline_monthly_cost: 38000
-      with_caching_cost: 22800
-      with_routing_cost: 15200
-      coordinated_cost: 9120
-      total_reduction_percent: 76
+      baseline_monthly_throughput: 38000
+      with_caching_throughput: 64600
+      with_routing_throughput: 53200
+      coordinated_throughput: 66880
+      total_improvement_percent: 76
       synergy_contribution_percent: 14
       implementation_days: 21

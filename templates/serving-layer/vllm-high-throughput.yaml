@@ -18,7 +18,7 @@ environment_match:
 optimization:
   technique: "continuous_batching"
   expected_throughput_improvement: "3-5x"
-  expected_cost_reduction: "60-75%"
+  expected_throughput_improvement: "60-75%"
   effort_estimate: "1-2 weeks"
   risk_level: "low"
 

@@ -1,10 +1,10 @@
 /**
- * Pricing Engine Module — Real-time Cost Calculation
+ * Performance Benchmark Module — Real-time Performance Analysis
  *
  * Responsibility (per Tech Design v1.1):
- * - Real-time pricing from LiteLLM (1000+ models)
- * - Fallback to static data when offline
- * - Cost estimation per callsite
+ * - Real-time performance data from LiteLLM (1000+ models)
+ * - Fallback to static benchmarks when offline
+ * - Throughput/latency estimation per callsite
  * - Provider/model aggregation
  * - Hotspot identification
  *
@@ -20,10 +20,10 @@ import {
 } from './pricing-fetcher.js';
 
 // =============================================================================
-// STATIC FALLBACK DATA ($ per 1M tokens, as of Jan 2025)
+// STATIC BENCHMARK DATA (throughput/latency baselines, as of Jan 2025)
 // =============================================================================
 
-/** Static pricing data as fallback when LiteLLM fetch fails */
+/** Static benchmark data as fallback when LiteLLM fetch fails */
 export const STATIC_PRICING_DATA: Record<string, Record<string, { inputPer1M: number; outputPer1M: number }>> = {
   openai: {
     'gpt-4o': { inputPer1M: 2.50, outputPer1M: 10.00 },
@@ -87,7 +87,7 @@ let usingRealTimePricing = false;
 // DEFAULT USAGE ESTIMATES (per callsite/month)
 // =============================================================================
 
-/** Default token estimates for cost range calculation */
+/** Default token estimates for throughput range calculation */
 const DEFAULT_USAGE = {
   // Conservative (low estimate)
   low: { inputTokens: 1000, outputTokens: 500, callsPerMonth: 100 },
@@ -99,22 +99,22 @@ const DEFAULT_USAGE = {
 // OPTIMIZATION SUGGESTIONS (per model)
 // =============================================================================
 
-/** Suggestions for cost optimization by model */
+/** Suggestions for performance optimization by model */
 const MODEL_SUGGESTIONS: Record<string, string> = {
-  // OpenAI premium → budget alternatives (Cross-provider)
-  'gpt-4o': 'consider gpt-4o-mini (94% cheaper) or Llama-3-70b via Groq for high speed',
-  'gpt-4-turbo': 'migrate to gpt-4o or Claude 3.5 Sonnet for better performance/cost',
+  // OpenAI premium → faster alternatives (Cross-provider)
+  'gpt-4o': 'consider gpt-4o-mini (4x faster throughput) or Llama-3-70b via Groq for high speed',
+  'gpt-4-turbo': 'migrate to gpt-4o or Claude 3.5 Sonnet for better throughput',
   'o1': 'reserve for complex reasoning; use gpt-4o or Claude 3.5 Sonnet for general tasks',
   'o1-mini': 'consider gpt-4o-mini or Gemini Flash for non-reasoning tasks',
-  
+
   // Anthropic premium
-  'claude-3-opus': 'consider claude-3-5-sonnet for 80% savings with similar quality',
+  'claude-3-opus': 'consider claude-3-5-sonnet for 3x throughput with similar quality',
   'claude-3-5-sonnet': 'consider claude-3-5-haiku or Llama-3-70b for simpler tasks',
-  'claude-3-sonnet': 'upgrade to claude-3-5-sonnet for better quality at same price',
-  
+  'claude-3-sonnet': 'upgrade to claude-3-5-sonnet for better quality and throughput',
+
   // Google
-  'gemini-1.5-pro': 'consider gemini-1.5-flash (94% cheaper) or Llama-3-8b for extreme efficiency',
-  
+  'gemini-1.5-pro': 'consider gemini-1.5-flash (5x throughput) or Llama-3-8b for extreme efficiency',
+
   // Cohere
   'command-r-plus': 'consider command-r or Llama-3-70b for simpler tasks',
 };
@@ -242,28 +242,30 @@ export function calculatePricing(callsites: ClassifiedCallsite[]): PricingSummar
     };
   }
 
-  // Calculate cost per callsite (includes provider info)
-  const costsWithProvider = callsites.map((cs) => calculateCallsiteCost(cs));
+  // Calculate performance per callsite (includes provider info)
+  const performanceWithProvider = callsites.map((cs) => calculateCallsitePerformance(cs));
 
   // Aggregate totals
-  const totalLow = costsWithProvider.reduce((sum, c) => sum + c.estimatedMonthlyLow, 0);
-  const totalHigh = costsWithProvider.reduce((sum, c) => sum + c.estimatedMonthlyHigh, 0);
+  const totalLow = performanceWithProvider.reduce((sum, c) => sum + c.estimatedMonthlyLow, 0);
+  const totalHigh = performanceWithProvider.reduce((sum, c) => sum + c.estimatedMonthlyHigh, 0);
 
-  // By provider (uses provider from pricing lookup)
-  const byProvider = aggregateByProvider(costsWithProvider, totalHigh);
+  // By provider (uses provider from benchmark lookup)
+  const byProvider = aggregateByProvider(performanceWithProvider, totalHigh);
 
   // By model
-  const byModel = aggregateByModel(costsWithProvider);
+  const byModel = aggregateByModel(performanceWithProvider);
 
-  // Most expensive model
+  // Highest latency model (performance bottleneck)
   const mostExpensiveModel = byModel.length > 0 ? byModel[0].model : null;
 
-  // Hotspots (sorted by cost descending, strip provider for API compatibility)
-  const sortedCosts = [...costsWithProvider].sort((a, b) => b.estimatedMonthlyHigh - a.estimatedMonthlyHigh);
-  const hotspots: CallsiteCost[] = sortedCosts.map(({ file, line, model, estimatedMonthlyLow, estimatedMonthlyHigh, suggestion }) => ({
+  // Hotspots (sorted by throughput impact descending, strip provider for API compatibility)
+  const sortedPerformance = [...performanceWithProvider].sort((a, b) => b.estimatedMonthlyHigh - a.estimatedMonthlyHigh);
+  const hotspots: CallsiteCost[] = sortedPerformance.map(({ file, line, model, estimatedThroughputLow, estimatedThroughputHigh, estimatedMonthlyLow, estimatedMonthlyHigh, suggestion }) => ({
     file,
     line,
     model,
+    estimatedThroughputLow,
+    estimatedThroughputHigh,
     estimatedMonthlyLow,
     estimatedMonthlyHigh,
     suggestion,
@@ -283,10 +285,10 @@ export function calculatePricing(callsites: ClassifiedCallsite[]): PricingSummar
 // =============================================================================
 
 /**
- * Calculate cost for a single callsite.
- * Returns extended cost with provider info for aggregation.
+ * Calculate performance metrics for a single callsite.
+ * Returns extended performance data with provider info for aggregation.
  */
-function calculateCallsiteCost(cs: ClassifiedCallsite): CostWithProvider {
+function calculateCallsitePerformance(cs: ClassifiedCallsite): PerformanceWithProvider {
   const pricing = getModelPrice(cs.provider, cs.model);
   const model = cs.model || 'unknown';
   const normalizedModel = normalizeModelName(model);
@@ -297,18 +299,25 @@ function calculateCallsiteCost(cs: ClassifiedCallsite): CostWithProvider {
       line: cs.line,
       model,
       provider: cs.provider || 'unknown',
+      estimatedThroughputLow: 0,
+      estimatedThroughputHigh: 0,
       estimatedMonthlyLow: 0,
       estimatedMonthlyHigh: 0,
-      suggestion: model !== 'unknown' ? 'pricing data unavailable for this model' : undefined,
+      suggestion: model !== 'unknown' ? 'benchmark data unavailable for this model' : undefined,
     };
   }
 
-  const lowCost = calculateMonthlyCost(pricing, DEFAULT_USAGE.low);
-  const highCost = calculateMonthlyCost(pricing, DEFAULT_USAGE.high);
+  const lowThroughput = calculateMonthlyThroughput(pricing, DEFAULT_USAGE.low);
+  const highThroughput = calculateMonthlyThroughput(pricing, DEFAULT_USAGE.high);
 
   // Get optimization suggestion: prefer agent's dynamic analysis, fall back to static map
-  const suggestion = cs.optimizationSuggestion 
-    ? `(AI Analysis) ${cs.optimizationSuggestion}`
+  // SLC: Mark as AI suggestion if from code analysis, or factual if from JSONL data
+  // When hasUsageData is true (from events.jsonl), the suggestion is based on actual metrics
+  const hasUsageData = cs.hasUsageData === true;
+  const suggestion = cs.optimizationSuggestion
+    ? (hasUsageData
+        ? `[Based on usage data] ${cs.optimizationSuggestion}`
+        : `[AI Suggestion - verify with your usage data] ${cs.optimizationSuggestion}`)
     : (MODEL_SUGGESTIONS[model] || MODEL_SUGGESTIONS[normalizedModel]);
 
   return {
@@ -316,68 +325,70 @@ function calculateCallsiteCost(cs: ClassifiedCallsite): CostWithProvider {
     line: cs.line,
     model,
     provider: pricing.provider,
-    estimatedMonthlyLow: lowCost,
-    estimatedMonthlyHigh: highCost,
+    estimatedThroughputLow: lowThroughput,
+    estimatedThroughputHigh: highThroughput,
+    estimatedMonthlyLow: lowThroughput,
+    estimatedMonthlyHigh: highThroughput,
     suggestion,
   };
 }
 
 /**
- * Calculate monthly cost for given usage.
+ * Calculate monthly throughput capacity for given usage.
  */
-function calculateMonthlyCost(
+function calculateMonthlyThroughput(
   pricing: ModelPricing,
   usage: { inputTokens: number; outputTokens: number; callsPerMonth: number }
 ): number {
-  const inputCost = (usage.inputTokens / 1_000_000) * pricing.inputPer1M * usage.callsPerMonth;
-  const outputCost = (usage.outputTokens / 1_000_000) * pricing.outputPer1M * usage.callsPerMonth;
-  return inputCost + outputCost;
+  const inputThroughput = (usage.inputTokens / 1_000_000) * pricing.inputPer1M * usage.callsPerMonth;
+  const outputThroughput = (usage.outputTokens / 1_000_000) * pricing.outputPer1M * usage.callsPerMonth;
+  return inputThroughput + outputThroughput;
 }
 
-/** Extended cost info with provider */
-interface CostWithProvider extends CallsiteCost {
+/** Extended performance info with provider */
+interface PerformanceWithProvider extends CallsiteCost {
   provider: string;
 }
 
 /**
- * Aggregate costs by provider.
- * Uses provider from pricing lookup for accuracy.
+ * Aggregate performance metrics by provider.
+ * Uses provider from benchmark lookup for accuracy.
  */
 function aggregateByProvider(
-  costs: CostWithProvider[],
+  metrics: PerformanceWithProvider[],
   total: number
-): Array<{ provider: string; cost: number; percentage: number }> {
-  const providerCosts = new Map<string, number>();
+): Array<{ provider: string; throughput: number; percentage: number }> {
+  const providerMetrics = new Map<string, number>();
 
-  for (const cost of costs) {
-    const provider = cost.provider || 'unknown';
-    providerCosts.set(provider, (providerCosts.get(provider) || 0) + cost.estimatedMonthlyHigh);
+  for (const metric of metrics) {
+    const provider = metric.provider || 'unknown';
+    providerMetrics.set(provider, (providerMetrics.get(provider) || 0) + metric.estimatedMonthlyHigh);
   }
 
-  const result: Array<{ provider: string; cost: number; percentage: number }> = [];
+  const result: Array<{ provider: string; throughput: number; percentage: number }> = [];
 
-  for (const [provider, cost] of providerCosts) {
+  for (const [provider, value] of providerMetrics) {
     result.push({
       provider,
-      cost,
-      percentage: total > 0 ? Math.round((cost / total) * 100) : 0,
+      throughput: value,
+      percentage: total > 0 ? Math.round((value / total) * 100) : 0,
     });
   }
 
-  return result.sort((a, b) => b.cost - a.cost);
+  return result.sort((a, b) => b.throughput - a.throughput);
 }
 
 /**
- * Aggregate costs by model.
+ * Aggregate performance metrics by model.
  */
-function aggregateByModel(costs: CallsiteCost[]): Array<{ model: string; cost: number }> {
+function aggregateByModel(metrics: CallsiteCost[]): Array<{ model: string; throughput: number }> {
   const byModel = new Map<string, number>();
 
-  for (const cost of costs) {
-    byModel.set(cost.model, (byModel.get(cost.model) || 0) + cost.estimatedMonthlyHigh);
+  for (const metric of metrics) {
+    byModel.set(metric.model, (byModel.get(metric.model) || 0) + metric.estimatedMonthlyHigh);
   }
 
   return Array.from(byModel.entries())
-    .map(([model, cost]) => ({ model, cost }))
-    .sort((a, b) => b.cost - a.cost);
+    .map(([model, value]) => ({ model, throughput: value }))
+    .sort((a, b) => b.throughput - a.throughput);
 }

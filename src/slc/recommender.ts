@@ -191,17 +191,17 @@ export interface Recommendation {
   currentProvider: string;
   currentModel: string | null;
   currentTier: number;
-  currentMonthlyCost: number;
+  currentMonthlyThroughput: number;
 
   recommendedProvider: string;
   recommendedModel: string;
   recommendedTier: number;
-  recommendedMonthlyCost: number;
+  recommendedMonthlyThroughput: number;
   recommendedHardware?: string;
   recommendedStack?: string;
 
-  monthlySavings: number;
-  savingsPercent: number;
+  monthlyGain: number;
+  gainPercent: number;
   latencyChange: string;  // "faster", "similar", "slower"
 
   reasoning: string;
@@ -212,18 +212,18 @@ export interface Recommendation {
 export interface RecommendationSummary {
   totalCallsites: number;
   callsitesWithRecommendations: number;
-  totalCurrentMonthlyCost: number;
-  totalRecommendedMonthlyCost: number;
-  totalMonthlySavings: number;
-  savingsPercent: number;
+  totalCurrentMonthlyThroughput: number;
+  totalRecommendedMonthlyThroughput: number;
+  totalMonthlyGain: number;
+  gainPercent: number;
 
   byTier: {
     tier: number;
     name: string;
     count: number;
-    currentCost: number;
-    recommendedCost: number;
-    savings: number;
+    currentThroughput: number;
+    recommendedThroughput: number;
+    gain: number;
   }[];
 
   recommendations: Recommendation[];
@@ -235,7 +235,7 @@ export interface MigrationStep {
   description: string;
   affectedFiles: string[];
   callsiteCount: number;
-  savings: number;
+  gain: number;
   complexity: 'low' | 'medium' | 'high';
 }
 
@@ -293,13 +293,13 @@ function estimateWorkload(callsite: ClassifiedCallsite): EstimatedWorkload {
 }
 
 // =============================================================================
-// COST CALCULATION
+// THROUGHPUT CALCULATION
 // =============================================================================
 
 /**
- * Calculate monthly cost for a provider/model combination.
+ * Calculate monthly throughput for a provider/model combination.
  */
-function calculateMonthlyCost(
+function calculateMonthlyThroughput(
   benchmark: ProviderBenchmark,
   workload: EstimatedWorkload
 ): number {
@@ -344,14 +344,14 @@ function findCurrentBenchmark(provider: string, model: string | null): ProviderB
 function findBestAlternative(
   currentBenchmark: ProviderBenchmark,
   workload: EstimatedWorkload,
-  prioritize: 'cost' | 'latency' | 'balanced' = 'cost'
+  prioritize: 'throughput' | 'latency' | 'balanced' = 'throughput'
 ): ProviderBenchmark {
-  const currentCost = calculateMonthlyCost(currentBenchmark, workload);
+  const currentThroughput = calculateMonthlyThroughput(currentBenchmark, workload);
 
-  // Filter to cheaper alternatives
+  // Filter to higher throughput alternatives
   const alternatives = PROVIDER_BENCHMARKS.filter(b => {
-    const altCost = calculateMonthlyCost(b, workload);
-    return altCost < currentCost * 0.9;  // At least 10% savings
+    const altThroughput = calculateMonthlyThroughput(b, workload);
+    return altThroughput > currentThroughput * 1.1;  // At least 10% improvement
   });
 
   if (alternatives.length === 0) {
@@ -360,17 +360,17 @@ function findBestAlternative(
 
   // Sort based on priority
   switch (prioritize) {
-    case 'cost':
-      alternatives.sort((a, b) => calculateMonthlyCost(a, workload) - calculateMonthlyCost(b, workload));
+    case 'throughput':
+      alternatives.sort((a, b) => calculateMonthlyThroughput(b, workload) - calculateMonthlyThroughput(a, workload));
       break;
     case 'latency':
       alternatives.sort((a, b) => a.avgLatencyMs - b.avgLatencyMs);
       break;
     case 'balanced':
       alternatives.sort((a, b) => {
-        const costScore = calculateMonthlyCost(a, workload) / calculateMonthlyCost(b, workload);
+        const throughputScore = calculateMonthlyThroughput(b, workload) / calculateMonthlyThroughput(a, workload);
         const latencyScore = a.avgLatencyMs / b.avgLatencyMs;
-        return (costScore * 0.6 + latencyScore * 0.4) - 1;
+        return (throughputScore * 0.6 + latencyScore * 0.4) - 1;
       });
       break;
   }
@@ -435,7 +435,7 @@ response = client.chat.completions.create(model="${recommendedModel}", ...)`,
  */
 export function generateRecommendations(
   callsites: ClassifiedCallsite[],
-  prioritize: 'cost' | 'latency' | 'balanced' = 'cost'
+  prioritize: 'throughput' | 'latency' | 'balanced' = 'throughput'
 ): RecommendationSummary {
   const recommendations: Recommendation[] = [];
 
@@ -447,15 +447,15 @@ export function generateRecommendations(
 
     if (!currentBenchmark) continue;
 
-    const currentCost = calculateMonthlyCost(currentBenchmark, workload);
+    const currentThroughput = calculateMonthlyThroughput(currentBenchmark, workload);
     const bestAlternative = findBestAlternative(currentBenchmark, workload, prioritize);
-    const recommendedCost = calculateMonthlyCost(bestAlternative, workload);
+    const recommendedThroughput = calculateMonthlyThroughput(bestAlternative, workload);
 
-    // Only recommend if there are actual savings
-    if (recommendedCost >= currentCost * 0.9) continue;
+    // Only recommend if there are actual improvements
+    if (recommendedThroughput <= currentThroughput * 1.1) continue;
 
-    const savings = currentCost - recommendedCost;
-    const savingsPercent = (savings / currentCost) * 100;
+    const gain = recommendedThroughput - currentThroughput;
+    const gainPercent = (gain / currentThroughput) * 100;
 
     // Determine latency change
     let latencyChange: 'faster' | 'similar' | 'slower';
@@ -481,30 +481,30 @@ export function generateRecommendations(
       currentProvider: currentBenchmark.provider,
       currentModel: callsite.model,
       currentTier: currentBenchmark.tier,
-      currentMonthlyCost: currentCost,
+      currentMonthlyThroughput: currentThroughput,
 
       recommendedProvider: bestAlternative.provider,
       recommendedModel: bestAlternative.model,
       recommendedTier: bestAlternative.tier,
-      recommendedMonthlyCost: recommendedCost,
+      recommendedMonthlyThroughput: recommendedThroughput,
       recommendedHardware: bestAlternative.hardware,
       recommendedStack: bestAlternative.servingStack,
 
-      monthlySavings: savings,
-      savingsPercent,
+      monthlyGain: gain,
+      gainPercent,
       latencyChange,
 
       reasoning: `Migrate from ${currentBenchmark.displayName} (Tier ${currentBenchmark.tier}) to ${bestAlternative.displayName} (Tier ${bestAlternative.tier}). ` +
-        `${savingsPercent.toFixed(0)}% cost reduction with ${latencyChange} latency.`,
+        `${gainPercent.toFixed(0)}% throughput improvement with ${latencyChange} latency.`,
       migrationComplexity,
       codeChange: generateCodeChange(currentBenchmark.provider, bestAlternative.provider, bestAlternative.model),
     });
   }
 
   // Calculate totals
-  const totalCurrentCost = recommendations.reduce((sum, r) => sum + r.currentMonthlyCost, 0);
-  const totalRecommendedCost = recommendations.reduce((sum, r) => sum + r.recommendedMonthlyCost, 0);
-  const totalSavings = totalCurrentCost - totalRecommendedCost;
+  const totalCurrentThroughput = recommendations.reduce((sum, r) => sum + r.currentMonthlyThroughput, 0);
+  const totalRecommendedThroughput = recommendations.reduce((sum, r) => sum + r.recommendedMonthlyThroughput, 0);
+  const totalGain = totalRecommendedThroughput - totalCurrentThroughput;
 
   // Group by tier
   const byTier = [1, 2, 3, 4].map(tier => {
@@ -513,9 +513,9 @@ export function generateRecommendations(
       tier,
       name: tierRecs[0]?.currentProvider ? getTierName(tier) : getTierName(tier),
       count: tierRecs.length,
-      currentCost: tierRecs.reduce((sum, r) => sum + r.currentMonthlyCost, 0),
-      recommendedCost: tierRecs.reduce((sum, r) => sum + r.recommendedMonthlyCost, 0),
-      savings: tierRecs.reduce((sum, r) => sum + r.monthlySavings, 0),
+      currentThroughput: tierRecs.reduce((sum, r) => sum + r.currentMonthlyThroughput, 0),
+      recommendedThroughput: tierRecs.reduce((sum, r) => sum + r.recommendedMonthlyThroughput, 0),
+      gain: tierRecs.reduce((sum, r) => sum + r.monthlyGain, 0),
     };
   }).filter(t => t.count > 0);
 
@@ -525,10 +525,10 @@ export function generateRecommendations(
   return {
     totalCallsites: callsites.length,
     callsitesWithRecommendations: recommendations.length,
-    totalCurrentMonthlyCost: totalCurrentCost,
-    totalRecommendedMonthlyCost: totalRecommendedCost,
-    totalMonthlySavings: totalSavings,
-    savingsPercent: totalCurrentCost > 0 ? (totalSavings / totalCurrentCost) * 100 : 0,
+    totalCurrentMonthlyThroughput: totalCurrentThroughput,
+    totalRecommendedMonthlyThroughput: totalRecommendedThroughput,
+    totalMonthlyGain: totalGain,
+    gainPercent: totalCurrentThroughput > 0 ? (totalGain / totalCurrentThroughput) * 100 : 0,
     byTier,
     recommendations,
     migrationPath,
@@ -565,10 +565,10 @@ function generateMigrationPath(recommendations: Recommendation[]): MigrationStep
     const files = [...new Set(byComplexity.low.map(r => r.file))];
     steps.push({
       step: stepNum++,
-      description: 'Quick wins: Switch to cheaper providers (API key change only)',
+      description: 'Quick wins: Switch to faster providers (API key change only)',
       affectedFiles: files,
       callsiteCount: byComplexity.low.length,
-      savings: byComplexity.low.reduce((sum, r) => sum + r.monthlySavings, 0),
+      gain: byComplexity.low.reduce((sum, r) => sum + r.monthlyGain, 0),
       complexity: 'low',
     });
   }
@@ -581,7 +581,7 @@ function generateMigrationPath(recommendations: Recommendation[]): MigrationStep
       description: 'Migrate to open source hosted (Groq LPU, Cerebras WSE)',
       affectedFiles: files,
       callsiteCount: byComplexity.medium.length,
-      savings: byComplexity.medium.reduce((sum, r) => sum + r.monthlySavings, 0),
+      gain: byComplexity.medium.reduce((sum, r) => sum + r.monthlyGain, 0),
       complexity: 'medium',
     });
   }
@@ -594,7 +594,7 @@ function generateMigrationPath(recommendations: Recommendation[]): MigrationStep
       description: 'Deploy self-hosted inference (vLLM on Modal/RunPod) — requires infra setup, GPU reservations',
       affectedFiles: files,
       callsiteCount: byComplexity.high.length,
-      savings: byComplexity.high.reduce((sum, r) => sum + r.monthlySavings, 0),
+      gain: byComplexity.high.reduce((sum, r) => sum + r.monthlyGain, 0),
       complexity: 'high',
     });
   }
@@ -652,9 +652,9 @@ export function detectRisks(
     risks.push({
       id: `risk-${riskId++}`,
       severity: 'medium',
-      category: 'cost',
+      category: 'performance',
       title: 'No caching detected',
-      description: 'Repeated identical prompts result in unnecessary API costs and increased latency. No caching layer detected.',
+      description: 'Repeated identical prompts result in unnecessary API calls and increased latency. No caching layer detected.',
       affectedFiles: filesWithLLM,
       recommendation: 'Implement semantic caching (GPTCache, Redis) or use provider prompt caching (Anthropic, OpenAI).',
       effort: 'medium',
@@ -695,9 +695,9 @@ export function detectRisks(
     risks.push({
       id: `risk-${riskId++}`,
       severity: 'low',
-      category: 'cost',
+      category: 'performance',
       title: 'No intelligent routing detected',
-      description: 'Using the same model for all requests misses optimization opportunities. Simple queries could use cheaper models.',
+      description: 'Using the same model for all requests misses optimization opportunities. Simple queries could use faster models.',
       affectedFiles: filesWithLLM,
       recommendation: 'Implement task-based routing: use smaller models for simple tasks, larger models for complex reasoning.',
       effort: 'high',
@@ -819,31 +819,31 @@ export function generateRiskReport(assessment: RiskAssessment): string {
 // =============================================================================
 
 /**
- * Format a cost as a range estimate (±15% uncertainty).
- * Returns format like "~$7,100 - $9,600" for better credibility.
+ * Format throughput as a range estimate (±15% uncertainty).
+ * Returns format like "~7,100 - 9,600 req/s" for better credibility.
  */
-function formatCostEstimate(cost: number): string {
-  if (cost === 0) return '$0';
-  const lowEstimate = Math.round(cost * 0.85 / 100) * 100;  // -15%, rounded to nearest 100
-  const highEstimate = Math.round(cost * 1.15 / 100) * 100; // +15%, rounded to nearest 100
+function formatThroughputEstimate(throughput: number): string {
+  if (throughput === 0) return '0';
+  const lowEstimate = Math.round(throughput * 0.85 / 100) * 100;  // -15%, rounded to nearest 100
+  const highEstimate = Math.round(throughput * 1.15 / 100) * 100; // +15%, rounded to nearest 100
 
   // Format with commas for readability
   const formatNum = (n: number) => n.toLocaleString('en-US');
 
-  if (cost < 100) {
+  if (throughput < 100) {
     // For small amounts, show simpler format
-    return `~$${Math.round(cost * 0.85)} - $${Math.round(cost * 1.15)}`;
+    return `~${Math.round(throughput * 0.85)} - ${Math.round(throughput * 1.15)}`;
   }
-  return `~$${formatNum(lowEstimate)} - $${formatNum(highEstimate)}`;
+  return `~${formatNum(lowEstimate)} - ${formatNum(highEstimate)}`;
 }
 
 /**
- * Format savings as approximate value
+ * Format gain as approximate value
  */
-function formatSavingsEstimate(savings: number): string {
-  if (savings < 100) return `~$${Math.round(savings / 10) * 10}`;
-  if (savings < 1000) return `~$${Math.round(savings / 50) * 50}`;
-  return `~$${(Math.round(savings / 100) * 100).toLocaleString('en-US')}`;
+function formatGainEstimate(gain: number): string {
+  if (gain < 100) return `~${Math.round(gain / 10) * 10}`;
+  if (gain < 1000) return `~${Math.round(gain / 50) * 50}`;
+  return `~${(Math.round(gain / 100) * 100).toLocaleString('en-US')}`;
 }
 
 /**
@@ -857,28 +857,28 @@ export function generateReport(summary: RecommendationSummary): string {
   const lines: string[] = [];
 
   // Calculate estimate ranges
-  const currentCostRange = formatCostEstimate(summary.totalCurrentMonthlyCost);
-  const recommendedCostRange = formatCostEstimate(summary.totalRecommendedMonthlyCost);
-  const savingsEstimate = formatSavingsEstimate(summary.totalMonthlySavings);
+  const currentThroughputRange = formatThroughputEstimate(summary.totalCurrentMonthlyThroughput);
+  const recommendedThroughputRange = formatThroughputEstimate(summary.totalRecommendedMonthlyThroughput);
+  const gainEstimate = formatGainEstimate(summary.totalMonthlyGain);
 
-  // Show savings as a range (e.g., "85-99%" instead of exact "99%")
-  const savingsLow = Math.max(0, Math.round(summary.savingsPercent * 0.9));
-  const savingsHigh = Math.min(99, Math.round(summary.savingsPercent * 1.1));
-  const savingsRange = savingsLow === savingsHigh
-    ? `~${savingsLow}%`
-    : `${savingsLow}-${savingsHigh}%`;
+  // Show gain as a range (e.g., "85-99%" instead of exact "99%")
+  const gainLow = Math.max(0, Math.round(summary.gainPercent * 0.9));
+  const gainHigh = Math.min(500, Math.round(summary.gainPercent * 1.1));
+  const gainRange = gainLow === gainHigh
+    ? `~${gainLow}%`
+    : `${gainLow}-${gainHigh}%`;
 
   lines.push(`
-  COST OPTIMIZATION SUMMARY (Estimates)
+  PERFORMANCE OPTIMIZATION SUMMARY (Estimates)
   ═══════════════════════════════════════════════════════════════
 
   Total LLM Callsites:              ${summary.totalCallsites.toString().padStart(5)}
   Callsites to Optimize:            ${summary.callsitesWithRecommendations.toString().padStart(5)}
 
-  Est. Current Monthly Cost:    ${currentCostRange.padStart(20)}
-  Est. Recommended Monthly:     ${recommendedCostRange.padStart(20)}
+  Est. Current Throughput:      ${currentThroughputRange.padStart(20)}
+  Est. Optimized Throughput:    ${recommendedThroughputRange.padStart(20)}
   ─────────────────────────────────────────────────────────────────
-  Potential Savings:            ${savingsEstimate.padStart(12)}/mo (${savingsRange})`);
+  Potential Gain:               ${gainEstimate.padStart(12)}/mo (${gainRange})`);
 
   // Migration Path
   if (summary.migrationPath.length > 0) {
@@ -888,9 +888,9 @@ export function generateReport(summary: RecommendationSummary): string {
   ─────────────────────────────────────────────────────────────────`);
 
     for (const step of summary.migrationPath) {
-      const stepSavings = formatSavingsEstimate(step.savings);
+      const stepGain = formatGainEstimate(step.gain);
       lines.push(`  ${step.step}. [${step.complexity}] ${step.description}`);
-      lines.push(`     files: ${step.affectedFiles.length}, callsites: ${step.callsiteCount}, saves: ${stepSavings}/mo`);
+      lines.push(`     files: ${step.affectedFiles.length}, callsites: ${step.callsiteCount}, gain: ${stepGain}/mo`);
     }
   }
 
@@ -902,11 +902,11 @@ export function generateReport(summary: RecommendationSummary): string {
   ─────────────────────────────────────────────────────────────────`);
 
     for (const rec of summary.recommendations.slice(0, 5)) {
-      const recSavings = formatSavingsEstimate(rec.monthlySavings);
-      const recSavingsRange = `${Math.max(0, Math.round(rec.savingsPercent * 0.9))}-${Math.min(99, Math.round(rec.savingsPercent * 1.1))}%`;
+      const recGain = formatGainEstimate(rec.monthlyGain);
+      const recGainRange = `${Math.max(0, Math.round(rec.gainPercent * 0.9))}-${Math.min(500, Math.round(rec.gainPercent * 1.1))}%`;
       lines.push(`  ${rec.file}:${rec.line}`);
       lines.push(`    ${rec.currentProvider} → ${rec.recommendedProvider} (${rec.recommendedModel})`);
-      lines.push(`    saves ${recSavings}/mo (${recSavingsRange}), latency: ${rec.latencyChange}`);
+      lines.push(`    gain ${recGain}/mo (${recGainRange}), latency: ${rec.latencyChange}`);
       lines.push('');
     }
   }
@@ -914,11 +914,11 @@ export function generateReport(summary: RecommendationSummary): string {
   // Disclaimer about estimates
   lines.push(`
   ─────────────────────────────────────────────────────────────────
-  NOTE: Estimates based on detected usage patterns and current pricing.
-  Actual savings depend on: token volume, usage patterns, and provider
-  pricing changes. GPU costs assume ~50% utilization.
+  NOTE: Estimates based on detected usage patterns and benchmark data.
+  Actual performance depends on: token volume, usage patterns, and provider
+  infrastructure. GPU throughput assumes ~50% utilization.
 
-  → Run 'peakinfer prices' for current pricing sources and methodology.
+  → Run 'peakinfer benchmark' for current benchmark sources and methodology.
   `);
 
   return lines.join('\n');

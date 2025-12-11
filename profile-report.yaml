@@ -1,0 +1,612 @@
+metadata:
+  timestamp: 2025-12-09T09:05:00Z
+  events_analyzed: 20
+  cluster_method: semantic
+  total_clusters: 6
+  top_intents:
+    - text_generation
+    - rag_completion
+    - batch_inference
+workloadStats:
+  total_events: 20
+  total_cost_usd: 0.97
+  total_input_tokens: 52460
+  total_output_tokens: 15295
+  avg_latency_ms: 3405
+  avg_input_tokens: 2623
+  avg_output_tokens: 764.75
+  avg_cost_usd: 0.0485
+  peak_hours:
+    - hour: 09:00
+      event_count: 20
+      cost_usd: 0.97
+  provider_distribution:
+    databricks: 11
+    snowflake: 9
+  intent_distribution:
+    text_generation: 5
+    rag_completion: 3
+    batch_inference: 2
+    code_generation: 1
+    summarization: 1
+    translation: 1
+    sentiment_analysis: 1
+    question_answering: 1
+    other: 5
+clusters:
+  - cluster_id: cluster_text_gen_standard
+    name: Standard Text Generation
+    event_count: 5
+    avg_input_tokens: 674
+    avg_output_tokens: 402
+    avg_latency_ms: 1324
+    avg_cost_usd: 0.0107
+    total_cost_usd: 0.0535
+    intents:
+      - text_generation
+    models:
+      - databricks-meta-llama-3-1-70b-instruct
+      - llama3.1-70b
+      - databricks-mixtral-8x7b-instruct
+      - mixtral-8x7b
+    providers:
+      - databricks
+      - snowflake
+    characteristics:
+      token_range: 450-680 input, 340-420 output
+      latency_range: 980-1890ms
+      use_cases: General purpose text generation, content creation, conversational AI
+    representative_events:
+      - evt_db001_a1b2c3d4
+      - evt_sf001_u1v2w3x4
+      - evt_db003_i9j0k1l2
+    recommended_actions:
+      - action: Consolidate to single model
+        rationale: Multiple models performing similar tasks with comparable quality scores
+        estimated_impact: 15-20% cost reduction
+        priority: high
+      - action: Consider Mixtral-8x7B for cost optimization
+        rationale: Similar output quality at ~25% lower cost per token
+        estimated_impact: $0.013 savings per request
+        priority: medium
+  - cluster_id: cluster_rag_retrieval
+    name: RAG & Retrieval-Augmented Generation
+    event_count: 4
+    avg_input_tokens: 2965
+    avg_output_tokens: 592.5
+    avg_latency_ms: 2665
+    avg_cost_usd: 0.0541
+    total_cost_usd: 0.2164
+    intents:
+      - rag_completion
+      - rag_search
+      - vector_search_rag
+      - question_answering
+    models:
+      - databricks-meta-llama-3-1-70b-instruct
+      - mistral-large2
+      - llama3.1-70b
+    providers:
+      - databricks
+      - snowflake
+    characteristics:
+      token_range: 1560-4500 input, 280-890 output
+      latency_range: 1980-3450ms
+      use_cases: Knowledge base search, document retrieval, context-aware Q&A
+    representative_events:
+      - evt_db004_m3n4o5p6
+      - evt_sf006_o1p2q3r4
+      - evt_db009_q9r0s1t2
+      - evt_sf005_k7l8m9n0
+    recommended_actions:
+      - action: Optimize embedding retrieval parameters
+        rationale: High input token counts suggest excessive context retrieval
+        estimated_impact: 30-40% token reduction, 25% cost savings
+        priority: high
+      - action: Implement prompt caching for repeated contexts
+        rationale: RAG patterns often reuse base contexts across queries
+        estimated_impact: $0.02 savings per request
+        priority: high
+      - action: Standardize on Mistral-Large2 for search workloads
+        rationale: Better cost-performance ratio for retrieval tasks
+        estimated_impact: 20% cost reduction
+        priority: medium
+  - cluster_id: cluster_batch_processing
+    name: Batch & High-Volume Processing
+    event_count: 2
+    avg_input_tokens: 12050
+    avg_output_tokens: 2600
+    avg_latency_ms: 15500
+    avg_cost_usd: 0.2198
+    total_cost_usd: 0.4395
+    intents:
+      - batch_inference
+      - batch_summarize
+    models:
+      - databricks-meta-llama-3-1-70b-instruct
+      - llama3.1-70b
+    providers:
+      - databricks
+      - snowflake
+    characteristics:
+      token_range: 8500-15600 input, 2400-2800 output
+      latency_range: 12500-18500ms
+      use_cases: Bulk document processing, analytics pipelines, scheduled batch jobs
+    representative_events:
+      - evt_db005_q7r8s9t0
+      - evt_sf007_w9x0y1z2
+    recommended_actions:
+      - action: Migrate to dedicated batch inference endpoints
+        rationale: Batch workloads consuming 45% of total costs with higher latency
+          tolerance
+        estimated_impact: 40-50% cost reduction via batch pricing
+        priority: critical
+      - action: Implement asynchronous processing
+        rationale: High latency suggests synchronous calls; async can reduce compute costs
+        estimated_impact: $0.088 savings per batch
+        priority: high
+      - action: Consider smaller models for summarization
+        rationale: Summarization tasks may not require 70B parameter models
+        estimated_impact: 30-35% cost reduction
+        priority: medium
+  - cluster_id: cluster_specialized_tasks
+    name: Specialized NLP Tasks
+    event_count: 4
+    avg_input_tokens: 1567.5
+    avg_output_tokens: 481.25
+    avg_latency_ms: 1522.5
+    avg_cost_usd: 0.0182
+    total_cost_usd: 0.0729
+    intents:
+      - summarization
+      - translation
+      - sentiment_analysis
+      - mlflow_completion
+    models:
+      - snowflake-arctic-instruct
+      - databricks-meta-llama-3-1-70b-instruct
+    providers:
+      - snowflake
+      - databricks
+    characteristics:
+      token_range: 340-4200 input, 45-450 output
+      latency_range: 420-2120ms
+      use_cases: Content transformation, language translation, sentiment detection,
+        MLOps workflows
+    representative_events:
+      - evt_sf002_y5z6a7b8
+      - evt_sf003_c9d0e1f2
+      - evt_sf004_g3h4i5j6
+      - evt_db006_s5t6u7v8
+    recommended_actions:
+      - action: Use Arctic-Instruct for all specialized tasks
+        rationale: Arctic shows excellent performance on narrow tasks at lower cost
+        estimated_impact: 35% cost reduction
+        priority: medium
+      - action: Implement task-specific prompt templates
+        rationale: Standardized prompts reduce token usage and improve consistency
+        estimated_impact: 15-20% token reduction
+        priority: low
+  - cluster_id: cluster_code_engineering
+    name: Code Generation & Engineering
+    event_count: 2
+    avg_input_tokens: 1325
+    avg_output_tokens: 785
+    avg_latency_ms: 3045
+    avg_cost_usd: 0.044
+    total_cost_usd: 0.0879
+    intents:
+      - code_generation
+      - openai_proxy
+    models:
+      - databricks-dbrx-instruct
+      - gpt-4
+    providers:
+      - databricks
+    characteristics:
+      token_range: 1200-1450 input, 680-890 output
+      latency_range: 2890-3200ms
+      use_cases: Code generation, debugging assistance, technical documentation
+    representative_events:
+      - evt_db002_e5f6g7h8
+      - evt_db008_i1j2k3l4
+    recommended_actions:
+      - action: Evaluate DBRX vs GPT-4 performance
+        rationale: DBRX at 45% lower cost; validate if quality meets requirements
+        estimated_impact: $0.025 savings per request if migration feasible
+        priority: high
+      - action: Implement code caching layer
+        rationale: Common code patterns and snippets are often regenerated
+        estimated_impact: 30% reduction in generation requests
+        priority: medium
+  - cluster_id: cluster_custom_specialty
+    name: Custom & Platform-Specific
+    event_count: 3
+    avg_input_tokens: 936.67
+    avg_output_tokens: 460
+    avg_latency_ms: 1560
+    avg_cost_usd: 0.021
+    total_cost_usd: 0.0629
+    intents:
+      - custom_model
+      - snowpark_ml
+      - streaming_inference
+      - sql_cortex_complete
+    models:
+      - custom-finetuned-llama
+      - llama3.1-70b
+      - databricks-meta-llama-3-1-70b-instruct
+      - mistral-large2
+    providers:
+      - databricks
+      - snowflake
+    characteristics:
+      token_range: 720-2100 input, 280-1450 output
+      latency_range: 890-4890ms
+      use_cases: Custom fine-tuned models, streaming applications, SQL-integrated AI
+    representative_events:
+      - evt_db007_a3b4c5d6
+      - evt_sf009_m5n6o7p8
+      - evt_db010_y7z8a9b0
+      - evt_sf010_u3v4w5x6
+    recommended_actions:
+      - action: Monitor custom model performance
+        rationale: Custom model shows lower cost but limited visibility into quality
+          metrics
+        estimated_impact: Establish baseline for optimization
+        priority: medium
+      - action: Optimize streaming inference chunk sizes
+        rationale: High latency suggests inefficient streaming configuration
+        estimated_impact: 40% latency reduction
+        priority: low
+samplePrompts:
+  - prompt_id: prompt_text_gen_001
+    cluster_id: cluster_text_gen_standard
+    intent: text_generation
+    template: Generate a professional email response to a customer inquiry about
+      {product_feature} with emphasis on {key_benefit}
+    example_input: Generate a professional email response to a customer inquiry
+      about mobile app features with emphasis on ease of use
+    estimated_tokens:
+      input: 520
+      output: 380
+    recommended_model: databricks-mixtral-8x7b-instruct
+    estimated_cost_usd: 0.008
+    estimated_latency_ms: 980
+  - prompt_id: prompt_rag_001
+    cluster_id: cluster_rag_retrieval
+    intent: rag_completion
+    template: |-
+      Based on the following retrieved documents: {context}
+
+      Answer the user question: {question}
+
+      Provide a concise, accurate response with citations.
+    example_input: "Based on retrieved product documentation, answer: How do I
+      configure authentication for API access?"
+    estimated_tokens:
+      input: 2800
+      output: 450
+    recommended_model: mistral-large2
+    estimated_cost_usd: 0.0325
+    estimated_latency_ms: 2100
+    optimization_notes: Reduce retrieval_k from 5 to 3 for 35% token savings
+  - prompt_id: prompt_batch_001
+    cluster_id: cluster_batch_processing
+    intent: batch_inference
+    template: |-
+      For each item in the batch:
+      Summarize the following text in 2-3 sentences:
+      {text}
+      ---
+    example_input: Batch summarization of 50 customer feedback entries
+    estimated_tokens:
+      input: 12000
+      output: 2500
+    recommended_model: llama3.1-70b
+    estimated_cost_usd: 0.218
+    estimated_latency_ms: 15000
+    optimization_notes: Migrate to async batch API for 45% cost savings
+  - prompt_id: prompt_code_001
+    cluster_id: cluster_code_engineering
+    intent: code_generation
+    template: |-
+      Generate {language} code that implements the following functionality:
+      {requirements}
+
+      Include error handling and documentation.
+    example_input: Generate Python code that implements data validation for user
+      registration forms with error handling
+    estimated_tokens:
+      input: 1200
+      output: 890
+    recommended_model: databricks-dbrx-instruct
+    estimated_cost_usd: 0.0312
+    estimated_latency_ms: 2890
+  - prompt_id: prompt_sentiment_001
+    cluster_id: cluster_specialized_tasks
+    intent: sentiment_analysis
+    template: >-
+      Analyze the sentiment of the following text and respond with: positive,
+      negative, or neutral.
+
+
+      Text: {input_text}
+    example_input: "Analyze sentiment: The product exceeded my expectations and the
+      customer service was outstanding."
+    estimated_tokens:
+      input: 340
+      output: 45
+    recommended_model: snowflake-arctic-instruct
+    estimated_cost_usd: 0.0029
+    estimated_latency_ms: 420
+  - prompt_id: prompt_translation_001
+    cluster_id: cluster_specialized_tasks
+    intent: translation
+    template: >-
+      Translate the following text from {source_lang} to {target_lang}. Maintain
+      tone and formality.
+
+
+      {text}
+    example_input: "Translate from English to Spanish: Welcome to our platform.
+      Please complete your profile to get started."
+    estimated_tokens:
+      input: 890
+      output: 920
+    recommended_model: snowflake-arctic-instruct
+    estimated_cost_usd: 0.0136
+    estimated_latency_ms: 1560
+  - prompt_id: prompt_search_001
+    cluster_id: cluster_rag_retrieval
+    intent: rag_search
+    template: >-
+      Search query: {query}
+
+
+      Retrieve relevant results and synthesize a comprehensive answer addressing
+      the user's information need.
+    example_input: Search for product specifications and compare features across our
+      enterprise tier offerings
+    estimated_tokens:
+      input: 1560
+      output: 620
+    recommended_model: mistral-large2
+    estimated_cost_usd: 0.0327
+    estimated_latency_ms: 2890
+    optimization_notes: Reduce search result limit to optimize token usage
+  - prompt_id: prompt_streaming_001
+    cluster_id: cluster_custom_specialty
+    intent: streaming_inference
+    template: Generate a detailed explanation of {topic} with real-time streaming
+      output for interactive user experience.
+    example_input: Generate detailed explanation of machine learning model
+      deployment best practices
+    estimated_tokens:
+      input: 2100
+      output: 1450
+    recommended_model: databricks-meta-llama-3-1-70b-instruct
+    estimated_cost_usd: 0.0532
+    estimated_latency_ms: 4890
+    optimization_notes: Configure streaming chunk size for better latency/cost balance
+recommendations:
+  - id: rec_001
+    priority: critical
+    category: cost_optimization
+    title: Migrate Batch Workloads to Dedicated Batch Endpoints
+    description: Batch processing accounts for 45% of total costs ($0.44) but has
+      high latency tolerance. Databricks and Snowflake both offer batch
+      inference pricing that can reduce costs by 40-50%.
+    affected_clusters:
+      - cluster_batch_processing
+    estimated_savings_usd: 0.196
+    estimated_savings_percent: 20.2
+    implementation_effort: medium
+    implementation_steps:
+      - Identify all batch inference workloads (10+ items per request)
+      - Configure Databricks batch serving endpoints or Snowflake table-based
+        processing
+      - Update team_analytics workflows to use async batch APIs
+      - Monitor quality metrics during migration
+    impact_metrics:
+      cost_reduction: 40-50%
+      latency_impact: Negligible (already high latency tolerance)
+      complexity: Medium
+      timeline: 2-3 weeks
+  - id: rec_002
+    priority: high
+    category: cost_optimization
+    title: Optimize RAG Context Window Sizes
+    description: RAG workloads show average input tokens of 2965, suggesting
+      excessive context retrieval. Reducing retrieval_k from 5 to 3 and
+      implementing smart chunking can reduce tokens by 30-40%.
+    affected_clusters:
+      - cluster_rag_retrieval
+    estimated_savings_usd: 0.065
+    estimated_savings_percent: 6.7
+    implementation_effort: low
+    implementation_steps:
+      - Analyze retrieval quality metrics with reduced k values
+      - Implement context pruning to remove redundant chunks
+      - Update vector search configurations in databricks.vector_search
+      - A/B test quality impact with k=3 vs k=5
+    impact_metrics:
+      cost_reduction: 30-40%
+      latency_improvement: 15-20%
+      complexity: Low
+      timeline: 1 week
+  - id: rec_003
+    priority: high
+    category: cost_optimization
+    title: Consolidate Text Generation Models
+    description: Multiple models (Llama 3.1-70B, Mixtral-8x7B) performing similar
+      text generation with comparable quality. Standardizing on Mixtral-8x7B can
+      reduce costs by 25% with minimal quality impact.
+    affected_clusters:
+      - cluster_text_gen_standard
+    estimated_savings_usd: 0.013
+    estimated_savings_percent: 1.3
+    implementation_effort: low
+    implementation_steps:
+      - Run quality comparison tests between models
+      - Update team_ml and team_content configurations
+      - Migrate endpoints to Mixtral-8x7B where appropriate
+      - Monitor quality scores post-migration
+    impact_metrics:
+      cost_reduction: 20-25%
+      latency_improvement: 8-12%
+      complexity: Low
+      timeline: 1 week
+  - id: rec_004
+    priority: high
+    category: performance
+    title: Implement Prompt Caching for RAG Workloads
+    description: RAG patterns often reuse base contexts and retrieval results.
+      Implementing caching can reduce redundant token processing and improve
+      response times.
+    affected_clusters:
+      - cluster_rag_retrieval
+    estimated_savings_usd: 0.043
+    estimated_savings_percent: 4.4
+    implementation_effort: medium
+    implementation_steps:
+      - Implement Redis/Memcached layer for prompt caching
+      - Hash input contexts to detect duplicate retrievals
+      - Set TTL based on content freshness requirements
+      - Monitor cache hit rates and adjust strategies
+    impact_metrics:
+      cost_reduction: 20-25%
+      latency_improvement: 40-50%
+      complexity: Medium
+      timeline: 2 weeks
+  - id: rec_005
+    priority: high
+    category: cost_optimization
+    title: Evaluate DBRX for Code Generation Workloads
+    description: GPT-4 usage through OpenAI proxy is expensive ($0.0567 per
+      request). DBRX-Instruct offers similar code generation quality at 45%
+      lower cost.
+    affected_clusters:
+      - cluster_code_engineering
+    estimated_savings_usd: 0.025
+    estimated_savings_percent: 2.6
+    implementation_effort: low
+    implementation_steps:
+      - Conduct side-by-side quality evaluation on code generation tasks
+      - Measure compilation success rates and code quality metrics
+      - Migrate team_engineering endpoints if quality acceptable
+      - Maintain GPT-4 fallback for complex scenarios
+    impact_metrics:
+      cost_reduction: 40-45%
+      latency_improvement: 10%
+      complexity: Low
+      timeline: 1 week
+  - id: rec_006
+    priority: medium
+    category: cost_optimization
+    title: Use Arctic-Instruct for Specialized NLP Tasks
+    description: Snowflake Arctic shows excellent performance on narrow tasks
+      (sentiment, translation) at significantly lower cost than general-purpose
+      models.
+    affected_clusters:
+      - cluster_specialized_tasks
+    estimated_savings_usd: 0.026
+    estimated_savings_percent: 2.7
+    implementation_effort: low
+    implementation_steps:
+      - Migrate sentiment analysis and translation to Arctic
+      - Update team_content and team_analytics workflows
+      - Validate quality scores remain above 0.90 threshold
+      - Document model selection guidelines for specialized tasks
+    impact_metrics:
+      cost_reduction: 30-35%
+      latency_improvement: 5-10%
+      complexity: Low
+      timeline: 1 week
+  - id: rec_007
+    priority: medium
+    category: performance
+    title: Implement Asynchronous Processing for High-Latency Workloads
+    description: Workloads with >10s latency (batch processing, streaming) should
+      use async patterns to reduce compute costs and improve resource
+      utilization.
+    affected_clusters:
+      - cluster_batch_processing
+      - cluster_custom_specialty
+    estimated_savings_usd: 0.088
+    estimated_savings_percent: 9.1
+    implementation_effort: medium
+    implementation_steps:
+      - Implement job queue system (Celery, AWS SQS, or Databricks Jobs)
+      - Convert synchronous batch calls to async with callbacks
+      - Update team_analytics and team_product workflows
+      - Monitor queue depth and processing times
+    impact_metrics:
+      cost_reduction: 15-20%
+      throughput_improvement: 3x
+      complexity: Medium
+      timeline: 3 weeks
+  - id: rec_008
+    priority: medium
+    category: architecture
+    title: Standardize RAG Architecture Across Teams
+    description: Multiple teams (team_search, team_support) using different RAG
+      implementations. Standardizing on best practices can improve quality and
+      reduce costs.
+    affected_clusters:
+      - cluster_rag_retrieval
+    estimated_savings_usd: 0.032
+    estimated_savings_percent: 3.3
+    implementation_effort: high
+    implementation_steps:
+      - Document RAG best practices and reference architecture
+      - Create shared embedding indices and retrieval services
+      - Standardize on Mistral-Large2 for cost-effective retrieval
+      - Implement shared prompt templates and chunking strategies
+    impact_metrics:
+      cost_reduction: 15-20%
+      quality_improvement: 10-15%
+      complexity: High
+      timeline: 4-6 weeks
+  - id: rec_009
+    priority: low
+    category: monitoring
+    title: Establish Quality Baselines for Custom Models
+    description: Custom fine-tuned models lack quality score tracking. Implementing
+      monitoring ensures optimization decisions are data-driven.
+    affected_clusters:
+      - cluster_custom_specialty
+    estimated_savings_usd: 0
+    estimated_savings_percent: 0
+    implementation_effort: low
+    implementation_steps:
+      - Implement quality scoring for custom-finetuned-llama outputs
+      - Set up automated evaluation pipelines
+      - Compare performance against base models
+      - Document when custom models provide value vs standard models
+    impact_metrics:
+      cost_reduction: TBD based on findings
+      quality_visibility: 100%
+      complexity: Low
+      timeline: 1 week
+  - id: rec_010
+    priority: low
+    category: performance
+    title: Optimize Streaming Inference Configuration
+    description: Streaming inference shows 4890ms latency. Optimizing chunk sizes
+      and buffer configuration can improve user experience.
+    affected_clusters:
+      - cluster_custom_specialty
+    estimated_savings_usd: 0.011
+    estimated_savings_percent: 1.1
+    implementation_effort: low
+    implementation_steps:
+      - Analyze token generation patterns and chunk sizes
+      - Configure optimal buffer sizes for streaming endpoints
+      - Implement progressive rendering on client side
+      - Measure time-to-first-token and overall latency
+    impact_metrics:
+      cost_reduction: 5-10%
+      latency_improvement: 35-40%
+      complexity: Low
+      timeline: 1 week

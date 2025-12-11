@@ -1,0 +1,100 @@
+{
+  "root": "/Users/thiyagarajanm/AIProjects/peakinfer/src/slc/__tests__/fixtures/r3-vllm-sglang-llamacpp",
+  "tree": [
+    {
+      "name": "src",
+      "path": "src",
+      "type": "directory",
+      "children": [
+        {
+          "name": "slc",
+          "path": "slc",
+          "type": "directory",
+          "children": [
+            {
+              "name": "__tests__",
+              "path": "__tests__",
+              "type": "directory",
+              "children": [
+                {
+                  "name": "fixtures",
+                  "path": "fixtures",
+                  "type": "directory",
+                  "children": [
+                    {
+                      "name": "r3-vllm-sglang-llamacpp",
+                      "path": "r3-vllm-sglang-llamacpp",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "vllm_service.py",
+                          "path": "src/slc/__tests__/fixtures/r3-vllm-sglang-llamacpp/vllm_service.py",
+                          "type": "file",
+                          "callsites": [
+                            {
+                              "line": 10,
+                              "pattern": "vllm.completion",
+                              "provider": "vllm",
+                              "model": "meta-llama/Llama-3.1-8B-Instruct"
+                            },
+                            {
+                              "line": 17,
+                              "pattern": "other.completion",
+                              "provider": "other",
+                              "model": "meta-llama/Llama-3.1-8B-Instruct"
+                            },
+                            {
+                              "line": 20,
+                              "pattern": "other.completion",
+                              "provider": "other",
+                              "model": "llama-3.1-8b-instruct.Q4_K_M.gguf"
+                            },
+                            {
+                              "line": 28,
+                              "pattern": "vllm.completion",
+                              "provider": "vllm",
+                              "model": "meta-llama/Llama-3.1-8B-Instruct"
+                            },
+                            {
+                              "line": 33,
+                              "pattern": "other.completion",
+                              "provider": "other",
+                              "model": "meta-llama/Llama-3.1-8B-Instruct"
+                            },
+                            {
+                              "line": 40,
+                              "pattern": "other.completion",
+                              "provider": "other",
+                              "model": "llama-3.1-8b-instruct.Q4_K_M.gguf"
+                            },
+                            {
+                              "line": 49,
+                              "pattern": "vllm.completion",
+                              "provider": "vllm",
+                              "model": "meta-llama/Llama-3.1-8B-Instruct"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "totalCallsites": 7,
+    "providers": [
+      "other",
+      "vllm"
+    ],
+    "models": [
+      "llama-3.1-8b-instruct.Q4_K_M.gguf",
+      "meta-llama/Llama-3.1-8B-Instruct"
+    ]
+  }
+}

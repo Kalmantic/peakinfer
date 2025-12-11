@@ -1,0 +1,349 @@
+{
+  "estimatedRange": {
+    "low": 10.819501999999998,
+    "high": 481.66008999999997
+  },
+  "mostExpensiveModel": "gpt-4",
+  "byProvider": [
+    {
+      "provider": "openai",
+      "throughput": 302.5,
+      "percentage": 63
+    },
+    {
+      "provider": "mistral",
+      "throughput": 88,
+      "percentage": 18
+    },
+    {
+      "provider": "aws-bedrock",
+      "throughput": 51.93,
+      "percentage": 11
+    },
+    {
+      "provider": "cerebras",
+      "throughput": 16.8,
+      "percentage": 3
+    },
+    {
+      "provider": "gcp-vertex",
+      "throughput": 16.25,
+      "percentage": 3
+    },
+    {
+      "provider": "databricks",
+      "throughput": 4.50009,
+      "percentage": 1
+    },
+    {
+      "provider": "groq",
+      "throughput": 1.68,
+      "percentage": 0
+    },
+    {
+      "provider": "other",
+      "throughput": 0,
+      "percentage": 0
+    }
+  ],
+  "byModel": [
+    {
+      "model": "gpt-4",
+      "throughput": 270
+    },
+    {
+      "model": "mistral-large2",
+      "throughput": 88
+    },
+    {
+      "model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+      "throughput": 45
+    },
+    {
+      "model": "gpt-4o",
+      "throughput": 32.5
+    },
+    {
+      "model": "llama3.1-70b",
+      "throughput": 16.8
+    },
+    {
+      "model": "gemini-1.5-pro",
+      "throughput": 16.25
+    },
+    {
+      "model": "meta.llama3-1-70b-instruct-v1:0",
+      "throughput": 6.930000000000001
+    },
+    {
+      "model": "databricks-mixtral-8x7b-instruct",
+      "throughput": 4.50009
+    },
+    {
+      "model": "mixtral-8x7b",
+      "throughput": 1.68
+    },
+    {
+      "model": "text-bison@002",
+      "throughput": 0
+    },
+    {
+      "model": "databricks-meta-llama-3-1-70b-instruct",
+      "throughput": 0
+    },
+    {
+      "model": "databricks-dbrx-instruct",
+      "throughput": 0
+    },
+    {
+      "model": "unknown",
+      "throughput": 0
+    }
+  ],
+  "hotspots": [
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/databricks_inference.py",
+      "line": 113,
+      "model": "gpt-4",
+      "estimatedThroughputLow": 6,
+      "estimatedThroughputHigh": 270,
+      "estimatedMonthlyLow": 6,
+      "estimatedMonthlyHigh": 270,
+      "suggestion": "(AI Analysis) External OpenAI GPT-4 via Databricks proxy. GPT-4 is premium ($30/M input, $60/M output). Switch to GPT-4o-mini or GPT-3.5-turbo for 20-40x cost reduction on simpler tasks."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/aws_bedrock.py",
+      "line": 33,
+      "model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+      "estimatedThroughputLow": 1.05,
+      "estimatedThroughputHigh": 45,
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Claude 3.5 Sonnet is premium ($3/M input, $15/M output). For simple tasks like summarization or classification, switch to Claude Haiku ($0.80/M input, $4/M output) or Llama-3.1-8B on Bedrock for 10-20x cost reduction."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/snowflake_cortex.py",
+      "line": 41,
+      "model": "mistral-large2",
+      "estimatedThroughputLow": 1,
+      "estimatedThroughputHigh": 44,
+      "estimatedMonthlyLow": 1,
+      "estimatedMonthlyHigh": 44,
+      "suggestion": "(AI Analysis) Mistral Large 2 is premium. For SQL generation, classification, and extraction, use Mixtral 8x7B or Mistral 7B for 3-5x cost reduction."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/snowflake_cortex.py",
+      "line": 100,
+      "model": "mistral-large2",
+      "estimatedThroughputLow": 1,
+      "estimatedThroughputHigh": 44,
+      "estimatedMonthlyLow": 1,
+      "estimatedMonthlyHigh": 44,
+      "suggestion": "(AI Analysis) Mistral Large 2 for chat. Use Mixtral 8x7B or Mistral 7B for 3-5x cost reduction on standard chat tasks."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/aws_bedrock.py",
+      "line": 69,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) GPT-4o is premium ($2.50/M input, $10/M output). For straightforward tasks like extraction or simple Q&A, use GPT-4o-mini ($0.15/M input, $0.60/M output) for 16x cost reduction."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/aws_bedrock.py",
+      "line": 57,
+      "model": "gemini-1.5-pro",
+      "estimatedThroughputLow": 0.375,
+      "estimatedThroughputHigh": 16.25,
+      "estimatedMonthlyLow": 0.375,
+      "estimatedMonthlyHigh": 16.25,
+      "suggestion": "(AI Analysis) Gemini 1.5 Pro is high-tier ($1.25/M input, $5/M output). Switch to Gemini 1.5 Flash ($0.075/M input, $0.30/M output) for 16x cost reduction on routine tasks like summarization and basic Q&A."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/aws_bedrock.py",
+      "line": 47,
+      "model": "meta.llama3-1-70b-instruct-v1:0",
+      "estimatedThroughputLow": 0.14850000000000002,
+      "estimatedThroughputHigh": 6.930000000000001,
+      "estimatedMonthlyLow": 0.14850000000000002,
+      "estimatedMonthlyHigh": 6.930000000000001,
+      "suggestion": "(AI Analysis) Llama 3.1 70B on Inferentia is already cost-effective. For simpler tasks, consider Llama-3.1-8B for 8x cost reduction while maintaining quality."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/databricks_inference.py",
+      "line": 48,
+      "model": "databricks-mixtral-8x7b-instruct",
+      "estimatedThroughputLow": 0.10000200000000001,
+      "estimatedThroughputHigh": 4.50009,
+      "estimatedMonthlyLow": 0.10000200000000001,
+      "estimatedMonthlyHigh": 4.50009,
+      "suggestion": "(AI Analysis) Mixtral 8x7B is well-balanced for medium complexity tasks. Already cost-effective. For very simple tasks, consider Mistral 7B."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/snowflake_cortex.py",
+      "line": 31,
+      "model": "llama3.1-70b",
+      "estimatedThroughputLow": 0.09,
+      "estimatedThroughputHigh": 4.2,
+      "estimatedMonthlyLow": 0.09,
+      "estimatedMonthlyHigh": 4.2,
+      "suggestion": "(AI Analysis) Snowflake Cortex Llama 3.1 70B. For simple tasks, use Mistral 7B or Llama-3.1-8B (when available) within Snowflake for lower cost."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/snowflake_cortex.py",
+      "line": 91,
+      "model": "llama3.1-70b",
+      "estimatedThroughputLow": 0.09,
+      "estimatedThroughputHigh": 4.2,
+      "estimatedMonthlyLow": 0.09,
+      "estimatedMonthlyHigh": 4.2,
+      "suggestion": "(AI Analysis) Chat implementation with manual message formatting. For simple chat, consider smaller models like Mistral 7B for cost savings."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/snowflake_cortex.py",
+      "line": 153,
+      "model": "llama3.1-70b",
+      "estimatedThroughputLow": 0.09,
+      "estimatedThroughputHigh": 4.2,
+      "estimatedMonthlyLow": 0.09,
+      "estimatedMonthlyHigh": 4.2,
+      "suggestion": "(AI Analysis) Snowpark ML LLMClient provides ML-focused interface. Same model considerations apply - use smaller models for simple tasks."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/snowflake_cortex.py",
+      "line": 172,
+      "model": "llama3.1-70b",
+      "estimatedThroughputLow": 0.09,
+      "estimatedThroughputHigh": 4.2,
+      "estimatedMonthlyLow": 0.09,
+      "estimatedMonthlyHigh": 4.2,
+      "suggestion": "(AI Analysis) SQL-based batch processing - excellent pattern for bulk operations within Snowflake. For large batches, evaluate cost of smaller model or batch pricing tiers."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/snowflake_cortex.py",
+      "line": 109,
+      "model": "mixtral-8x7b",
+      "estimatedThroughputLow": 0.036000000000000004,
+      "estimatedThroughputHigh": 1.68,
+      "estimatedMonthlyLow": 0.036000000000000004,
+      "estimatedMonthlyHigh": 1.68,
+      "suggestion": "(AI Analysis) Mixtral 8x7B is well-balanced. Good choice for medium complexity chat. Already cost-effective."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/aws_bedrock.py",
+      "line": 64,
+      "model": "text-bison@002",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "benchmark data unavailable for this model"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/databricks_inference.py",
+      "line": 19,
+      "model": "databricks-meta-llama-3-1-70b-instruct",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "benchmark data unavailable for this model"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/databricks_inference.py",
+      "line": 33,
+      "model": "databricks-dbrx-instruct",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "benchmark data unavailable for this model"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/databricks_inference.py",
+      "line": 64,
+      "model": "unknown",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/databricks_inference.py",
+      "line": 100,
+      "model": "databricks-meta-llama-3-1-70b-instruct",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "benchmark data unavailable for this model"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/databricks_inference.py",
+      "line": 146,
+      "model": "databricks-meta-llama-3-1-70b-instruct",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "benchmark data unavailable for this model"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/databricks_inference.py",
+      "line": 156,
+      "model": "databricks-meta-llama-3-1-70b-instruct",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "benchmark data unavailable for this model"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/snowflake_cortex.py",
+      "line": 51,
+      "model": "unknown",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/snowflake_cortex.py",
+      "line": 59,
+      "model": "unknown",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/snowflake_cortex.py",
+      "line": 69,
+      "model": "unknown",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/snowflake_cortex.py",
+      "line": 76,
+      "model": "unknown",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-hyperscaler/snowflake_cortex.py",
+      "line": 141,
+      "model": "unknown",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 /**
  * Snowflake Collector - Real Implementation
  * Connects to Snowflake and queries inference usage data
- * Based on PRD v0.7: SQL modules for cost & usage views
+ * Based on PRD v0.7: SQL modules for performance & usage views
  */
 
 import { BaseCollector } from './base-collector.js';
@@ -249,7 +249,7 @@ export class SnowflakeCollector extends BaseCollector {
         input_tokens,
         output_tokens,
         latency_ms,
-        cost_usd,
+        throughput_tps,
         endpoint,
         region,
         tenant
@@ -301,10 +301,10 @@ export class SnowflakeCollector extends BaseCollector {
     // Override endpoint
     event.endpoint = getValue(['endpoint', 'ENDPOINT', 'endpoint_url', 'ENDPOINT_URL'], `${provider}.api`);
 
-    // Override cost if provided
-    const costUsd = getValue(['cost_usd', 'COST_USD', 'cost', 'COST'], null);
-    if (costUsd !== null && costUsd > 0) {
-      event.cost_usd = costUsd;
+    // Override throughput if provided
+    const throughputTps = getValue(['throughput_tps', 'THROUGHPUT_TPS', 'throughput', 'THROUGHPUT'], null);
+    if (throughputTps !== null && throughputTps > 0) {
+      event.throughput_tps = throughputTps;
     }
 
     return event;
@@ -327,7 +327,7 @@ SELECT
     input_tokens AS input_token_count,
     output_tokens AS output_token_count,
     latency_ms AS response_time_ms,
-    cost_usd,
+    throughput_tps,
     endpoint AS endpoint_url,
     region,
     tenant AS workspace
@@ -344,7 +344,7 @@ CREATE TABLE IF NOT EXISTS inference_usage (
     input_tokens NUMBER,
     output_tokens NUMBER,
     latency_ms NUMBER,
-    cost_usd FLOAT,
+    throughput_tps FLOAT,
     endpoint VARCHAR(255),
     region VARCHAR(50),
     tenant VARCHAR(100)

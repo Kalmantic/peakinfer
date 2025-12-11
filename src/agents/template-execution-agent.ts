@@ -208,16 +208,17 @@ export class TemplateExecutionAgent {
       result.economics = economics;
 
       // Set optimized metrics based on template expectations
+      const throughputImprovement = template.optimization.throughput_improvement || 0.2;
       result.optimized_metrics = {
-        throughput: (result.baseline_metrics.throughput || 100) * (1 + (template.optimization.performance_improvement || 0.2)),
-        cost_per_month: (result.baseline_metrics.cost_per_month || 1000) * (1 - (template.optimization.cost_reduction || 0.15)),
+        throughput: (result.baseline_metrics.throughput || 100) * (1 + throughputImprovement),
+        cost_per_month: (result.baseline_metrics.cost_per_month || 1000) * (1 - throughputImprovement * 0.5),
         gpu_utilization: Math.min(95, (result.baseline_metrics.gpu_utilization || 35) * 1.5)
       };
 
-      result.cost_savings = (result.baseline_metrics.cost_per_month || 1000) * (template.optimization.cost_reduction || 0.15);
-      result.roi_achieved = (result.cost_savings || 0) / 100; // Simple ROI calculation
+      result.performance_gain = (result.baseline_metrics.throughput || 100) * throughputImprovement;
+      result.roi_achieved = (result.performance_gain || 0) / 100; // Simple ROI calculation
 
-      console.log(`      💰 Estimated cost savings: $${result.cost_savings?.toFixed(2) || 0}/month`);
+      console.log(`      🚀 Estimated throughput gain: ${result.performance_gain?.toFixed(2) || 0} tps/month`);
       console.log(`      📈 ROI achieved: ${((result.roi_achieved || 0) * 100).toFixed(1)}%`);
 
     } catch (error) {

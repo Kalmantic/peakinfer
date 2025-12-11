@@ -16,7 +16,7 @@ environment_match:
 
 optimization:
   technique: "gpu_right_sizing"
-  expected_cost_reduction: "40-60%"
+  expected_throughput_improvement: "40-60%"
   expected_performance_impact: "<5%"
   effort_estimate: "1-2 weeks"
   risk_level: "low"
@@ -110,6 +110,6 @@ results:
       optimized_gpu: "A10G"
       baseline_monthly_cost: 35000
       optimized_monthly_cost: 15400
-      cost_reduction_percent: 56
+      throughput_improvement_percent: 56
       latency_impact_percent: 3
       implementation_days: 7

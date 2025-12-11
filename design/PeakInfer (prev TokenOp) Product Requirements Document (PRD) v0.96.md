@@ -33,7 +33,7 @@ This gives engineers:
 
 * model/router alternatives
 
-* hardware/runtime cost-performance insights
+* hardware/runtime performance insights
 
 * optimization suggestions
 
@@ -77,7 +77,7 @@ Over time, PeakInfer becomes:
 
 * the **optimization and route-planning engine**
 
-* and, eventually, the team’s **trusted local model for inference economics**
+* and, eventually, the team's **trusted local model for inference performance optimization**
 
 ---
 
@@ -87,7 +87,7 @@ Over time, PeakInfer becomes:
 
 ## **2.1 Canonical Functional Job**
 
-**“When I’m working with a codebase that uses LLMs, I need to understand exactly how inference happens (where, how often, through what vendor, and at what cost/performance) so I can make correct engineering and architectural decisions.”**
+**“When I'm working with a codebase that uses LLMs, I need to understand exactly how inference happens (where, how often, through what vendor, and at what performance level) so I can make correct engineering and architectural decisions.”**
 
 This is the job no one solves.
 
@@ -101,7 +101,7 @@ This is the job no one solves.
 
 ### **Emotional JTBD**
 
-“I want to feel confident I’m not missing anything expensive or risky.”
+“I want to feel confident I'm not missing anything slow, inefficient, or risky.”
 
 ### **Consumption JTBD**
 
@@ -653,14 +653,24 @@ ASCII diagram showing:
 `connections[]`  
 `metrics{}`
 
-## **8.2 Pricing Schema**
+## **8.2 Performance & Pricing Schema**
 
-`vendor`  
-`model`  
-`input_token_price`  
-`output_token_price`  
-`throughput_tokens_per_sec`  
+### **Performance Metrics (Primary)**
+`throughput_tokens_per_sec`   — System capacity (tok/s/GPU)
+`latency_ttft_ms`             — Time to first token
+`latency_tps_per_user`        — Per-user generation speed (tok/s/user)
+`max_concurrent_requests`     — Batch capacity
+
+### **Cost Metrics (Secondary)**
+`vendor`
+`model`
+`input_token_price`
+`output_token_price`
 `gpu_hourly_cost`
+
+### **Deployment Comparison**
+`deployment_type`             — hosted_api | platform | self_hosted | local
+`implementation_effort`       — none | low | medium | high
 
 ---
 
@@ -682,9 +692,10 @@ ASCII diagram showing:
 
 ### **Commands**
 
-`peakinfer analyze .`  
-`peakinfer stackmap`  
-`peakinfer pricing`  
+`peakinfer analyze .`
+`peakinfer stackmap`
+`peakinfer benchmark [provider]`    — Show throughput/latency benchmarks
+`peakinfer recommend`              — Performance optimization recommendations
 `peakinfer diff old.json new.json`
 
 ## **9.1 First-Run Experience & State Handling**
@@ -756,18 +767,21 @@ Found 23 inference callsites across 8 files.
 │             └─ llama-3-70b (2)                  │
 └─────────────────────────────────────────────────┘
 
-Estimated monthly cost: $1,240 - $1,870
-  └─ Pricing delta: OpenAI gpt-4o ↓12% since Oct 2025
+Performance Summary:
+  ├─ OpenAI gpt-4o:     ~70 tok/s, 5.5s latency
+  ├─ Anthropic claude:  ~30 tok/s, 7.0s latency
+  └─ Together llama:    ~150 tok/s, 2.0s latency
 
-Hotspots:
-  • src/agents/summarizer.py:47    gpt-4o, ~2.1M tokens/mo
-  • src/pipelines/extract.py:112  claude-sonnet-4-20250514, unbatched
+Optimization Opportunities:
+  • src/agents/summarizer.py:47    gpt-4o → Groq llama-70b = 3x faster
+  • src/pipelines/extract.py:112  unbatched → batch = 40% throughput gain
 
 Output saved:
   → stackmap.json
-  → pricing.json
+  → peakinfer-benchmark.json
 
-Run `peakinfer pricing` for detailed cost breakdown.
+Run `peakinfer benchmark` for detailed throughput/latency comparison.
+Run `peakinfer recommend` for optimization recommendations.
 ```
 
 ### **Error State (API failure)**
@@ -892,61 +906,58 @@ Found 23 inference callsites across 8 files.
 └─────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         PRICING SUMMARY                             │
+│                      PERFORMANCE SUMMARY                            │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  Estimated monthly cost: $1,240 - $1,870                            │
+│  Current Performance Baseline:                                      │
 │                                                                     │
-│  By vendor:                                                         │
-│     ├──► OpenAI           $980 - $1,420    (76%)                    │
-│     ├──► Anthropic        $210 - $380      (20%)                    │
-│     └──► Together         $50 - $70        (4%)                     │
+│  By vendor (throughput / latency):                                  │
+│     ├──► OpenAI          ~70 tok/s,   5.5s latency    (14 calls)    │
+│     ├──► Anthropic       ~30 tok/s,   7.0s latency    (7 calls)     │
+│     └──► Together        ~150 tok/s,  2.0s latency    (2 calls)     │
 │                                                                     │
 │  By model:                                                          │
-│     ├──► gpt-4o           $890 - $1,290                             │
-│     ├──► claude-sonnet-4-20250514    $210 - $380                               │
-│     ├──► gpt-4o-mini      $45 - $65                                 │
-│     └──► llama-3-70b      $50 - $70                                 │
-│                                                                     │
-│  Pricing deltas (since last sync):                                  │
-│     └──► OpenAI gpt-4o         ↓12%  (Oct 2025)                     │
-│     └──► Together llama-3-70b  ↓8%   (Nov 2025)                     │
+│     ├──► gpt-4o          ~70 tok/s,   TTFT: 350ms                   │
+│     ├──► claude-sonnet-4 ~30 tok/s,   TTFT: 500ms                   │
+│     ├──► gpt-4o-mini     ~45 tok/s,   TTFT: 280ms                   │
+│     └──► llama-3-70b     ~150 tok/s,  TTFT: 180ms                   │
 │                                                                     │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  ALTERNATIVE PRICING (same models, different providers)             │
+│  FASTER ALTERNATIVES (same capability, better performance)          │
 │     │                                                               │
-│     ├──► llama-3-70b via Fireworks     $38 - $52/mo   (↓24%)        │
-│     ├──► llama-3-70b via Baseten       $41 - $58/mo   (↓18%)        │
-│     ├──► llama-3-70b self-hosted       $32 - $45/mo*  (↓36%)        │
-│     │       └─ *assumes 1x H100 @ $2.50/hr, 40% utilization         │
+│     ├──► Groq llama-3.3-70b         ~300 tok/s   (4x faster)        │
+│     ├──► Cerebras llama-3.3-70b     ~400 tok/s   (5x faster)        │
+│     ├──► Fireworks llama-3.1-70b    ~150 tok/s   (2x faster)        │
 │     │                                                               │
-│     └──► claude-sonnet-4-20250514 via AWS Bedrock   $195 - $350/mo  (↓7%)      │
+│     └──► Self-hosted (H100 + vLLM)  ~125 tok/s   (best TCO)         │
+│             └─ *Requires infrastructure setup                       │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────┐
-│                           HOTSPOTS                                  │
+│                     PERFORMANCE HOTSPOTS                            │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  ⚠  src/agents/summarizer.py:47                                     │
-│     └─ gpt-4o streaming, ~2.1M tokens/mo, $720-$980                 │
-│     └─ Suggestion: evaluate gpt-4o-mini for this use case           │
+│     └─ gpt-4o streaming, ~70 tok/s, 5.5s avg latency                │
+│     └─ Suggestion: Groq llama-70b = 300 tok/s (4x faster)           │
 │                                                                     │
 │  ⚠  src/pipelines/extract.py:112                                    │
-│     └─ claude-sonnet-4-20250514, unbatched, 890K tokens/mo                     │
-│     └─ Suggestion: enable batching (Anthropic supports batch API)   │
+│     └─ claude-sonnet-4, unbatched, sequential calls                 │
+│     └─ Suggestion: enable batching = 40% throughput improvement     │
 │                                                                     │
 │  ⚠  No caching detected                                             │
-│     └─ Suggestion: add semantic cache for repeated prompts          │
+│     └─ Suggestion: add semantic cache to reduce redundant calls     │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 
 Output saved:
-  → stackmap.json      (full graph, machine-readable)
-  → pricing.json       (cost breakdown + alternatives)
+  → stackmap.json           (full graph, machine-readable)
+  → peakinfer-benchmark.json (performance data + alternatives)
 
-Run `peakinfer pricing --detailed` for GPU-level cost modeling.
+Run `peakinfer benchmark` for detailed throughput/latency comparison.
+Run `peakinfer recommend` for optimization recommendations.
 Run `peakinfer diff old.json new.json` to compare changes.
 ```
 
@@ -958,11 +969,11 @@ Run `peakinfer diff old.json new.json` to compare changes.
 
 * comments a diff of inference usage
 
-* warns on expensive model changes
+* warns on latency-increasing model changes
 
-* shows pricing deltas
+* shows throughput/latency impact
 
-* rejects regressions (optional flag)
+* warns on performance regressions (optional flag)
 
 ---
 
@@ -972,7 +983,7 @@ Run `peakinfer diff old.json new.json` to compare changes.
 
 * team dashboards
 
-* cost monitoring
+* performance monitoring (throughput, latency trends)
 
 * versioned StackMaps
 
@@ -1022,43 +1033,62 @@ PeakInfer produces:
 
 ---
 
-# **13\. Pricing Intelligence Engine**
+# **13\. Performance Benchmarking Engine**
+
+### **The Three Pillars of Inference Intelligence**
+
+PeakInfer measures and compares three fundamental metrics:
+
+**Pillar 1: Throughput (tok/s/GPU)** — System capacity
+- Aggregate tokens generated per second per GPU
+- Optimal batch size for maximum throughput
+- GPU utilization efficiency
+
+**Pillar 2: Latency (tok/s/user)** — User experience
+- Time to first token (TTFT)
+- Tokens per second per user
+- P50/P95/P99 latency
+
+**Pillar 3: Cost ($/M tokens)** — Economics (secondary)
+- Normalized cost across deployment types
+- TCO for self-hosted options
 
 ### **Data Sources**
 
-Pricing data is assembled from three tiers:
+Benchmark data is assembled from three tiers:
 
-1. **Public sources** — Vendor pricing pages (OpenAI, Anthropic, Together, Fireworks, etc.), cloud GPU pricing (AWS, GCP, Azure, CoreWeave, Lambda Labs), and hardware MSRP. Scraped or manually updated weekly.  
-2. **Community contributions** — Users may submit pricing corrections, regional variations, or newly supported models via GitHub PR to the `peakinfer-pricing` repository.  
-3. **Partnership APIs (future)** — Direct integrations with vendors for real-time pricing where available (e.g., spot pricing feeds, negotiated enterprise rates).
+1. **Public benchmarks** — InferenceMAX, vLLM benchmarks, TGI benchmarks, and vendor-published throughput data. Updated weekly.
+2. **Community contributions** — Users may submit benchmark results, regional variations, or newly supported models via GitHub PR to the `peakinfer-benchmarks` repository.
+3. **Estimation engine** — Model size + GPU specs → throughput estimates (labeled with confidence).
 
 ### **Must track:**
 
-* model prices  
-* runtime efficiency  
-* GPU hourly pricing  
-* spot markets  
-* vendor discounts  
-* API surcharges  
-* context window pricing  
-* performance regressions
+* throughput (tok/s/GPU)
+* latency (TTFT, tok/s/user)
+* optimal batch sizes
+* GPU memory requirements
+* runtime efficiency (vLLM, TGI, TensorRT-LLM)
+* hardware accelerators (Groq LPU, Cerebras WSE)
+* cost per token (secondary)
 
 ### **Output:**
 
-* deltas  
-* alerts  
-* recommendations  
-* "best price for your architecture"
+* throughput comparisons across providers
+* latency benchmarks
+* deployment recommendations (fastest, most efficient)
+* "peak performance for your workload"
 
 ---
 
 # **14\. Acceptance Criteria**
 
-* 90%+ LLM callsite detection  
-* StackMap accuracy \> 95%  
-* Pricing delta updated weekly  
-* CLI runs in \< 60 seconds  
-* No runtime errors across supported languages (TS, Python, Go, Java)  
+* 90%+ LLM callsite detection
+* StackMap accuracy > 95%
+* Benchmark data updated weekly
+* Throughput estimates within 20% of actual benchmarks
+* Latency estimates within 25% of actual measurements
+* CLI runs in < 60 seconds
+* No runtime errors across supported languages (TS, Python, Go, Java)
 * Outputs must be self-explanatory
 
 
@@ -1070,13 +1100,17 @@ Pricing data is assembled from three tiers:
 
 Mitigation: vendor-agnostic KG.
 
-### **Risk: Pricing volatility**
+### **Risk: Benchmark data staleness**
 
-Mitigation: weekly pricing sync.
+Mitigation: weekly benchmark sync from InferenceMAX, vLLM, and public sources.
+
+### **Risk: Throughput estimate accuracy**
+
+Mitigation: Label confidence levels; use conservative estimates; validate against real benchmarks.
 
 ### **Risk: Code complexity**
 
-Mitigation: multi-pass static \+ semantic analysis.
+Mitigation: multi-pass static + semantic analysis.
 
 ### **Risk: Vendor lock-in attempts**
 

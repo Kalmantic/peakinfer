@@ -41,7 +41,7 @@ export interface CollectorConfig {
 export interface CollectorResult {
   /** Collected events */
   events: InferenceEvent[];
-  
+
   /** Collection metadata */
   metadata: {
     collector: string;
@@ -53,16 +53,16 @@ export interface CollectorResult {
       end: string;
     };
   };
-  
+
   /** Collection statistics */
   stats: {
-    total_cost: number;
+    total_throughput: number;
     total_tokens: number;
     unique_providers: string[];
     unique_models: string[];
     date_range_days: number;
   };
-  
+
   /** Any warnings or issues during collection */
   warnings?: string[];
 }
@@ -133,7 +133,7 @@ export interface ManualCollectorConfig extends CollectorConfig {
  */
 export interface InfrastructureConfig {
   resources: InfrastructureResource[];
-  cost_estimates: CostEstimate[];
+  capacity_estimates: CapacityEstimate[];
   gpu_inventory: GPUInventory[];
   network_topology: NetworkTopology;
 }
@@ -146,11 +146,11 @@ export interface InfrastructureResource {
   tags?: Record<string, string>;
 }
 
-export interface CostEstimate {
+export interface CapacityEstimate {
   resource_id: string;
   resource_type: string;
-  hourly_cost: number;
-  monthly_cost: number;
+  hourly_throughput: number;
+  monthly_throughput: number;
   optimization_potential: number;
 }
 
@@ -159,7 +159,7 @@ export interface GPUInventory {
   gpu_type: string;
   gpu_count: number;
   memory_gb: number;
-  hourly_cost: number;
+  hourly_throughput: number;
   region: string;
   availability: 'on-demand' | 'spot' | 'reserved';
 }

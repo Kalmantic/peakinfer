@@ -1,0 +1,46 @@
+# Ground Truth: False Positives - Non-LLM HTTP
+# These should NOT be detected as LLM callsites
+# Reviewer: Human expert
+# Last updated: 2024-12-10
+
+fixture: false-positives/non_llm_http.py
+description: HTTP calls that look like LLM APIs but are not
+total_callsites: 0  # ZERO - none of these are LLM calls
+
+callsites: []  # Empty - nothing should be detected
+
+# These are all false positive traps
+false_positive_traps:
+  - line: 11
+    function: get_weather
+    reason: "Weather API with OpenAI-like URL pattern"
+    trap_signals:
+      - "api.weather.com/v1/chat/completions"
+      - "model field present"
+      - "messages array present"
+
+  - line: 24
+    function: query_database
+    reason: "Database API with completions endpoint"
+    trap_signals:
+      - "/completions endpoint"
+      - "prompt field"
+      - "max_tokens field"
+
+  - line: 37
+    function: get_analytics
+    reason: "Analytics API with chat endpoint"
+    trap_signals:
+      - "/v1/chat endpoint"
+      - "model field"
+
+  - line: 50
+    function: ChatService.send_message
+    reason: "Internal chat service, not LLM"
+    trap_signals:
+      - "messages/create endpoint"
+      - "model field"
+
+# Scoring notes:
+# - If ANY of these are detected, precision drops
+# - A good detector should have 0 detections for this file

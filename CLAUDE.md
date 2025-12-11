@@ -4,67 +4,76 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-PeakInfer is an LLM inference cost optimization platform that orchestrates optimizations across Application, Serving, and Infrastructure layers. This repository is currently in the **design phase** and contains comprehensive product requirements and technical specifications.
+PeakInfer is an LLM inference **performance optimization platform** that orchestrates optimizations across Application, Serving, and Infrastructure layers. The platform maximizes throughput, minimizes latency, and achieves peak efficiency across your AI stack.
 
 ## Repository Structure
-
-This is a **design-only repository** with no implementation code yet. The repository contains:
 
 ```
 .
 ├── design/
-│   ├── PeakInfer Product Requirements Document (PRD) v0.7.md  # Comprehensive technical PRD
-│   └── PeakInfer Template v0.2.md                           # Community optimization templates
-└── CLAUDE.md                                               # This file
+│   ├── PeakInfer Product Requirements Document (PRD) v0.96.md  # Comprehensive technical PRD
+│   └── PeakInfer Template v0.2.md                              # Community optimization templates
+├── src/
+│   ├── slc/                                                    # Core CLI implementation
+│   ├── collectors/                                             # OSS data collectors
+│   ├── core/                                                   # Multi-agent orchestration
+│   └── types/                                                  # TypeScript type definitions
+├── templates/                                                  # Community optimization templates
+└── CLAUDE.md                                                   # This file
 ```
 
-## Development Commands
+## CLI Commands
 
-**Note: No build, lint, or test commands exist yet** - this is a design-phase repository with no code implementation.
-
-When implementation begins, the planned technology stack will include:
-- **CLI Tool**: TypeScript with Commander.js, distributed via `npm install -g @kalmantic/peakinfer`
-- **Multi-Agent System**: Claude Code SDK integration for optimization orchestration
-- **Collectors**: Open-source data collectors for Snowflake, Databricks, Terraform
-- **Templates**: File-based community optimization templates in GitHub repository
-
-Expected future commands (when implemented):
 ```bash
 # Installation
 npm install -g @kalmantic/peakinfer
 
-# Core optimization workflow
-peakinfer discover [--collectors snowflake,databricks,terraform]
-peakinfer profile [--events events.jsonl] [--cluster-method semantic]
-peakinfer plan [--constraints policy.yaml] [--templates-dir templates/]
-peakinfer run [--plan plan.yaml] [--sample-size 100] [--early-stopping]
-peakinfer report [--output-dir reports/] [--format html,csv]
+# Main analysis command (SLC: Simple, Lovable, Complete)
+peakinfer analyze <path>           # Analyze codebase for LLM usage + performance
+peakinfer analyze <path> --html    # Generate HTML report
+peakinfer analyze <path> --open    # Generate and open HTML report in browser
+peakinfer analyze <path> --cached  # View previous analysis (offline, no API key needed)
+peakinfer analyze <path> --output json  # Machine-readable JSON output
 
-# Template management
-peakinfer templates [list|search|info] [--category <category>]
-peakinfer template-apply <template_id> [--dry-run] [--interactive]
+# Pricing information
+peakinfer prices                   # Show all model pricing (API + GPU)
+peakinfer prices <provider>        # Filter by provider (openai, anthropic, modal, etc.)
+peakinfer prices --refresh         # Refresh pricing cache from sources
 
-# Community interaction
-peakinfer submit-implementation <template_id> [--baseline-cost] [--optimized-cost]
-peakinfer contribute [--template <template_id>] [--results <file>]
+# Template browsing
+peakinfer templates list           # List all optimization templates
+peakinfer templates info <id>      # View template details
+
+# Help
+peakinfer --help                   # Show help
+peakinfer --version                # Show version
+```
+
+## Environment Setup
+
+```bash
+# Required for fresh analysis
+export ANTHROPIC_API_KEY=sk-ant-api03-xxxxx
+
+# Add to ~/.zshrc or ~/.bashrc to persist
 ```
 
 ## Architecture Overview
 
-PeakInfer is designed as a multi-layer optimization orchestration platform:
+PeakInfer is designed as a multi-layer performance optimization orchestration platform:
 
 ### Core System Components
 
 1. **Multi-Agent Orchestration** (Claude Code SDK)
-   - DiscoveryAgent: Merge configs/logs → discovered.yaml
-   - WorkloadProfiler: Cluster prompts → representative samples
-   - PolicyAgent: Load org constraints (quality, latency, budget)
+   - DiscoveryAgent: Merge configs/logs -> discovered.yaml
+   - WorkloadProfiler: Cluster prompts -> representative samples
+   - PolicyAgent: Load org constraints (quality, latency, throughput targets)
    - PlannerAgent: Build search plan (router swaps, cache thresholds, serving options)
    - RunnerEvaluator: Execute baseline & candidates; bandit-style early stopping
-   - AuditorAgent: Summarize savings → emit patches
+   - AuditorAgent: Summarize performance gains -> emit patches
 
 2. **OSS Collectors** (Trust Architecture)
-   - Snowflake: SQL modules for cost & usage views
+   - Snowflake: SQL modules for usage & performance views
    - Databricks: REST APIs for jobs/runs/serving endpoints
    - Terraform: Parse state or terraform show -json
    - Manual Input: JSONL/CSV/Parquet for demos/OSS users
@@ -80,7 +89,7 @@ PeakInfer is designed as a multi-layer optimization orchestration platform:
      input_tokens: number;    // Token count
      output_tokens: number;   // Token count
      latency_ms: number;      // Response time
-     cost_usd: number;        // Actual cost
+     throughput_tps: number;  // Tokens per second
      endpoint: string;        // "api.openai.com", "api.together.xyz"
      region: string;          // "us-west-2"
      tenant: string;          // "team_analytics"
@@ -99,11 +108,20 @@ PeakInfer coordinates optimizations across three infrastructure layers:
 
 1. **Application Layer**: Semantic caching, prompt optimization, model routing
 2. **Serving Layer**: vLLM migration, TensorRT optimization, SGLang deployment
-3. **Infrastructure Layer**: Spot instance optimization, reserved instance planning, multi-region deployment
+3. **Infrastructure Layer**: Spot instance optimization, reserved capacity planning, multi-region deployment
 
-The platform's key innovation is **cross-layer coordination** - optimizations that span multiple layers show additive benefits beyond individual layer optimizations.
+The platform's key innovation is **cross-layer coordination** - optimizations that span multiple layers show additive performance benefits beyond individual layer optimizations.
 
-## Design Philosophy
+## Design Philosophy (Julie Zhou Principles)
+
+1. **Behavior First:** Design to enable specific user behaviors, not for visual flourish. Every implementation decision should ask: "How does this help users accomplish their goals?"
+2. **Clarity Over Cleverness:** Every element must answer "why" and serve a clear purpose. If you can't explain why something exists in one sentence, it probably shouldn't.
+3. **Content-Driven Layout:** Content determines structure; typography and spacing earn user trust. Let content breathe and establish hierarchy through purposeful spacing.
+4. **Thoughtful Defaults:** Cut decision fatigue with smart defaults. Users should only make decisions that matter—everything else should "just work."
+5. **State Completeness:** Zero, loading, error, and success states are all first-class citizens. Never neglect any state.
+6. **Transition Excellence:** Transitions matter as much as final screens. How users move between states tells a story.
+7. **Accessible By Design:** Always meet WCAG AA standards for contrast and keyboard navigation. Accessibility is fundamental.
+8. **Invisible UI:** Users should notice their progress, not the interface. The best design feels invisible.
 
 ### Technical Pillars
 1. **Claude Code SDK Foundation**: Multi-agent orchestration for complex optimization decisions
@@ -111,72 +129,140 @@ The platform's key innovation is **cross-layer coordination** - optimizations th
 3. **Canonical Event Schema**: Unified format across heterogeneous stacks
 4. **OSS Trust Architecture**: Open-source collectors, least-privilege, run-in-customer-env, no PII exfiltration
 
-### Economic Model
+### Business Model
 - **Open Source Core**: Apache 2.0 CLI, collectors, and template format
 - **Community Templates**: Free, peer-reviewed optimization strategies stored as files
 - **Enterprise Platform**: Multi-tenant SaaS deployment + SOC2/ISO compliance (future)
 - **Professional Services**: Custom optimization consulting and auto-remediation
 
-## Implementation Phases
+## Output Files
 
-### Phase 1: Core Platform Discovery (0-3 months)
-- OSS collectors for Snowflake, Databricks, Terraform with canonical schema
-- Multi-agent CLI with discover/profile/plan/run commands
-- File-based community templates with 20 initial templates across all layers
-- Claude Code SDK integration for natural language optimization guidance
+When running `peakinfer analyze`, the following files are generated:
 
-### Phase 2: Community Growth & Orchestration (3-6 months)
-- Cross-layer template development with coordination strategies
-- Advanced economic modeling with multi-layer ROI calculations
-- Community dashboard and contributor recognition system
-- PostHog and LangSmith collectors for broader ecosystem coverage
+| File | Description |
+|------|-------------|
+| `peakinfer-stackmap.json` | Detected LLM callsites and stack topology |
+| `peakinfer-pricing.json` | Cost analysis and pricing breakdown |
+| `peakinfer-report.html` | Interactive HTML report (with --html flag) |
 
-### Phase 3: Enterprise Features & Scale (6-12 months)
-- Multi-tenant SaaS deployment option with enterprise features
-- Auto-remediation capabilities (apply Terraform diffs, update configurations)
-- Advanced learned routers with bandit/policy optimization
-- SOC2/ISO compliance for enterprise security requirements
+## Development
 
-### Phase 4: Platform Ecosystem & Acquisition (12-18 months)
-- API platform for third-party integrations
-- Cross-org benchmarking and industry insights
-- Technical authority establishment through research and OSS contributions
-- Acquisition readiness with $100M target valuation
+```bash
+# Run locally during development
+npm run build && node dist/slc/cli.js analyze .
 
-## Success Metrics
+# Run tests
+npm test
 
-**Target Goals:**
-- **Cost Reduction**: ≥20% vs baseline across any infrastructure layer
-- **Quality Loss**: ≤1% absolute drop or within defined tolerance
-- **Community Validation**: ≥3 peer reviews per template with >0.85 confidence score
-- **Cross-Layer Benefits**: Templates spanning 2+ layers show additive benefits
+# Type checking
+npm run typecheck
+```
 
-**Platform Metrics:**
-- Monthly Active Users: 1K+ by Phase 2
-- Enterprise Customers: 50+ by Phase 3
-- Total Cost Savings: $100M+ documented by Phase 4
-- Technical Authority: OSS contributions to vLLM, SGLang, TensorRT-LLM
+## Implementation Guidelines
 
-## Development Guidelines
+### Component Structure
+- Organize around behaviors, not just visual layout
+- Document behavioral purpose in code comments
+- Create reusable patterns that encapsulate design principles
 
-Since this is a design-phase repository:
+### State Completeness
+Treat all states with equal care:
+- `loading` - Show progress, set expectations
+- `error` - Clear message, actionable recovery
+- `empty` - Guide users to next action
+- `success` - Celebrate progress, show next steps
 
-1. **Design Documents**: Focus on refining PRD and template specifications based on market research and technical validation
-2. **Architecture Review**: Validate multi-agent orchestration approach and OSS collector design
-3. **Template Development**: Create initial community optimization templates for cross-layer coordination
-4. **Economic Modeling**: Refine ROI calculations and cost-benefit analysis frameworks
+### Thoughtful Defaults
+- Simple by default, powerful when needed
+- Hide advanced options until requested
+- Primary action always visible and clear
 
-When implementation begins:
-1. **Start with CLI scaffolding** using TypeScript + Commander.js
+### Design Quality Checks
+When implementing or modifying, validate:
+1. Code prioritizes enabling specific user behaviors
+2. Components reduce cognitive load at decision points
+3. Visual hierarchy directs attention appropriately
+4. Typography establishes clear information hierarchy
+5. Spacing is applied systematically for rhythm and order
+6. All states (zero, loading, error, success) are fully implemented
+7. Accessibility standards are maintained
+8. Transitions feel natural and purposeful
+9. The interface feels invisible - users focus on their task
+
+### Technical Implementation
+1. **Start with CLI scaffolding** using TypeScript
 2. **Implement OSS collectors** with canonical schema first
 3. **Integrate Claude Code SDK** for multi-agent orchestration
 4. **Build file-based template system** with GitHub integration
 5. **Focus on cross-layer coordination** as key differentiator
 
-## Key Files for Future Development
+## Development Philosophy (SLC - Simple, Lovable, Complete)
+
+### Core Principles
+- **Magic UX**: Create code that makes powerful capabilities feel effortless and invisible
+- **SLC**: Deliver solutions that may be limited in scope but are fully functional, delightful to use, and solve real problems
+
+### Implementation Excellence
+
+**Progressive Magic:**
+- Start with core functionality that works perfectly
+- Add intelligent features that anticipate user needs
+- Surface advanced capabilities contextually when needed
+
+**Invisible Intelligence:**
+- Build resilient error handling that prevents issues before they occur
+- Implement smart defaults that work correctly most of the time
+- Create real-time feedback loops that guide users naturally
+
+**Graceful Power:**
+- Handle edge cases and failures elegantly
+- Provide clear, actionable guidance when issues arise
+- Include fallback options that maintain functionality
+
+**Contextual Simplicity:**
+- Remove unnecessary complexity and options
+- Present the right capabilities at the right moment
+- Make the primary use case effortless
+
+### Code Quality Checklist
+
+**Simple:**
+- Focused on solving one problem well
+- Clear, consistent naming conventions
+- Intuitive structure with minimal complexity
+
+**Lovable:**
+- Thoughtful UX with helpful feedback
+- Intelligent defaults that "just work"
+- Small touches that surprise and delight
+
+**Complete:**
+- Fully implements the defined scope
+- Handles all reasonable edge cases
+- Provides clear usage guidance
+
+**Resilient:**
+- Validates all inputs thoroughly
+- Implements appropriate retry mechanisms
+- Degrades gracefully when dependencies fail
+
+**Testable:**
+- Architected for testability with clear separation of concerns
+- Includes comprehensive unit tests for core functions
+- End-to-end tests that verify user acceptance criteria
+
+## Success Metrics
+
+**Target Goals:**
+- **Performance Improvement**: >=20% throughput increase or latency reduction vs baseline
+- **Quality Preservation**: <=1% absolute drop or within defined tolerance
+- **Cross-Layer Benefits**: Templates spanning 2+ layers show additive performance gains
+
+## Key Files for Development
 
 Reference the design documents for implementation:
-- `design/PeakInfer Product Requirements Document (PRD) v0.7.md`: Complete technical architecture and implementation details
+- `design/PeakInfer (prev TokenOp) Product Requirements Document (PRD) v0.96.md`: Complete technical architecture and implementation details
 - `design/PeakInfer Template v0.2.md`: Community optimization template specifications and examples
 
 The PRD contains detailed TypeScript examples, API specifications, and implementation timelines that should guide the actual development work.
+- save

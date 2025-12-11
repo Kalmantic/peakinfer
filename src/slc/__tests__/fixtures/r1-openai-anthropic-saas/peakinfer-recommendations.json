@@ -1,0 +1,248 @@
+{
+  "totalCallsites": 4,
+  "callsitesWithRecommendations": 4,
+  "totalCurrentMonthlyCost": 742.8,
+  "totalRecommendedMonthlyCost": 11.07,
+  "totalMonthlySavings": 731.7299999999999,
+  "savingsPercent": 98.50969305331179,
+  "byTier": [
+    {
+      "tier": 1,
+      "name": "Closed APIs",
+      "count": 4,
+      "currentCost": 742.8,
+      "recommendedCost": 11.07,
+      "savings": 731.73
+    }
+  ],
+  "recommendations": [
+    {
+      "callsiteId": "app.py:15:openai-chat-gpt4o",
+      "file": "app.py",
+      "line": 15,
+      "currentProvider": "openai",
+      "currentModel": "gpt-4o",
+      "currentTier": 1,
+      "currentMonthlyCost": 255,
+      "recommendedProvider": "groq",
+      "recommendedModel": "llama-3.1-8b",
+      "recommendedTier": 2,
+      "recommendedMonthlyCost": 2.94,
+      "recommendedHardware": "Groq LPU",
+      "recommendedStack": "Groq Runtime",
+      "monthlySavings": 252.06,
+      "savingsPercent": 98.84705882352941,
+      "latencyChange": "faster",
+      "reasoning": "Migrate from OpenAI GPT-4o (Tier 1) to Groq Llama-8B (Tier 2). 99% cost reduction with faster latency.",
+      "migrationComplexity": "medium",
+      "codeChange": "# Before (OpenAI)\nfrom openai import OpenAI\nclient = OpenAI()\nresponse = client.chat.completions.create(model=\"gpt-4o\", ...)\n\n# After (Groq - same API!)\nfrom openai import OpenAI\nclient = OpenAI(\n    api_key=os.environ[\"GROQ_API_KEY\"],\n    base_url=\"https://api.groq.com/openai/v1\"\n)\nresponse = client.chat.completions.create(model=\"llama-3.1-8b\", ...)"
+    },
+    {
+      "callsiteId": "app.py:23:anthropic-chat-claude35sonnet",
+      "file": "app.py",
+      "line": 23,
+      "currentProvider": "anthropic",
+      "currentModel": "claude-3-5-sonnet-20241022",
+      "currentTier": 1,
+      "currentMonthlyCost": 360,
+      "recommendedProvider": "groq",
+      "recommendedModel": "llama-3.1-8b",
+      "recommendedTier": 2,
+      "recommendedMonthlyCost": 2.94,
+      "recommendedHardware": "Groq LPU",
+      "recommendedStack": "Groq Runtime",
+      "monthlySavings": 357.06,
+      "savingsPercent": 99.18333333333334,
+      "latencyChange": "faster",
+      "reasoning": "Migrate from Anthropic Claude Sonnet (Tier 1) to Groq Llama-8B (Tier 2). 99% cost reduction with faster latency.",
+      "migrationComplexity": "medium",
+      "codeChange": "# Before (Anthropic)\nfrom anthropic import Anthropic\nclient = Anthropic()\nresponse = client.messages.create(model=\"claude-3-5-sonnet\", ...)\n\n# After (Groq with Llama)\nfrom openai import OpenAI\nclient = OpenAI(\n    api_key=os.environ[\"GROQ_API_KEY\"],\n    base_url=\"https://api.groq.com/openai/v1\"\n)\nresponse = client.chat.completions.create(model=\"llama-3.1-8b\", ...)"
+    },
+    {
+      "callsiteId": "app.py:32:openai-streaming-gpt4omini",
+      "file": "app.py",
+      "line": 32,
+      "currentProvider": "openai",
+      "currentModel": "gpt-4o-mini",
+      "currentTier": 1,
+      "currentMonthlyCost": 15.299999999999999,
+      "recommendedProvider": "groq",
+      "recommendedModel": "llama-3.1-8b",
+      "recommendedTier": 2,
+      "recommendedMonthlyCost": 2.94,
+      "recommendedHardware": "Groq LPU",
+      "recommendedStack": "Groq Runtime",
+      "monthlySavings": 12.36,
+      "savingsPercent": 80.7843137254902,
+      "latencyChange": "faster",
+      "reasoning": "Migrate from OpenAI GPT-4o-mini (Tier 1) to Groq Llama-8B (Tier 2). 81% cost reduction with faster latency.",
+      "migrationComplexity": "medium",
+      "codeChange": "# Before (OpenAI)\nfrom openai import OpenAI\nclient = OpenAI()\nresponse = client.chat.completions.create(model=\"gpt-4o\", ...)\n\n# After (Groq - same API!)\nfrom openai import OpenAI\nclient = OpenAI(\n    api_key=os.environ[\"GROQ_API_KEY\"],\n    base_url=\"https://api.groq.com/openai/v1\"\n)\nresponse = client.chat.completions.create(model=\"llama-3.1-8b\", ...)"
+    },
+    {
+      "callsiteId": "app.py:43:openai-embedding-text-embedding-3-small",
+      "file": "app.py",
+      "line": 43,
+      "currentProvider": "openai",
+      "currentModel": "text-embedding-3-small",
+      "currentTier": 1,
+      "currentMonthlyCost": 112.5,
+      "recommendedProvider": "groq",
+      "recommendedModel": "llama-3.1-8b",
+      "recommendedTier": 2,
+      "recommendedMonthlyCost": 2.25,
+      "recommendedHardware": "Groq LPU",
+      "recommendedStack": "Groq Runtime",
+      "monthlySavings": 110.25,
+      "savingsPercent": 98,
+      "latencyChange": "faster",
+      "reasoning": "Migrate from OpenAI GPT-4o (Tier 1) to Groq Llama-8B (Tier 2). 98% cost reduction with faster latency.",
+      "migrationComplexity": "medium",
+      "codeChange": "# Before (OpenAI)\nfrom openai import OpenAI\nclient = OpenAI()\nresponse = client.chat.completions.create(model=\"gpt-4o\", ...)\n\n# After (Groq - same API!)\nfrom openai import OpenAI\nclient = OpenAI(\n    api_key=os.environ[\"GROQ_API_KEY\"],\n    base_url=\"https://api.groq.com/openai/v1\"\n)\nresponse = client.chat.completions.create(model=\"llama-3.1-8b\", ...)"
+    }
+  ],
+  "migrationPath": [
+    {
+      "step": 1,
+      "description": "Migrate to open source hosted (Groq LPU, Cerebras WSE)",
+      "affectedFiles": [
+        "app.py"
+      ],
+      "callsiteCount": 4,
+      "savings": 731.73,
+      "complexity": "medium"
+    }
+  ],
+  "patterns": {
+    "retry": {
+      "detected": false,
+      "instances": []
+    },
+    "batching": {
+      "detected": false,
+      "instances": []
+    },
+    "streaming": {
+      "detected": true,
+      "instances": [
+        {
+          "file": "app.py",
+          "line": 32
+        }
+      ],
+      "type": "chunked"
+    },
+    "caching": {
+      "detected": false,
+      "instances": []
+    },
+    "routing": {
+      "detected": false,
+      "instances": []
+    },
+    "fallback": {
+      "detected": false,
+      "instances": []
+    },
+    "guardrails": {
+      "detected": false,
+      "instances": []
+    }
+  },
+  "riskAssessment": {
+    "overallScore": 51,
+    "risks": [
+      {
+        "id": "risk-1",
+        "severity": "high",
+        "category": "reliability",
+        "title": "No retry logic detected",
+        "description": "LLM API calls can fail due to rate limits, network issues, or service outages. Without retry logic, your application may fail unexpectedly.",
+        "affectedFiles": [
+          "app.py"
+        ],
+        "recommendation": "Add exponential backoff retry logic using tenacity, backoff, or built-in SDK retry options.",
+        "effort": "low"
+      },
+      {
+        "id": "risk-2",
+        "severity": "high",
+        "category": "reliability",
+        "title": "No fallback mechanism detected",
+        "description": "If your primary LLM provider goes down, your entire application fails. No fallback provider or model detected.",
+        "affectedFiles": [
+          "app.py"
+        ],
+        "recommendation": "Implement provider fallback (e.g., OpenAI → Anthropic → local model) or use a gateway like LiteLLM.",
+        "effort": "medium"
+      },
+      {
+        "id": "risk-3",
+        "severity": "medium",
+        "category": "cost",
+        "title": "No caching detected",
+        "description": "Repeated identical prompts result in unnecessary API costs and increased latency. No caching layer detected.",
+        "affectedFiles": [
+          "app.py"
+        ],
+        "recommendation": "Implement semantic caching (GPTCache, Redis) or use provider prompt caching (Anthropic, OpenAI).",
+        "effort": "medium"
+      },
+      {
+        "id": "risk-4",
+        "severity": "medium",
+        "category": "security",
+        "title": "No guardrails or input validation detected",
+        "description": "Without input/output validation, your application is vulnerable to prompt injection, PII leakage, and harmful content.",
+        "affectedFiles": [
+          "app.py"
+        ],
+        "recommendation": "Add guardrails using NeMo Guardrails, Guardrails AI, or custom validation logic.",
+        "effort": "medium"
+      },
+      {
+        "id": "risk-5",
+        "severity": "low",
+        "category": "cost",
+        "title": "No intelligent routing detected",
+        "description": "Using the same model for all requests misses optimization opportunities. Simple queries could use cheaper models.",
+        "affectedFiles": [
+          "app.py"
+        ],
+        "recommendation": "Implement task-based routing: use smaller models for simple tasks, larger models for complex reasoning.",
+        "effort": "high"
+      }
+    ],
+    "summary": {
+      "critical": 0,
+      "high": 2,
+      "medium": 2,
+      "low": 1
+    }
+  },
+  "techStack": {
+    "application": {
+      "frameworks": [],
+      "sdks": [
+        "openai",
+        "anthropic"
+      ],
+      "patterns": []
+    },
+    "serving": {
+      "runtimes": [],
+      "gateways": [],
+      "platforms": []
+    },
+    "infrastructure": {
+      "cloud": [],
+      "compute": [],
+      "orchestration": []
+    },
+    "hardware": {
+      "gpus": [],
+      "accelerators": [],
+      "estimated": false
+    }
+  }
+}

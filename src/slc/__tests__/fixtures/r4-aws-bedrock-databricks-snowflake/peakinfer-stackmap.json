@@ -1,0 +1,236 @@
+{
+  "root": "/Users/thiyagarajanm/AIProjects/peakinfer/src/slc/__tests__/fixtures/r4-hyperscaler",
+  "tree": [
+    {
+      "name": "src",
+      "path": "src",
+      "type": "directory",
+      "children": [
+        {
+          "name": "slc",
+          "path": "slc",
+          "type": "directory",
+          "children": [
+            {
+              "name": "__tests__",
+              "path": "__tests__",
+              "type": "directory",
+              "children": [
+                {
+                  "name": "fixtures",
+                  "path": "fixtures",
+                  "type": "directory",
+                  "children": [
+                    {
+                      "name": "r4-hyperscaler",
+                      "path": "r4-hyperscaler",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "aws_bedrock.py",
+                          "path": "src/slc/__tests__/fixtures/r4-hyperscaler/aws_bedrock.py",
+                          "type": "file",
+                          "callsites": [
+                            {
+                              "line": 33,
+                              "pattern": "aws-bedrock.chat",
+                              "provider": "aws-bedrock",
+                              "model": "anthropic.claude-3-5-sonnet-20241022-v2:0"
+                            },
+                            {
+                              "line": 47,
+                              "pattern": "aws-bedrock.completion",
+                              "provider": "aws-bedrock",
+                              "model": "meta.llama3-1-70b-instruct-v1:0"
+                            },
+                            {
+                              "line": 57,
+                              "pattern": "vertexai.gcp-vertex.chat",
+                              "provider": "gcp-vertex",
+                              "model": "gemini-1.5-pro"
+                            },
+                            {
+                              "line": 64,
+                              "pattern": "vertexai.gcp-vertex.completion",
+                              "provider": "gcp-vertex",
+                              "model": "text-bison@002"
+                            },
+                            {
+                              "line": 69,
+                              "pattern": "azure-openai.chat",
+                              "provider": "azure-openai",
+                              "model": "gpt-4o"
+                            }
+                          ]
+                        },
+                        {
+                          "name": "databricks_inference.py",
+                          "path": "src/slc/__tests__/fixtures/r4-hyperscaler/databricks_inference.py",
+                          "type": "file",
+                          "callsites": [
+                            {
+                              "line": 19,
+                              "pattern": "databricks-sdk.databricks.completion",
+                              "provider": "databricks",
+                              "model": "databricks-meta-llama-3-1-70b-instruct"
+                            },
+                            {
+                              "line": 33,
+                              "pattern": "databricks-sdk.databricks.completion",
+                              "provider": "databricks",
+                              "model": "databricks-dbrx-instruct"
+                            },
+                            {
+                              "line": 48,
+                              "pattern": "databricks-sdk.databricks.completion",
+                              "provider": "databricks",
+                              "model": "databricks-mixtral-8x7b-instruct"
+                            },
+                            {
+                              "line": 64,
+                              "pattern": "databricks-sdk.databricks.completion",
+                              "provider": "databricks",
+                              "model": null
+                            },
+                            {
+                              "line": 100,
+                              "pattern": "mlflow.databricks.completion",
+                              "provider": "databricks",
+                              "model": "databricks-meta-llama-3-1-70b-instruct"
+                            },
+                            {
+                              "line": 113,
+                              "pattern": "mlflow.openai.chat",
+                              "provider": "openai",
+                              "model": "gpt-4"
+                            },
+                            {
+                              "line": 146,
+                              "pattern": "databricks-sdk.databricks.other",
+                              "provider": "databricks",
+                              "model": "databricks-meta-llama-3-1-70b-instruct"
+                            },
+                            {
+                              "line": 156,
+                              "pattern": "databricks-sdk.databricks.completion",
+                              "provider": "databricks",
+                              "model": "databricks-meta-llama-3-1-70b-instruct"
+                            }
+                          ]
+                        },
+                        {
+                          "name": "snowflake_cortex.py",
+                          "path": "src/slc/__tests__/fixtures/r4-hyperscaler/snowflake_cortex.py",
+                          "type": "file",
+                          "callsites": [
+                            {
+                              "line": 31,
+                              "pattern": "snowflake-cortex.other.completion",
+                              "provider": "other",
+                              "model": "llama3.1-70b"
+                            },
+                            {
+                              "line": 41,
+                              "pattern": "snowflake-cortex.other.completion",
+                              "provider": "other",
+                              "model": "mistral-large2"
+                            },
+                            {
+                              "line": 51,
+                              "pattern": "snowflake-cortex.other.other",
+                              "provider": "other",
+                              "model": null
+                            },
+                            {
+                              "line": 59,
+                              "pattern": "snowflake-cortex.other.other",
+                              "provider": "other",
+                              "model": null
+                            },
+                            {
+                              "line": 69,
+                              "pattern": "snowflake-cortex.other.other",
+                              "provider": "other",
+                              "model": null
+                            },
+                            {
+                              "line": 76,
+                              "pattern": "snowflake-cortex.other.other",
+                              "provider": "other",
+                              "model": null
+                            },
+                            {
+                              "line": 91,
+                              "pattern": "snowflake-cortex.other.chat",
+                              "provider": "other",
+                              "model": "llama3.1-70b"
+                            },
+                            {
+                              "line": 100,
+                              "pattern": "snowflake-cortex.other.chat",
+                              "provider": "other",
+                              "model": "mistral-large2"
+                            },
+                            {
+                              "line": 109,
+                              "pattern": "snowflake-cortex.other.chat",
+                              "provider": "other",
+                              "model": "mixtral-8x7b"
+                            },
+                            {
+                              "line": 141,
+                              "pattern": "snowflake-cortex.other.other",
+                              "provider": "other",
+                              "model": null
+                            },
+                            {
+                              "line": 153,
+                              "pattern": "snowpark-ml.other.completion",
+                              "provider": "other",
+                              "model": "llama3.1-70b"
+                            },
+                            {
+                              "line": 172,
+                              "pattern": "snowflake-cortex.other.completion",
+                              "provider": "other",
+                              "model": "llama3.1-70b"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "totalCallsites": 25,
+    "providers": [
+      "aws-bedrock",
+      "azure-openai",
+      "databricks",
+      "gcp-vertex",
+      "openai",
+      "other"
+    ],
+    "models": [
+      "anthropic.claude-3-5-sonnet-20241022-v2:0",
+      "databricks-dbrx-instruct",
+      "databricks-meta-llama-3-1-70b-instruct",
+      "databricks-mixtral-8x7b-instruct",
+      "gemini-1.5-pro",
+      "gpt-4",
+      "gpt-4o",
+      "llama3.1-70b",
+      "meta.llama3-1-70b-instruct-v1:0",
+      "mistral-large2",
+      "mixtral-8x7b",
+      "text-bison@002"
+    ]
+  }
+}

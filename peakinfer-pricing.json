@@ -1,96 +1,90 @@
 {
   "estimatedRange": {
-    "low": 10.500000000000002,
-    "high": 450
+    "low": 8.4,
+    "high": 360
   },
   "mostExpensiveModel": "claude-sonnet-4-5-20250929",
   "byProvider": [
     {
       "provider": "anthropic",
-      "cost": 450,
+      "cost": 360,
       "percentage": 100
     }
   ],
   "byModel": [
     {
       "model": "claude-sonnet-4-5-20250929",
-      "cost": 360
+      "cost": 315
     },
     {
       "model": "claude-sonnet-4-20250514",
-      "cost": 90
+      "cost": 45
     }
   ],
   "hotspots": [
-    {
-      "file": "src/slc/agent-analyzer.ts",
-      "line": 166,
-      "model": "claude-sonnet-4-5-20250929",
-      "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
-    },
-    {
-      "file": "src/slc/agent-analyzer.ts",
-      "line": 401,
-      "model": "claude-sonnet-4-5-20250929",
-      "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
-    },
-    {
-      "file": "src/slc/detector.ts",
-      "line": 282,
-      "model": "claude-sonnet-4-20250514",
-      "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
-    },
-    {
-      "file": "src/slc/detector.ts",
-      "line": 320,
-      "model": "claude-sonnet-4-20250514",
-      "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
-    },
     {
       "file": "src/core/multi-agent-orchestrator.ts",
       "line": 718,
       "model": "claude-sonnet-4-5-20250929",
       "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) This is a discovery/analysis task. Consider using Claude Haiku (3x cheaper) or Gemini Flash for comparable quality at lower cost for codebase analysis tasks."
     },
     {
       "file": "src/core/multi-agent-orchestrator.ts",
       "line": 822,
       "model": "claude-sonnet-4-5-20250929",
       "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Profiling/clustering is a structured task. Switch to Llama-3-70B via Together AI or Gemini-1.5-Flash for 5-10x cost savings with similar quality."
     },
     {
       "file": "src/core/multi-agent-orchestrator.ts",
       "line": 923,
       "model": "claude-sonnet-4-5-20250929",
       "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Planning/recommendation generation. Consider GPT-4o-mini or Claude Haiku for 10x cost reduction while maintaining structured output quality."
     },
     {
       "file": "src/core/multi-agent-orchestrator.ts",
       "line": 1034,
       "model": "claude-sonnet-4-5-20250929",
       "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Evaluation task with structured output. GPT-4o-mini or Gemini Flash would be 8-12x cheaper for this type of analysis."
     },
     {
       "file": "src/core/multi-agent-orchestrator.ts",
       "line": 1134,
       "model": "claude-sonnet-4-5-20250929",
       "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Report generation/auditing. Switch to GPT-4o-mini or Llama-3-70B for 10x savings - this is a summarization task suitable for cheaper models."
     },
     {
       "file": "src/core/optimization-suggester.ts",
       "line": 319,
       "model": "claude-sonnet-4-5-20250929",
       "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Optimization suggestion generation. Consider Claude Haiku or GPT-4o-mini for 8x cost reduction on this recommendation task."
+    },
+    {
+      "file": "src/slc/detector.ts",
+      "line": 282,
+      "model": "claude-sonnet-4-20250514",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Code analysis/detection task. Batch similar requests and consider using Gemini-1.5-Flash or GPT-4o-mini for 5-8x cost savings."
+    },
+    {
+      "file": "src/slc/agent-analyzer.ts",
+      "line": 222,
+      "model": "claude-sonnet-4-5-20250929",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Agentic codebase analysis with tool use. This requires strong reasoning - keep current model or test Claude Sonnet 3.5 (legacy) for slight cost savings."
     }
   ]
 }

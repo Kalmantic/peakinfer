@@ -1,0 +1,79 @@
+{
+  "estimatedRange": {
+    "low": 1.847,
+    "high": 79.55
+  },
+  "mostExpensiveModel": "claude-3-5-sonnet-20241022",
+  "byProvider": [
+    {
+      "provider": "anthropic",
+      "throughput": 45,
+      "percentage": 57
+    },
+    {
+      "provider": "openai",
+      "throughput": 34.550000000000004,
+      "percentage": 43
+    }
+  ],
+  "byModel": [
+    {
+      "model": "claude-3-5-sonnet-20241022",
+      "throughput": 45
+    },
+    {
+      "model": "gpt-4o",
+      "throughput": 32.5
+    },
+    {
+      "model": "gpt-4o-mini",
+      "throughput": 1.95
+    },
+    {
+      "model": "text-embedding-3-small",
+      "throughput": 0.1
+    }
+  ],
+  "hotspots": [
+    {
+      "file": "app.py",
+      "line": 23,
+      "model": "claude-3-5-sonnet-20241022",
+      "estimatedThroughputLow": 1.05,
+      "estimatedThroughputHigh": 45,
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "[AI Suggestion - verify with your usage data] Claude 3.5 Sonnet is top-tier. For general chat, consider Claude Haiku (same provider, 20x cheaper), Llama-3.1-8b on Groq, or Gemini 1.5 Flash. Reserve Sonnet for complex reasoning tasks."
+    },
+    {
+      "file": "app.py",
+      "line": 15,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] For simple chat tasks, switch to Llama-3.1-8b on Groq (ultra-fast inference on LPU), Gemini 1.5 Flash, or Claude Haiku. GPT-4o is premium-tier and overkill for most chat use cases - 98% cost savings possible."
+    },
+    {
+      "file": "app.py",
+      "line": 32,
+      "model": "gpt-4o-mini",
+      "estimatedThroughputLow": 0.045,
+      "estimatedThroughputHigh": 1.95,
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "[AI Suggestion - verify with your usage data] GPT-4o-mini is already cost-efficient. For even faster streaming, try Groq's Llama-3.1-8b (500+ tokens/sec) or Gemini 1.5 Flash. Both support streaming and are significantly cheaper."
+    },
+    {
+      "file": "app.py",
+      "line": 43,
+      "model": "text-embedding-3-small",
+      "estimatedThroughputLow": 0.002,
+      "estimatedThroughputHigh": 0.1,
+      "estimatedMonthlyLow": 0.002,
+      "estimatedMonthlyHigh": 0.1,
+      "suggestion": "[AI Suggestion - verify with your usage data] For embeddings, consider open-source alternatives: all-MiniLM-L6-v2 (self-hosted via sentence-transformers), Nomic Embed, or Cohere's embed-english-light-v3.0. OpenAI embeddings are premium - 90%+ cost savings with comparable quality."
+    }
+  ]
+}

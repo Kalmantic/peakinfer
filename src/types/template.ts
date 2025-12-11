@@ -43,7 +43,7 @@ export type TemplateCategory =
   | "edge_deployment"
   | "framework_resilience"
   | "concurrency_optimization"
-  | "cost_monitoring"
+  | "performance_monitoring"
   | "quality_preservation";
 
 export interface EnvironmentMatch {
@@ -66,7 +66,7 @@ export interface EnvironmentMatch {
   // Business Context
   team_size?: string;
   engineering_capacity?: string;
-  downtime_cost?: string;
+  downtime_impact?: string;
 
   // Custom matching criteria
   [key: string]: any;
@@ -77,16 +77,15 @@ export interface OptimizationStrategy {
   source?: string;
   target?: string;
 
-  // Expected Improvements (TokenSqueeze-informed)
-  expected_cost_reduction?: string;
+  // Expected Improvements
   expected_throughput_improvement?: string;
   expected_latency_improvement?: string;
   expected_memory_efficiency?: string;
   expected_batch_improvement?: string;
 
   // Numeric values for calculations
-  cost_reduction?: number;
-  performance_improvement?: number;
+  throughput_improvement?: number;
+  latency_improvement?: number;
 
   // Implementation Effort
   effort_estimate: string;
@@ -94,7 +93,7 @@ export interface OptimizationStrategy {
 }
 
 export interface EconomicsModel {
-  // Baseline Cost Calculation
+  // Baseline Performance Calculation
   baseline_calculation: {
     [key: string]: string; // Formula strings that agents can evaluate
   };
@@ -104,15 +103,15 @@ export interface EconomicsModel {
     [key: string]: string;
   };
 
-  projected_savings?: {
+  projected_gain?: {
     [key: string]: string;
   };
 
   // Implementation Investment
-  implementation_cost: {
+  implementation_effort: {
     engineering_hours?: number;
     hourly_rate?: number;
-    total_cost: number;
+    total_effort: number;
     [key: string]: any;
   };
 
@@ -220,13 +219,15 @@ export interface ModelUsagePattern {
   model_name: string;
   usage_frequency: number;
   context_patterns: string[];
-  cost_contribution: number;
+  throughput_contribution: number;
 }
 
 export interface APICallPattern {
   endpoint: string;
   call_volume: number;
-  cost_per_call: number;
+  throughput_per_call: number;
+  // Backward compatibility alias
+  cost_per_call?: number;
   optimization_opportunities: string[];
 }
 
@@ -293,6 +294,8 @@ export interface TemplateExecutionResult {
   // Economic Impact
   baseline_metrics: Record<string, number>;
   optimized_metrics?: Record<string, number>;
+  performance_gain?: number;
+  // Backward compatibility alias
   cost_savings?: number;
   roi_achieved?: number;
   economics?: any;

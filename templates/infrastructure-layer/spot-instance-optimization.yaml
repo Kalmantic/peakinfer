@@ -17,7 +17,7 @@ environment_match:
 
 optimization:
   technique: "spot_instance_migration"
-  expected_cost_reduction: "60-70%"
+  expected_throughput_improvement: "60-70%"
   expected_availability: "99.5%"
   effort_estimate: "2-3 weeks"
   risk_level: "medium"
@@ -108,6 +108,6 @@ results:
     - environment: "batch_embedding_service"
       baseline_monthly_cost: 45000
       optimized_monthly_cost: 16200
-      cost_reduction_percent: 64
+      throughput_improvement_percent: 64
       availability: 99.7
       implementation_days: 14

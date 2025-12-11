@@ -22,9 +22,12 @@ export interface OptimizationSuggestion {
   affectedFiles: AffectedFile[];
   codeSnippets: CodeSnippet[];
   
-  // Economics
-  estimatedMonthlySavings: number;
-  estimatedAnnualSavings: number;
+  // Economics - Performance gains
+  estimatedMonthlyGain: number;
+  estimatedAnnualGain: number;
+  // Backward compatibility aliases
+  estimatedMonthlySavings?: number;
+  estimatedAnnualSavings?: number;
   implementationComplexity: 'low' | 'medium' | 'high';
   implementationTimeHours: number;
   roi: number;
@@ -125,7 +128,9 @@ export interface SuggestionReport {
   metadata: {
     generatedAt: string;
     totalSuggestions: number;
-    totalEstimatedSavings: number;
+    totalEstimatedGain: number;
+    // Backward compatibility alias
+    totalEstimatedSavings?: number;
     averageROI: number;
     codebaseScanned: string;
   };
@@ -138,8 +143,11 @@ export interface SuggestionSummary {
   totalOpportunities: number;
   byLayer: Record<string, number>;
   byPriority: Record<string, number>;
-  totalMonthlySavings: number;
-  totalAnnualSavings: number;
+  totalMonthlyGain: number;
+  totalAnnualGain: number;
+  // Backward compatibility aliases
+  totalMonthlySavings?: number;
+  totalAnnualSavings?: number;
   averageImplementationTime: number;
   quickWins: OptimizationSuggestion[]; // high ROI, low effort
   strategicInitiatives: OptimizationSuggestion[]; // high impact, higher effort

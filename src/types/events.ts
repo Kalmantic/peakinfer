@@ -33,8 +33,8 @@ export interface InferenceEvent {
   /** Response latency in milliseconds */
   latency_ms: number;
   
-  /** Actual cost in USD */
-  cost_usd: number;
+  /** Throughput: tokens per second */
+  throughput_tps: number;
   
   /** Endpoint: "api.openai.com", "api.together.xyz", etc. */
   endpoint: string;
@@ -104,7 +104,7 @@ export interface BasetenEvent {
   tokens_in: number;
   tokens_out: number;
   latency_ms: number;
-  cost: number;
+  throughput_tps: number;
 }
 
 /**
@@ -119,7 +119,7 @@ export interface SnowflakeInferenceRow {
   input_token_count: number;
   output_token_count: number;
   response_time_ms: number;
-  cost_usd: number;
+  throughput_tps: number;
   endpoint_url: string;
   region: string;
   workspace: string;
@@ -136,7 +136,7 @@ export interface DatabricksEndpointUsage {
   input_tokens: number;
   output_tokens: number;
   latency_ms: number;
-  cost: number;
+  throughput_tps: number;
   workspace_id: string;
   tags: Record<string, string>;
 }
@@ -155,7 +155,7 @@ export interface NormalizedEventResult {
  */
 export interface EventAggregation {
   total_events: number;
-  total_cost: number;
+  total_throughput_tps: number;
   total_input_tokens: number;
   total_output_tokens: number;
   avg_latency_ms: number;
@@ -170,14 +170,14 @@ export interface EventAggregation {
 
 export interface ProviderStats {
   count: number;
-  cost: number;
+  throughput_tps: number;
   avg_latency: number;
   models: string[];
 }
 
 export interface ModelStats {
   count: number;
-  cost: number;
+  throughput_tps: number;
   avg_input_tokens: number;
   avg_output_tokens: number;
   avg_latency: number;
@@ -185,7 +185,7 @@ export interface ModelStats {
 
 export interface IntentStats {
   count: number;
-  cost: number;
+  throughput_tps: number;
   avg_tokens: number;
   providers_used: string[];
   optimization_opportunities: string[];

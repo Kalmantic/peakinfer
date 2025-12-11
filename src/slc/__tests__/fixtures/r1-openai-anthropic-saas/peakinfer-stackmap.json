@@ -1,5 +1,5 @@
 {
-  "root": "/Users/thiyagarajanm/AIProjects/peakinfer/src/slc/__tests__/fixtures/r1-saas-only",
+  "root": "/Users/thiyagarajanm/AIProjects/peakinfer/src/slc/__tests__/fixtures/r1-openai-anthropic-saas",
   "tree": [
     {
       "name": "app.py",

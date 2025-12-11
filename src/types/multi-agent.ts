@@ -64,7 +64,7 @@ export interface ProfileResult {
 
 export interface ProfileWorkloadStats {
   total_events: number;
-  total_cost: number;
+  total_throughput: number;
   avg_latency_ms: number;
   p95_latency_ms?: number;
   avg_input_tokens: number;
@@ -83,8 +83,8 @@ export interface WorkloadCluster {
   representative_completion?: string;
   avg_input_tokens: number;
   avg_output_tokens: number;
-  cost_per_request: number;
-  monthly_cost: number;
+  throughput_per_request: number;
+  monthly_throughput: number;
   dominant_provider: string;
   dominant_model: string;
   latency_p95_ms?: number;
@@ -102,7 +102,7 @@ export interface SamplePromptSummary {
     input: number;
     output: number;
   };
-  cost_usd: number;
+  throughput_tps: number;
   timestamp?: string;
 }
 
@@ -110,7 +110,7 @@ export interface ProfileRecommendation {
   recommendation_id: string;
   description: string;
   impact: 'high' | 'medium' | 'low';
-  estimated_savings: number;
+  estimated_gain: number;
   action_items: string[];
   related_clusters: string[];
   suggested_templates: string[];
@@ -120,8 +120,8 @@ export interface ApplicationSummary {
   runtimes: string[];
   model_usage: ModelUsageSummary[];
   api_patterns: APIPatternSummary[];
-  cost_drivers: CostDriver[];
-  total_monthly_cost: number;
+  performance_drivers: PerformanceDriver[];
+  total_monthly_throughput: number;
 }
 
 export interface ServingSummary {
@@ -135,7 +135,7 @@ export interface ServingSummary {
 export interface InfrastructureSummary {
   total_resources: number;
   gpu_inventory: GPUSummary[];
-  total_monthly_cost: number;
+  total_monthly_throughput: number;
   utilization_metrics: UtilizationMetrics;
   optimization_potential: number;
 }
@@ -144,7 +144,7 @@ export interface ModelUsageSummary {
   model: string;
   provider: string;
   request_count: number;
-  total_cost: number;
+  total_throughput: number;
   avg_latency: number;
   optimization_candidates: string[];
 }
@@ -152,15 +152,15 @@ export interface ModelUsageSummary {
 export interface APIPatternSummary {
   endpoint: string;
   call_volume: number;
-  cost_contribution: number;
+  throughput_contribution: number;
   cacheable_percentage: number;
   routing_opportunities: string[];
 }
 
-export interface CostDriver {
+export interface PerformanceDriver {
   category: 'model' | 'tokens' | 'latency' | 'infrastructure';
   description: string;
-  monthly_cost: number;
+  monthly_throughput: number;
   percentage_of_total: number;
   optimization_potential: number;
 }
@@ -179,7 +179,7 @@ export interface GPUSummary {
   type: string;
   count: number;
   utilization: number;
-  monthly_cost: number;
+  monthly_throughput: number;
   optimization_opportunities: string[];
 }
 
@@ -195,7 +195,7 @@ export interface WorkloadProfile {
   request_patterns: RequestPattern[];
   traffic_distribution: TrafficDistribution;
   quality_requirements: QualityRequirement[];
-  cost_sensitivity: number; // 0-1
+  throughput_sensitivity: number; // 0-1
   latency_tolerance: number; // milliseconds
 }
 
@@ -226,8 +226,8 @@ export interface OptimizationOpportunity {
   layer: 'application' | 'serving' | 'infrastructure' | 'cross-layer';
   category: string;
   description: string;
-  estimated_savings_monthly: number;
-  estimated_savings_percentage: number;
+  estimated_gain_monthly: number;
+  estimated_gain_percentage: number;
   implementation_complexity: 'low' | 'medium' | 'high';
   risk_level: 'low' | 'medium' | 'high';
   applicable_templates: string[];
@@ -251,8 +251,8 @@ export interface OptimizationPlan {
   /** Cross-layer coordination strategies */
   crossLayerStrategies: CrossLayerStrategy[];
   
-  /** Total estimated savings */
-  estimatedSavings: number;
+  /** Total estimated performance gain */
+  estimatedGain: number;
   
   /** Implementation complexity assessment */
   implementationComplexity: 'simple' | 'moderate' | 'complex' | 'very_complex';
@@ -281,9 +281,9 @@ export interface LayerOptimization {
   template_name: string;
   description: string;
   technique: string;
-  expected_savings: number;
-  expected_savings_percentage: number;
-  implementation_cost: number;
+  expected_gain: number;
+  expected_gain_percentage: number;
+  implementation_effort: number;
   implementation_time_days: number;
   risk_level: 'low' | 'medium' | 'high';
   dependencies: string[];
@@ -343,11 +343,11 @@ export interface RollbackProcedure {
 }
 
 export interface EconomicProjection {
-  baseline_monthly_cost: number;
-  optimized_monthly_cost: number;
-  monthly_savings: number;
-  annual_savings: number;
-  implementation_cost: number;
+  baseline_monthly_throughput: number;
+  optimized_monthly_throughput: number;
+  monthly_gain: number;
+  annual_gain: number;
+  implementation_effort: number;
   payback_period_months: number;
   roi_percentage: number;
   confidence_interval: {
@@ -396,22 +396,22 @@ export interface EvaluationResult {
 }
 
 export interface PerformanceMeasurement {
-  cost_per_request: number;
+  throughput_per_request: number;
   latency_p50: number;
   latency_p95: number;
   latency_p99: number;
   throughput_rps: number;
   error_rate: number;
   quality_score: number;
-  total_cost: number;
+  total_throughput: number;
   sample_count: number;
 }
 
 export interface OptimizationResult {
   optimization_id: string;
   status: 'success' | 'failed' | 'partial' | 'skipped';
-  actual_savings: number;
-  expected_savings: number;
+  actual_gain: number;
+  expected_gain: number;
   variance_percentage: number;
   quality_preserved: boolean;
   quality_delta: number;
@@ -503,8 +503,8 @@ export interface AuditReport {
 }
 
 export interface ExecutiveSummary {
-  total_cost_savings: number;
-  cost_reduction_percentage: number;
+  total_performance_gain: number;
+  throughput_improvement_percentage: number;
   payback_period_months: number;
   roi_percentage: number;
   quality_preserved: boolean;
@@ -523,19 +523,19 @@ export interface DetailedResults {
   };
   cross_layer_benefits: CrossLayerBenefits;
   performance_improvements: PerformanceImprovements;
-  cost_breakdown: CostBreakdown;
+  throughput_breakdown: ThroughputBreakdown;
 }
 
 export interface LayerResults {
   optimizations_applied: number;
-  cost_savings: number;
-  savings_percentage: number;
+  performance_gain: number;
+  gain_percentage: number;
   quality_impact: number;
   key_improvements: string[];
 }
 
 export interface CrossLayerBenefits {
-  synergy_savings: number;
+  synergy_gain: number;
   coordination_effectiveness: number;
   compound_benefits: string[];
 }
@@ -547,11 +547,11 @@ export interface PerformanceImprovements {
   efficiency_gains: string[];
 }
 
-export interface CostBreakdown {
+export interface ThroughputBreakdown {
   baseline_monthly: number;
   optimized_monthly: number;
-  savings_by_category: Record<string, number>;
-  savings_by_optimization: Record<string, number>;
+  gain_by_category: Record<string, number>;
+  gain_by_optimization: Record<string, number>;
 }
 
 export interface ImplementationArtifacts {
@@ -578,7 +578,7 @@ export interface CacheConfig {
 export interface TerraformDiff {
   resource: string;
   changes: string;
-  estimated_savings: number;
+  estimated_gain: number;
 }
 
 export interface ServingConfig {
@@ -613,7 +613,7 @@ export interface CommunityContribution {
 export interface ImplementationReport {
   template_id: string;
   success: boolean;
-  actual_savings: number;
+  actual_gain: number;
   implementation_time_days: number;
   challenges_faced: string[];
   recommendations: string[];

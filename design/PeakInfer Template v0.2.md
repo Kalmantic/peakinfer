@@ -27,7 +27,7 @@ optimization:
   technique: "runtime_migration"
   source: "pytorch"
   target: "onnx_runtime"
-  expected_cost_reduction: "50-70%"
+  expected_throughput_improvement: "50-70%"
   expected_latency_improvement: "40-60%"
   effort_estimate: "2-3 weeks"
   risk_level: "low"
@@ -114,7 +114,7 @@ results:
     - environment: "healthcare_document_processing"
       baseline_monthly_cost: 36000
       optimized_monthly_cost: 13500
-      cost_reduction_percent: 62.5
+      throughput_improvement_percent: 62.5
       implementation_days: 14
       quality_impact: -0.6
 ---
@@ -144,7 +144,7 @@ environment_match:
 optimization:
   technique: "continuous_batching"
   expected_throughput_improvement: "3-5x"
-  expected_cost_reduction: "60-75%"
+  expected_throughput_improvement: "60-75%"
   effort_estimate: "1-2 weeks"
   risk_level: "low"
 
@@ -359,7 +359,7 @@ environment_match:
 
 optimization:
   technique: "smart_model_routing"
-  expected_cost_reduction: "60-80%"
+  expected_throughput_improvement: "60-80%"
   expected_quality_maintenance: ">95%"
   effort_estimate: "2-3 weeks"
   risk_level: "low"
@@ -449,7 +449,7 @@ results:
     - environment: "document_processing_saas"
       baseline_monthly_cost: 47000
       optimized_monthly_cost: 18000
-      cost_reduction_percent: 62
+      throughput_improvement_percent: 62
       routing_accuracy: 96.5
       implementation_days: 18
 ---
@@ -477,7 +477,7 @@ environment_match:
 
 optimization:
   technique: "sliding_window_context"
-  expected_cost_reduction: "70-87%"
+  expected_throughput_improvement: "70-87%"
   expected_quality_impact: "<5%"
   effort_estimate: "1-2 weeks"
   risk_level: "low"
@@ -568,7 +568,7 @@ results:
     - environment: "customer_support_chatbot"
       baseline_cost_per_conversation: 0.85
       optimized_cost_per_conversation: 0.12
-      cost_reduction_percent: 86
+      throughput_improvement_percent: 86
       quality_retention_percent: 96.5
       implementation_days: 9
 ---
@@ -597,7 +597,7 @@ environment_match:
 optimization:
   technique: "memory_bandwidth_optimization"
   expected_batch_improvement: "3-6x"
-  expected_cost_reduction: "50-70%"
+  expected_throughput_improvement: "50-70%"
   effort_estimate: "2-3 weeks"
   risk_level: "medium"
 
@@ -671,7 +671,7 @@ optimization:
   source: "huggingface_transformers"
   target: "vllm"
   expected_throughput_improvement: "3-5x"
-  expected_cost_reduction: "60-70%"
+  expected_throughput_improvement: "60-70%"
   effort_estimate: "2 weeks"
   risk_level: "medium"
 
@@ -954,7 +954,7 @@ environment_match:
 
 optimization:
   technique: "economic_distributed_training"
-  expected_cost_reduction: "30-50%"
+  expected_throughput_improvement: "30-50%"
   training_time_impact: "±20%"
   effort_estimate: "2-4 weeks"
   risk_level: "medium"
@@ -1098,7 +1098,7 @@ environment_match:
 
 optimization:
   technique: "maximum_batch_utilization"
-  expected_cost_reduction: "70-85%"
+  expected_throughput_improvement: "70-85%"
   expected_latency_increase: "2-5x"
   effort_estimate: "1-2 weeks"
   risk_level: "low"
@@ -1172,7 +1172,7 @@ environment_match:
 optimization:
   technique: "tensorrt_performance_optimization"
   expected_throughput_improvement: "2-4x"
-  expected_cost_reduction: "50-75%"
+  expected_throughput_improvement: "50-75%"
   effort_estimate: "3-4 weeks"
   risk_level: "medium"
 
@@ -1384,7 +1384,7 @@ environment_match:
 
 optimization:
   technique: "max_tokens_optimization"
-  expected_cost_reduction: "40-60%"
+  expected_throughput_improvement: "40-60%"
   expected_quality_impact: "none"
   effort_estimate: "3-5 days"
   risk_level: "very_low"
@@ -1398,7 +1398,7 @@ economics:
   projected_improvement:
     optimized_max_tokens: 150  # Based on 95th percentile analysis
     new_cost_per_request: "${optimized_max_tokens} * ${cost_per_token}"
-    cost_reduction_factor: "${current_cost_per_request} / ${new_cost_per_request}"
+    throughput_improvement_factor: "${current_cost_per_request} / ${new_cost_per_request}"
   implementation_cost:
     engineering_hours: 24
     total_cost: 4800
@@ -1455,7 +1455,7 @@ environment_match:
 
 optimization:
   technique: "dynamic_prompt_injection"
-  expected_cost_reduction: "70-87%"
+  expected_throughput_improvement: "70-87%"
   expected_functionality: "improved"
   effort_estimate: "1-2 weeks"
   risk_level: "low"
@@ -1568,7 +1568,7 @@ implementation:
 
 monitoring:
   key_metrics:
-    - metric: "error_cost_reduction_percent"
+    - metric: "error_throughput_improvement_percent"
       target: ">80"
       alert_threshold: "<60"
   rollback_triggers:
@@ -1599,7 +1599,7 @@ environment_match:
 
 optimization:
   technique: "end_to_end_pipeline_optimization"
-  expected_total_cost_reduction: "50-70%"
+  expected_total_throughput_improvement: "50-70%"
   expected_reliability_improvement: "60-80%"
   effort_estimate: "3-4 weeks"
   risk_level: "medium"
@@ -1641,7 +1641,7 @@ implementation:
 
 monitoring:
   key_metrics:
-    - metric: "total_pipeline_cost_reduction_percent"
+    - metric: "total_pipeline_throughput_improvement_percent"
       target: ">50"
       alert_threshold: "<30"
   rollback_triggers:
@@ -1819,7 +1819,7 @@ environment_match:
 optimization:
   technique: "api_gateway_optimization"
   expected_latency_reduction: "30-50%"
-  expected_cost_reduction: "25-40%"
+  expected_throughput_improvement: "25-40%"
   effort_estimate: "2-3 weeks"
   risk_level: "low"
 
@@ -1975,8 +1975,8 @@ economics:
     annual_quality_incident_cost: "${monthly_quality_incidents} * ${avg_incident_cost} * 12"
   projected_improvement:
     early_detection_rate: 0.9
-    incident_cost_reduction: 0.7
-    new_annual_incident_cost: "${annual_quality_incident_cost} * (1 - ${early_detection_rate} * ${incident_cost_reduction})"
+    incident_throughput_improvement: 0.7
+    new_annual_incident_cost: "${annual_quality_incident_cost} * (1 - ${early_detection_rate} * ${incident_throughput_improvement})"
   implementation_cost:
     engineering_hours: 80
     monitoring_infrastructure: 1000
@@ -2105,7 +2105,7 @@ environment_match:
 
 optimization:
   technique: "cost_aware_autoscaling"
-  expected_cost_reduction: "30-50%"
+  expected_throughput_improvement: "30-50%"
   expected_availability_improvement: "99.5%+"
   effort_estimate: "2-3 weeks"
   risk_level: "medium"

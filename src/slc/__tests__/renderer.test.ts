@@ -160,12 +160,12 @@ describe('CLI Renderer', () => {
       estimatedRange: { low: 10, high: 100 },
       mostExpensiveModel: 'gpt-4o',
       byProvider: [
-        { provider: 'openai', cost: 60, percentage: 60 },
-        { provider: 'anthropic', cost: 40, percentage: 40 },
+        { provider: 'openai', throughput: 60, percentage: 60 },
+        { provider: 'anthropic', throughput: 40, percentage: 40 },
       ],
       byModel: [
-        { model: 'gpt-4o', cost: 60 },
-        { model: 'claude-3-sonnet', cost: 40 },
+        { model: 'gpt-4o', throughput: 60 },
+        { model: 'claude-3-sonnet', throughput: 40 },
       ],
       hotspots: [],
     };

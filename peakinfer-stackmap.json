@@ -18,31 +18,31 @@
               "callsites": [
                 {
                   "line": 718,
-                  "pattern": "anthropic.anthropic.chat",
+                  "pattern": "anthropic.chat",
                   "provider": "anthropic",
                   "model": "claude-sonnet-4-5-20250929"
                 },
                 {
                   "line": 822,
-                  "pattern": "anthropic.anthropic.chat",
+                  "pattern": "anthropic.chat",
                   "provider": "anthropic",
                   "model": "claude-sonnet-4-5-20250929"
                 },
                 {
                   "line": 923,
-                  "pattern": "anthropic.anthropic.chat",
+                  "pattern": "anthropic.chat",
                   "provider": "anthropic",
                   "model": "claude-sonnet-4-5-20250929"
                 },
                 {
                   "line": 1034,
-                  "pattern": "anthropic.anthropic.chat",
+                  "pattern": "anthropic.chat",
                   "provider": "anthropic",
                   "model": "claude-sonnet-4-5-20250929"
                 },
                 {
                   "line": 1134,
-                  "pattern": "anthropic.anthropic.chat",
+                  "pattern": "anthropic.chat",
                   "provider": "anthropic",
                   "model": "claude-sonnet-4-5-20250929"
                 }
@@ -55,7 +55,7 @@
               "callsites": [
                 {
                   "line": 319,
-                  "pattern": "anthropic.anthropic.chat",
+                  "pattern": "anthropic.chat",
                   "provider": "anthropic",
                   "model": "claude-sonnet-4-5-20250929"
                 }
@@ -74,14 +74,8 @@
               "type": "file",
               "callsites": [
                 {
-                  "line": 166,
-                  "pattern": "claude-agent-sdk.anthropic.other",
-                  "provider": "anthropic",
-                  "model": "claude-sonnet-4-5-20250929"
-                },
-                {
-                  "line": 401,
-                  "pattern": "claude-agent-sdk.anthropic.other",
+                  "line": 222,
+                  "pattern": "claude-agent-sdk.anthropic.chat",
                   "provider": "anthropic",
                   "model": "claude-sonnet-4-5-20250929"
                 }
@@ -94,13 +88,7 @@
               "callsites": [
                 {
                   "line": 282,
-                  "pattern": "anthropic.anthropic.chat",
-                  "provider": "anthropic",
-                  "model": "claude-sonnet-4-20250514"
-                },
-                {
-                  "line": 320,
-                  "pattern": "anthropic.anthropic.chat",
+                  "pattern": "anthropic.completion",
                   "provider": "anthropic",
                   "model": "claude-sonnet-4-20250514"
                 }
@@ -112,7 +100,7 @@
     }
   ],
   "summary": {
-    "totalCallsites": 10,
+    "totalCallsites": 8,
     "providers": [
       "anthropic"
     ],

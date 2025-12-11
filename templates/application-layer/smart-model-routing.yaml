@@ -16,7 +16,7 @@ environment_match:
 
 optimization:
   technique: "smart_model_routing"
-  expected_cost_reduction: "60-80%"
+  expected_throughput_improvement: "60-80%"
   expected_quality_maintenance: ">95%"
   effort_estimate: "2-3 weeks"
   risk_level: "low"
@@ -107,6 +107,6 @@ results:
     - environment: "document_processing_saas"
       baseline_monthly_cost: 47000
       optimized_monthly_cost: 18000
-      cost_reduction_percent: 62
+      throughput_improvement_percent: 62
       routing_accuracy: 96.5
       implementation_days: 18

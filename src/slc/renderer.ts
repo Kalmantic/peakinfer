@@ -344,7 +344,7 @@ function renderPricingSummary(pricing: PricingSummary): void {
   if (pricing.byProvider.length > 0) {
     console.log(indent(1) + 'by provider:');
     for (const p of pricing.byProvider) {
-      console.log(indent(2) + `${p.provider}: ${formatCurrency(p.cost)} (${p.percentage}%)`);
+      console.log(indent(2) + `${p.provider}: ${p.throughput.toLocaleString()} tps (${p.percentage}%)`);
     }
     console.log('');
   }

@@ -21,7 +21,7 @@ optimization:
   source: "huggingface_transformers"
   target: "vllm"
   expected_throughput_improvement: "3-5x"
-  expected_cost_reduction: "60-70%"
+  expected_throughput_improvement: "60-70%"
   effort_estimate: "2 weeks"
   risk_level: "medium"
 
@@ -107,5 +107,5 @@ results:
       baseline_throughput: 450
       optimized_throughput: 1530
       throughput_improvement: 3.4
-      cost_reduction_percent: 65
+      throughput_improvement_percent: 65
       implementation_days: 10

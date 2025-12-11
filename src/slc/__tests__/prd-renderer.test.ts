@@ -131,12 +131,12 @@ describe('PRD Success State', () => {
     estimatedRange: { low: 1240, high: 1870 },
     mostExpensiveModel: 'gpt-4o',
     byProvider: [
-      { provider: 'OpenAI', cost: 1200, percentage: 76 },
-      { provider: 'Anthropic', cost: 380, percentage: 24 },
+      { provider: 'OpenAI', throughput: 1200, percentage: 76 },
+      { provider: 'Anthropic', throughput: 380, percentage: 24 },
     ],
     byModel: [
-      { model: 'gpt-4o', cost: 1200 },
-      { model: 'claude-3-5-sonnet', cost: 380 },
+      { model: 'gpt-4o', throughput: 1200 },
+      { model: 'claude-3-5-sonnet', throughput: 380 },
     ],
     hotspots: [
       {
@@ -195,14 +195,16 @@ describe('PRD Success State', () => {
     expect(output).toContain('HOTSPOTS');
     expect(output).toContain('⚠');
     expect(output).toContain('src/agents/summarizer.py:47');
-    expect(output).toContain('Suggestion:');
+    // SLC: Suggestions are now rendered directly (with optional [AI Suggestion] prefix from pricing.ts)
+    expect(output).toContain('evaluate gpt-4o-mini');
   });
 
   it('should show next commands', () => {
     renderPRDSuccessState(mockScan, mockCallsites, mockStackMap, mockPricing);
     const output = consoleOutput.join('\n');
-    expect(output).toContain('peakinfer pricing');
-    expect(output).toContain('peakinfer diff');
+    // SLC: Only suggest commands that actually exist and are complete
+    expect(output).toContain('peakinfer prices');
+    expect(output).toContain('peakinfer templates list');
   });
 });
 

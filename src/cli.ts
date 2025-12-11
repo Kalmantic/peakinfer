@@ -75,29 +75,29 @@ program
       // Stage 5: Present Results 📊
       console.log(chalk.green.bold('\n💡 Optimization Opportunities Found:\n'));
 
-      let totalSavings = 0;
+      let totalGain = 0;
       let totalImplementationCost = 0;
 
       for (let i = 0; i < Math.min(5, optimizationPlans.length); i++) {
         const plan = optimizationPlans[i];
         console.log(chalk.blue(`${i + 1}. ${plan.template.name}`));
         console.log(`   ${chalk.gray(plan.template.description)}`);
-        console.log(`   💰 Monthly Savings: ${chalk.green('$' + plan.projectedSavings.toLocaleString())}`);
+        console.log(`   🚀 Monthly Gain: ${chalk.green(plan.projectedGain.toLocaleString() + ' tps')}`);
         console.log(`   🔧 Implementation: ${plan.template.optimization.effort_estimate} (${plan.template.optimization.risk_level} risk)`);
         console.log(`   📈 ROI: ${chalk.cyan(plan.roi.toFixed(1) + '%')} annually`);
         console.log(`   🎯 Confidence: ${chalk.yellow((plan.template.confidence * 100).toFixed(1) + '%')}`);
         console.log('');
 
-        totalSavings += plan.projectedSavings;
+        totalGain += plan.projectedGain;
         totalImplementationCost += plan.template.economics.implementation_cost.total_cost;
       }
 
       // Summary
       console.log(chalk.green.bold('📈 Total Economic Impact:'));
-      console.log(`   💰 Total Monthly Savings: ${chalk.green.bold('$' + totalSavings.toLocaleString())}`);
+      console.log(`   🚀 Total Monthly Gain: ${chalk.green.bold(totalGain.toLocaleString() + ' tps')}`);
       console.log(`   💸 Total Implementation Cost: ${chalk.red('$' + totalImplementationCost.toLocaleString())}`);
-      console.log(`   📊 Combined ROI: ${chalk.cyan.bold(((totalSavings * 12 - totalImplementationCost) / totalImplementationCost * 100).toFixed(1) + '%')}`);
-      console.log(`   ⏱️  Payback Period: ${chalk.blue((totalImplementationCost / totalSavings).toFixed(1) + ' months')}\n`);
+      console.log(`   📊 Combined ROI: ${chalk.cyan.bold(((totalGain * 12 - totalImplementationCost) / totalImplementationCost * 100).toFixed(1) + '%')}`);
+      console.log(`   ⏱️  Payback Period: ${chalk.blue((totalImplementationCost / (totalGain || 1)).toFixed(1) + ' months')}\n`);
 
       // Next Steps
       console.log(chalk.blue.bold('🚀 Next Steps:'));
@@ -116,7 +116,7 @@ program
           environment,
           matching_templates: matchingTemplates.map(t => t.id),
           optimization_plans: optimizationPlans,
-          total_savings: totalSavings,
+          total_gain: totalGain,
           total_implementation_cost: totalImplementationCost
         };
 
@@ -241,7 +241,7 @@ program
                      `Risk: ${template.optimization.risk_level}`);
 
           if (options.detailed) {
-            console.log(`    Expected Savings: ${template.optimization.expected_cost_reduction || 'Variable'}`);
+            console.log(`    Expected Throughput Gain: ${template.optimization.expected_throughput_improvement || 'Variable'}`);
             console.log(`    Implementation: ${template.optimization.effort_estimate}`);
           }
         });
@@ -264,14 +264,14 @@ async function analyzeOptimizationEconomics(templates: any[], environment: any) 
   for (const template of templates) {
     try {
       const baseline = await economicsCalculator.calculateBaseline(template, environment);
-      const projected = await economicsCalculator.calculateProjectedSavings(template, baseline);
+      const projected = await economicsCalculator.calculateProjectedGain(template, baseline);
       const roi = economicsCalculator.calculateROI(baseline, projected, template.economics);
 
       plans.push({
         template,
         baseline,
         projected,
-        projectedSavings: projected.monthly_savings || 0,
+        projectedGain: projected.monthly_gain || 0,
         roi,
         implementationCost: template.economics.implementation_cost.total_cost
       });

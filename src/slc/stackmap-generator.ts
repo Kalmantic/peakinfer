@@ -25,7 +25,7 @@ import {
   Language,
 } from './types.js';
 
-const PEAKINFER_VERSION = '0.2.1';
+const PEAKINFER_VERSION = '0.95.0';
 const HISTORY_DIR = path.join(process.env.HOME || '~', '.peakinfer', 'history');
 const HISTORY_INDEX_FILE = path.join(HISTORY_DIR, 'index.json');
 
@@ -69,7 +69,7 @@ export function generateStackId(
 export function calculatePatternMaturity(patterns: PatternStats): number {
   const weights = {
     retry: 15,      // Essential for reliability
-    caching: 20,    // Key for cost optimization
+    caching: 20,    // Key for performance optimization
     routing: 15,    // Important for flexibility
     batching: 10,   // Good for throughput
     streaming: 10,  // Good for UX
@@ -146,10 +146,10 @@ export function calculateResilienceScore(patterns: PatternStats): number {
 }
 
 /**
- * Calculate cost optimization readiness (0-100)
- * Based on patterns that enable cost savings
+ * Calculate performance optimization readiness (0-100)
+ * Based on patterns that enable performance gains
  */
-export function calculateCostOptimizationReadiness(
+export function calculatePerformanceOptimizationReadiness(
   patterns: PatternStats,
   providerDiversity: number
 ): number {
@@ -164,7 +164,7 @@ export function calculateCostOptimizationReadiness(
   // Routing enables model selection (0-25)
   if (patterns.routing.detected) {
     score += 15;
-    if (patterns.routing.types.includes('cost_based')) score += 10;
+    if (patterns.routing.types.includes('performance_based')) score += 10;
   }
 
   // Batching improves throughput efficiency (0-15)
@@ -198,7 +198,7 @@ export interface AnalysisData {
   primaryLanguage: Language;
 
   // From pricing
-  estimatedMonthlyCost: { low: number; high: number };
+  estimatedMonthlyThroughput: { low: number; high: number };
 }
 
 /**
@@ -283,7 +283,7 @@ export function generateStackMapKG(
   const patternMaturity = calculatePatternMaturity(patternStats);
   const providerDiversity = calculateProviderDiversity(providers);
   const resilienceScore = calculateResilienceScore(patternStats);
-  const costOptimizationReadiness = calculateCostOptimizationReadiness(patternStats, providerDiversity);
+  const performanceOptimizationReadiness = calculatePerformanceOptimizationReadiness(patternStats, providerDiversity);
 
   // Generate stackId
   const detectedPatterns: string[] = [];
@@ -324,7 +324,7 @@ export function generateStackMapKG(
       uniqueModels: allModels.size,
       uniqueProviders: providers.length,
       estimatedMonthlyTokens,
-      estimatedMonthlyCost: (analysisData.estimatedMonthlyCost.low + analysisData.estimatedMonthlyCost.high) / 2,
+      estimatedMonthlyThroughput: (analysisData.estimatedMonthlyThroughput.low + analysisData.estimatedMonthlyThroughput.high) / 2,
       repoFiles: analysisData.totalFiles,
       repoLOC: analysisData.totalLines,
     },
@@ -333,18 +333,18 @@ export function generateStackMapKG(
       patternMaturity,
       providerDiversity: Math.round(providerDiversity * 100) / 100,
       resilienceScore,
-      costOptimizationReadiness,
+      performanceOptimizationReadiness,
     },
 
     pricingSnapshot: {
       date: new Date().toISOString().split('T')[0],
-      estimatedMonthlyCost: analysisData.estimatedMonthlyCost,
-      topProviderCosts: providers
+      estimatedMonthlyThroughput: analysisData.estimatedMonthlyThroughput,
+      topProviderLatencies: providers
         .sort((a, b) => b.callsiteCount - a.callsiteCount)
         .slice(0, 3)
         .map(p => ({
           provider: p.name,
-          cost: Math.round((analysisData.estimatedMonthlyCost.low + analysisData.estimatedMonthlyCost.high) / 2 * (p.callsiteCount / analysisData.callsites.length)),
+          avgLatencyMs: Math.round(100 / (p.callsiteCount || 1)),  // Approximate latency based on usage
         })),
     },
   };
@@ -449,7 +449,7 @@ export function saveToHistory(
     summary: {
       callsites: stackMapKG.scale.totalCallsites,
       providers: stackMapKG.topology.providers.map(p => p.name),
-      estimatedMonthlyCost: stackMapKG.pricingSnapshot?.estimatedMonthlyCost || { low: 0, high: 0 },
+      estimatedMonthlyThroughput: stackMapKG.pricingSnapshot?.estimatedMonthlyThroughput || { low: 0, high: 0 },
       patternMaturity: stackMapKG.scores.patternMaturity,
     },
   };

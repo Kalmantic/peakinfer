@@ -1,0 +1,121 @@
+{
+  "estimatedRange": {
+    "low": 0.2015,
+    "high": 9.27
+  },
+  "mostExpensiveModel": "llama-3.1-8b-instruct",
+  "byProvider": [
+    {
+      "provider": "groq",
+      "throughput": 9.059999999999999,
+      "percentage": 98
+    },
+    {
+      "provider": "nscale",
+      "throughput": 0.21,
+      "percentage": 2
+    },
+    {
+      "provider": "vllm",
+      "throughput": 0,
+      "percentage": 0
+    }
+  ],
+  "byModel": [
+    {
+      "model": "llama-3.1-8b-instruct",
+      "throughput": 4.529999999999999
+    },
+    {
+      "model": "llama-3.1-8b-exl2-4bit",
+      "throughput": 4.529999999999999
+    },
+    {
+      "model": "meta-llama/Llama-3.1-8B-Instruct",
+      "throughput": 0.21
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "throughput": 0
+    },
+    {
+      "model": "TheBloke/Llama-3.1-8B-Instruct-AWQ",
+      "throughput": 0
+    },
+    {
+      "model": "unknown",
+      "throughput": 0
+    }
+  ],
+  "hotspots": [
+    {
+      "file": "src/slc/__tests__/fixtures/r6-tensorrt-awq-gptq/optimized_inference.py",
+      "line": 30,
+      "model": "llama-3.1-8b-instruct",
+      "estimatedThroughputLow": 0.0985,
+      "estimatedThroughputHigh": 4.529999999999999,
+      "estimatedMonthlyLow": 0.0985,
+      "estimatedMonthlyHigh": 4.529999999999999,
+      "suggestion": "[AI Suggestion - verify with your usage data] Already using Q4_K_M quantization with Flash Attention - excellent for CPU/mixed inference. For simple extraction/summarization tasks, consider Gemini Flash 2.0 or Claude Haiku which offer better latency at similar cost."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r6-tensorrt-awq-gptq/optimized_inference.py",
+      "line": 63,
+      "model": "llama-3.1-8b-exl2-4bit",
+      "estimatedThroughputLow": 0.0985,
+      "estimatedThroughputHigh": 4.529999999999999,
+      "estimatedMonthlyLow": 0.0985,
+      "estimatedMonthlyHigh": 4.529999999999999,
+      "suggestion": "[AI Suggestion - verify with your usage data] EXL2 is great for consumer GPUs but complex to maintain. For production, consider managed services like Together AI (Llama-3-8B), Groq (ultra-low latency), or Gemini Flash for simpler operations."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r6-tensorrt-awq-gptq/optimized_inference.py",
+      "line": 19,
+      "model": "meta-llama/Llama-3.1-8B-Instruct",
+      "estimatedThroughputLow": 0.0045000000000000005,
+      "estimatedThroughputHigh": 0.21,
+      "estimatedMonthlyLow": 0.0045000000000000005,
+      "estimatedMonthlyHigh": 0.21,
+      "suggestion": "[AI Suggestion - verify with your usage data] Already using 4-bit quantization which is optimal. For simple tasks like summarization or classification, consider switching to smaller models like Llama-3.1-1B or Gemini Flash 1.5 for 10-50x cost reduction with comparable quality."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r6-tensorrt-awq-gptq/optimized_inference.py",
+      "line": 40,
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "benchmark data unavailable for this model"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r6-tensorrt-awq-gptq/optimized_inference.py",
+      "line": 50,
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "benchmark data unavailable for this model"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r6-tensorrt-awq-gptq/optimized_inference.py",
+      "line": 70,
+      "model": "TheBloke/Llama-3.1-8B-Instruct-AWQ",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "benchmark data unavailable for this model"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r6-tensorrt-awq-gptq/optimized_inference.py",
+      "line": 80,
+      "model": "unknown",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0
+    }
+  ]
+}

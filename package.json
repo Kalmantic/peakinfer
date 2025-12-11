@@ -10,15 +10,26 @@
   "scripts": {
     "build": "tsc",
     "dev": "ts-node src/slc/cli.ts",
-    "test": "vitest run",
+    "test": "vitest run && npm run report",
+    "test:quick": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:unit": "vitest run src/slc/__tests__/renderer.test.ts src/slc/__tests__/scanner.test.ts src/slc/__tests__/pricing.test.ts src/slc/__tests__/stackmap.test.ts src/slc/__tests__/validator.test.ts src/slc/__tests__/prd-renderer.test.ts",
+    "test:fast": "vitest run --exclude '**/prd-test-suite.test.ts' --exclude '**/real-world-evals.test.ts' && npm run report",
+    "test:e2e": "vitest run src/slc/__tests__/prd-test-suite.test.ts",
+    "test:security": "vitest run src/slc/__tests__/security-no-secrets.test.ts",
+    "test:security:deep": "DEEP_SCAN=1 vitest run src/slc/__tests__/security-no-secrets.test.ts",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "typecheck": "tsc --noEmit",
     "prepare": "npm run build",
     "start": "node dist/slc/cli.js",
-    "validate": "chmod +x test-codebase/run-peakinfer-tests.sh && ./test-codebase/run-peakinfer-tests.sh"
+    "validate": "chmod +x test-codebase/run-peakinfer-tests.sh && ./test-codebase/run-peakinfer-tests.sh",
+    "eval": "npx tsx evals/run-evals.ts",
+    "eval:repos": "vitest run evals/real-world-evals.test.ts --reporter=verbose",
+    "eval:repos:all": "EVAL_ALL=1 vitest run evals/real-world-evals.test.ts --reporter=verbose",
+    "eval:quick": "vitest run evals/real-world-evals.test.ts -t 'Robustness|Summary'",
+    "report": "node test-results/generate-html-report.cjs"
   },
   "keywords": [
     "llm",

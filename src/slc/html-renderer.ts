@@ -2,10 +2,10 @@
  * HTML Report Renderer
  *
  * Generates a self-contained HTML report with dark/light mode,
- * interactive file tree, cost breakdown, and optimization recommendations.
+ * interactive file tree, performance breakdown, and optimization recommendations.
  */
 
-import type { ScanResult, StackMap, StackMapNode, PricingSummary, CallsiteCost, TechStack } from './types.js';
+import type { ScanResult, StackMap, StackMapNode, PricingSummary, CallsitePerformance, TechStack } from './types.js';
 import { formatCurrency } from './renderer.js';
 
 // =============================================================================
@@ -39,7 +39,7 @@ ${getStyles()}
     ${renderHeader(projectName, timestamp)}
     ${renderSummaryCards(scan, stackMap, pricing)}
     ${techStack ? renderTechStackSection(techStack) : ''}
-    ${renderCostBreakdown(pricing)}
+    ${renderPerformanceBreakdown(pricing)}
     ${renderFileTree(stackMap)}
     ${renderOptimizations(pricing)}
     ${renderUnknownModelsSection(stackMap)}
@@ -172,7 +172,7 @@ function getStyles(): string {
       margin-top: 4px;
     }
 
-    .summary-card.cost .value {
+    .summary-card.performance .value {
       color: var(--accent-green);
     }
 
@@ -209,42 +209,42 @@ function getStyles(): string {
       padding: 20px;
     }
 
-    /* Cost Breakdown */
-    .cost-bar {
+    /* Performance Breakdown */
+    .perf-bar {
       margin-bottom: 12px;
     }
 
-    .cost-bar-header {
+    .perf-bar-header {
       display: flex;
       justify-content: space-between;
       margin-bottom: 6px;
     }
 
-    .cost-bar-provider {
+    .perf-bar-provider {
       font-weight: 500;
     }
 
-    .cost-bar-amount {
+    .perf-bar-amount {
       color: var(--text-secondary);
     }
 
-    .cost-bar-track {
+    .perf-bar-track {
       height: 8px;
       background: var(--bg-tertiary);
       border-radius: 4px;
       overflow: hidden;
     }
 
-    .cost-bar-fill {
+    .perf-bar-fill {
       height: 100%;
       border-radius: 4px;
       transition: width 0.3s ease;
     }
 
-    .cost-bar-fill.openai { background: linear-gradient(90deg, #10a37f, #1a7f64); }
-    .cost-bar-fill.anthropic { background: linear-gradient(90deg, #d4a27f, #c4886a); }
-    .cost-bar-fill.google { background: linear-gradient(90deg, #4285f4, #34a853); }
-    .cost-bar-fill.other { background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue)); }
+    .perf-bar-fill.openai { background: linear-gradient(90deg, #10a37f, #1a7f64); }
+    .perf-bar-fill.anthropic { background: linear-gradient(90deg, #d4a27f, #c4886a); }
+    .perf-bar-fill.google { background: linear-gradient(90deg, #4285f4, #34a853); }
+    .perf-bar-fill.other { background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue)); }
 
     /* File Tree */
     .file-tree {
@@ -562,10 +562,10 @@ function renderSummaryCards(scan: ScanResult, stackMap: StackMap, pricing: Prici
         <div class="value">${stackMap.summary.totalCallsites}</div>
         <div class="detail">${stackMap.summary.providers.length} provider(s) detected</div>
       </div>
-      <div class="summary-card cost">
-        <div class="label">Est. Monthly Cost</div>
-        <div class="value">${formatCurrency(pricing.estimatedRange.high)}</div>
-        <div class="detail">Range: ${formatCurrency(pricing.estimatedRange.low)} - ${formatCurrency(pricing.estimatedRange.high)}</div>
+      <div class="summary-card performance">
+        <div class="label">Est. Monthly Throughput</div>
+        <div class="value">${pricing.estimatedRange.high.toLocaleString()} tps</div>
+        <div class="detail">Range: ${pricing.estimatedRange.low.toLocaleString()} - ${pricing.estimatedRange.high.toLocaleString()} tps</div>
       </div>
       <div class="summary-card ${unknownCount > 0 ? 'warning' : ''}">
         <div class="label">Models Detected</div>
@@ -576,36 +576,36 @@ function renderSummaryCards(scan: ScanResult, stackMap: StackMap, pricing: Prici
   `;
 }
 
-function renderCostBreakdown(pricing: PricingSummary): string {
+function renderPerformanceBreakdown(pricing: PricingSummary): string {
   if (pricing.byProvider.length === 0) {
     return `
       <section class="section">
         <div class="section-header">
-          <h2>cost breakdown</h2>
+          <h2>performance breakdown</h2>
         </div>
         <div class="section-content">
           <div class="empty-state">
-            <p>no cost data available (all models are dynamic/unknown)</p>
+            <p>no performance data available (all models are dynamic/unknown)</p>
           </div>
         </div>
       </section>
     `;
   }
 
-  const maxCost = Math.max(...pricing.byProvider.map(p => p.cost));
+  const maxThroughput = Math.max(...pricing.byProvider.map(p => p.throughput));
 
   const bars = pricing.byProvider.map(p => {
-    const width = maxCost > 0 ? (p.cost / maxCost) * 100 : 0;
+    const width = maxThroughput > 0 ? (p.throughput / maxThroughput) * 100 : 0;
     const providerClass = ['openai', 'anthropic', 'google'].includes(p.provider) ? p.provider : 'other';
 
     return `
-      <div class="cost-bar">
-        <div class="cost-bar-header">
-          <span class="cost-bar-provider">${escapeHtml(p.provider)}</span>
-          <span class="cost-bar-amount">${formatCurrency(p.cost)}/mo (${p.percentage}%)</span>
+      <div class="perf-bar">
+        <div class="perf-bar-header">
+          <span class="perf-bar-provider">${escapeHtml(p.provider)}</span>
+          <span class="perf-bar-amount">${p.throughput.toLocaleString()} tps/mo (${p.percentage}%)</span>
         </div>
-        <div class="cost-bar-track">
-          <div class="cost-bar-fill ${providerClass}" style="width: ${width}%"></div>
+        <div class="perf-bar-track">
+          <div class="perf-bar-fill ${providerClass}" style="width: ${width}%"></div>
         </div>
       </div>
     `;
@@ -614,7 +614,7 @@ function renderCostBreakdown(pricing: PricingSummary): string {
   return `
     <section class="section">
       <div class="section-header">
-        <h2>cost breakdown by provider</h2>
+        <h2>throughput breakdown by provider</h2>
         <span class="badge badge-info">based on default usage estimates</span>
       </div>
       <div class="section-content">
@@ -767,7 +767,7 @@ function renderTreeNode(node: StackMapNode): string {
 }
 
 function renderOptimizations(pricing: PricingSummary): string {
-  const suggestions = pricing.hotspots.filter((h: CallsiteCost) => h.suggestion).slice(0, 5);
+  const suggestions = pricing.hotspots.filter((h: CallsitePerformance) => h.suggestion).slice(0, 5);
 
   if (suggestions.length === 0) {
     return `
@@ -799,6 +799,15 @@ function renderOptimizations(pricing: PricingSummary): string {
     </div>
   `).join('');
 
+  // SLC: Add disclaimer for AI-generated suggestions
+  const hasAISuggestions = suggestions.some(h => h.suggestion?.includes('[AI Suggestion'));
+  const disclaimer = hasAISuggestions ? `
+    <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 12px; margin-bottom: 16px; font-size: 13px;">
+      <strong>Note:</strong> AI suggestions below are based on code analysis only.
+      Actual usage patterns may differ. Verify with your metrics before making changes.
+    </div>
+  ` : '';
+
   return `
     <section class="section">
       <div class="section-header">
@@ -806,6 +815,7 @@ function renderOptimizations(pricing: PricingSummary): string {
         <span class="badge badge-info">${suggestions.length} opportunities</span>
       </div>
       <div class="section-content">
+        ${disclaimer}
         ${items}
       </div>
     </section>
@@ -851,7 +861,7 @@ function renderUnknownModelsSection(stackMap: StackMap): string {
             <li><strong>user selection</strong> — model chosen based on user input or API parameters</li>
           </ul>
           <p style="margin-top: 12px;">
-            to get accurate cost estimates, consider adding model annotations
+            to get accurate performance estimates, consider adding model annotations
             in comments or using a configuration file that peakinfer can parse.
           </p>
         </div>

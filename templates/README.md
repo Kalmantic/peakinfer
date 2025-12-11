@@ -1,6 +1,6 @@
 # PeakInfer Community Optimization Templates
 
-This repository contains community-validated optimization templates for LLM inference cost optimization.
+This repository contains community-validated optimization templates for LLM inference performance optimization.
 
 ## Structure
 
@@ -8,7 +8,7 @@ This repository contains community-validated optimization templates for LLM infe
 templates/
 ├── application-layer/     # Application-level optimizations (caching, routing, context)
 ├── serving-layer/         # Serving framework optimizations (vLLM, quantization, batching)
-├── infrastructure-layer/  # Infrastructure optimizations (spot instances, GPU allocation)
+├── infrastructure-layer/  # Infrastructure optimizations (GPU utilization, allocation)
 └── cross-layer/          # Cross-layer coordination strategies
 ```
 
@@ -32,14 +32,15 @@ environment_match:
 
 optimization:
   technique: "technique_name"
-  expected_cost_reduction: "20-40%"
+  expected_throughput_improvement: "2-4x"
+  expected_latency_reduction: "50-80%"
   risk_level: "low|medium|high"
   effort_estimate: "1-2 weeks"
 
-economics:
-  baseline_calculation: {}
-  implementation_cost:
-    total_cost: 10000
+performance:
+  baseline_metrics: {}
+  implementation_effort:
+    hours: 80
 
 implementation:
   prerequisites: []
@@ -85,15 +86,15 @@ peakinfer plan --templates-dir ./templates
 - KV cache optimization
 
 ### Infrastructure Layer
-- Spot instance optimization
+- GPU utilization optimization
 - GPU allocation
 - Multi-region deployment
-- Reserved instance planning
+- Reserved capacity planning
 
 ### Cross-Layer
 - Full stack optimization
 - Caching + routing synergy
-- vLLM + spot instances
+- vLLM + GPU optimization
 
 ## License
 

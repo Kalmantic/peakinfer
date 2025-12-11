@@ -31,7 +31,7 @@ export interface LLMAPICall {
   model: string | null;
   callPattern: string;
   context: string;
-  estimatedCost: number;
+  estimatedThroughput: number;
   hasCaching: boolean;
   hasErrorHandling: boolean;
   hasRetry: boolean;
@@ -47,7 +47,7 @@ export interface ModelUsagePattern {
   provider: string;
   occurrences: number;
   files: string[];
-  estimatedMonthlyCost: number;
+  estimatedMonthlyThroughput: number;
   averageContextLength: number;
   usageType: 'chat' | 'completion' | 'embedding' | 'unknown';
 }
@@ -75,7 +75,7 @@ export interface CachingOpportunity {
   file: string;
   lineNumber: number;
   recommendation: string;
-  estimatedSavings: number;
+  estimatedGain: number;
   implementationComplexity: 'low' | 'medium' | 'high';
   affectedCalls: number;
   cacheType: 'semantic' | 'exact' | 'distributed';
@@ -92,7 +92,7 @@ export interface CodeOptimization {
   description: string;
   currentCode: string;
   suggestedCode?: string;
-  estimatedSavings: number;
+  estimatedGain: number;
   implementationEffort: 'low' | 'medium' | 'high';
   priority: 'high' | 'medium' | 'low';
   templateId?: string;
@@ -190,11 +190,11 @@ export interface CodeSuggestion {
   lineNumber: number;
   title: string;
   description: string;
-  category: 'performance' | 'cost' | 'reliability' | 'best-practice';
+  category: 'performance' | 'throughput' | 'reliability' | 'best-practice';
   currentCode: string;
   suggestedCode: string;
   impact: {
-    costSavings: number;
+    throughputGain: number;
     performanceGain: string;
     reliabilityImprovement: string;
   };

@@ -5,7 +5,7 @@ category: "context_optimization"
 confidence: 0.92
 success_count: 2156
 verified_environments: 89
-contributors: ["cache_specialist", "ml_ops_team", "cost_optimizer"]
+contributors: ["cache_specialist", "ml_ops_team", "performance_optimizer"]
 last_updated: "2025-01-16"
 
 environment_match:
@@ -16,29 +16,25 @@ environment_match:
 
 optimization:
   technique: "semantic_caching"
-  expected_cost_reduction: "30-50%"
-  expected_latency_improvement: "80% for cache hits"
   expected_throughput_improvement: "2-4x"
+  expected_latency_improvement: "80% for cache hits"
+  expected_latency_reduction: "80%"
   effort_estimate: "1-2 weeks"
   risk_level: "low"
 
-economics:
-  baseline_calculation:
+performance:
+  baseline_metrics:
     monthly_api_calls: "${total_monthly_requests}"
-    avg_cost_per_call: "${avg_input_tokens + avg_output_tokens} * ${cost_per_token}"
-    monthly_cost: "${monthly_api_calls} * ${avg_cost_per_call}"
-  projected_savings:
+    avg_latency_ms: "${avg_response_latency_ms}"
+    throughput_rps: "${current_throughput_rps}"
+  projected_improvements:
     cache_hit_rate: 0.40
-    saved_calls: "${monthly_api_calls} * ${cache_hit_rate}"
-    monthly_savings: "${saved_calls} * ${avg_cost_per_call}"
-  implementation_cost:
+    latency_reduction_on_hit: "95%"
+    throughput_multiplier: "2-4x"
+  implementation_effort:
     engineering_hours: 80
-    hourly_rate: 200
-    vector_db_monthly: 200
-    total_cost: 16200
-  roi_calculation:
-    payback_months: "${implementation_cost} / ${monthly_savings}"
-    annual_roi: "((${monthly_savings} * 12) - ${implementation_cost}) / ${implementation_cost}"
+    vector_db_setup_hours: 16
+    total_hours: 96
 
 implementation:
   prerequisites:
@@ -94,9 +90,9 @@ monitoring:
     - metric: "cache_response_latency_ms"
       target: "<50"
       alert_threshold: ">100"
-    - metric: "cost_per_request"
-      target: "<${baseline_cost} * 0.6"
-      alert_threshold: ">${baseline_cost} * 0.8"
+    - metric: "throughput_rps"
+      target: ">${baseline_throughput} * 2"
+      alert_threshold: "<${baseline_throughput} * 1.2"
 
   rollback_triggers:
     - condition: "cache_hit_rate < 0.15 for 30 minutes"
@@ -109,14 +105,16 @@ monitoring:
 results:
   recent_implementations:
     - environment: "customer_support_api"
-      baseline_monthly_cost: 28000
-      optimized_monthly_cost: 15400
-      cost_reduction_percent: 45
+      baseline_latency_ms: 1850
+      optimized_latency_ms: 45
+      latency_reduction_percent: 97
+      throughput_improvement: "3.2x"
       cache_hit_rate: 0.42
       implementation_days: 8
     - environment: "document_qa_service"
-      baseline_monthly_cost: 45000
-      optimized_monthly_cost: 27000
-      cost_reduction_percent: 40
+      baseline_latency_ms: 2100
+      optimized_latency_ms: 52
+      latency_reduction_percent: 97
+      throughput_improvement: "2.8x"
       cache_hit_rate: 0.38
       implementation_days: 12

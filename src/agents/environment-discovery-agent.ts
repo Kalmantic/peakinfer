@@ -121,13 +121,13 @@ export class EnvironmentDiscoveryAgent {
             model_name: 'gpt-4',
             usage_frequency: 1000,
             context_patterns: ['conversational', 'document_analysis'],
-            cost_contribution: 0.7
+            throughput_contribution: 0.7
           },
           {
             model_name: 'gpt-3.5-turbo',
             usage_frequency: 2000,
             context_patterns: ['simple_queries'],
-            cost_contribution: 0.3
+            throughput_contribution: 0.3
           }
         ];
 
@@ -135,7 +135,7 @@ export class EnvironmentDiscoveryAgent {
           {
             endpoint: 'api.openai.com',
             call_volume: 3000,
-            cost_per_call: 0.03,
+            throughput_per_call: 100,
             optimization_opportunities: ['model_routing', 'semantic_caching', 'batch_processing']
           }
         ];

@@ -186,8 +186,8 @@ program
       console.log(chalk.cyan('\n📊 Discovery Summary:'));
       console.log(`  Total Events Analyzed: ${discoveryResult.metadata.total_events_analyzed}`);
       console.log(`  Optimization Opportunities: ${discoveryResult.optimizationOpportunities.length}`);
-      console.log(`  Application Cost: $${discoveryResult.configSummary.application.total_monthly_cost.toLocaleString()}/month`);
-      console.log(`  Infrastructure Cost: $${discoveryResult.configSummary.infrastructure.total_monthly_cost.toLocaleString()}/month`);
+      console.log(`  Application Throughput: ${discoveryResult.configSummary.application.total_monthly_throughput.toLocaleString()} tps/month`);
+      console.log(`  Infrastructure Capacity: ${discoveryResult.configSummary.infrastructure.total_monthly_throughput.toLocaleString()} tps/month`);
       
       if (discoveryResult.codebaseInsights) {
         console.log(chalk.green('\n📝 Codebase Analysis:'));
@@ -283,7 +283,7 @@ program
         console.log(chalk.green('\n🏷️  Top Clusters:'));
         profile.clusters.slice(0, 3).forEach((cluster, index) => {
           console.log(`  ${index + 1}. ${chalk.bold(cluster.intent)} (${cluster.size} events)`);
-          console.log(`     Cost / request: $${cluster.cost_per_request.toFixed(2)} | Model: ${cluster.dominant_model}`);
+          console.log(`     Throughput / request: ${cluster.throughput_per_request.toFixed(2)} tps | Model: ${cluster.dominant_model}`);
           console.log(`     Action: ${cluster.recommended_action}`);
         });
       }
@@ -298,7 +298,7 @@ program
       if (profile.recommendations?.length) {
         console.log(chalk.green('\n💡 Recommendations:'));
         profile.recommendations.slice(0, 3).forEach((rec, index) => {
-          console.log(`  ${index + 1}. (${rec.impact}) ${rec.description} — est. savings $${rec.estimated_savings.toLocaleString()}/month`);
+          console.log(`  ${index + 1}. (${rec.impact}) ${rec.description} — est. gain ${rec.estimated_gain.toLocaleString()} tps/month`);
         });
       }
 
@@ -368,7 +368,7 @@ program
       });
 
       console.log(chalk.green.bold('\n💡 Optimization Plan Summary:\n'));
-      console.log(`  💰 Estimated Monthly Savings: ${chalk.green.bold('$' + plan.estimatedSavings.toLocaleString())}`);
+      console.log(`  ⚡ Estimated Monthly Performance Gain: ${chalk.green.bold(plan.estimatedGain.toLocaleString() + ' tps')}`);
       console.log(`  📊 Implementation Complexity: ${chalk.yellow(plan.implementationComplexity)}`);
       console.log(`  📈 ROI: ${chalk.cyan(plan.economicProjections.roi_percentage.toFixed(0) + '%')}`);
       console.log(`  ⏱️  Payback Period: ${chalk.blue(plan.economicProjections.payback_period_months.toFixed(1) + ' months')}`);
@@ -446,14 +446,14 @@ program
       const evaluation = await orchestrator.runRunnerEvaluator(plan, samplePrompts);
       spinner.succeed('Evaluation complete');
       verboseLog('Evaluation summary:', {
-        baselineCost: evaluation.baseline.total_cost,
-        optimizedCost: evaluation.optimized.total_cost,
+        baselineThroughput: evaluation.baseline.total_throughput,
+        optimizedThroughput: evaluation.optimized.total_throughput,
         qualityPreserved: evaluation.qualityEvaluation.overall_quality_preserved,
       });
 
       console.log(chalk.green.bold('\n✅ Execution Results:\n'));
-      console.log(`  💰 Actual Savings: $${(evaluation.baseline.total_cost - evaluation.optimized.total_cost).toLocaleString()}/month`);
-      console.log(`  📊 Cost Reduction: ${((1 - evaluation.optimized.total_cost / evaluation.baseline.total_cost) * 100).toFixed(1)}%`);
+      console.log(`  🚀 Throughput Gain: ${(evaluation.optimized.total_throughput - evaluation.baseline.total_throughput).toLocaleString()} tps/month`);
+      console.log(`  📊 Improvement: ${((evaluation.optimized.total_throughput / evaluation.baseline.total_throughput - 1) * 100).toFixed(1)}%`);
       console.log(`  ⚡ Latency P95: ${evaluation.optimized.latency_p95}ms (baseline: ${evaluation.baseline.latency_p95}ms)`);
       console.log(`  🎯 Quality Score: ${(evaluation.optimized.quality_score * 100).toFixed(1)}% (baseline: ${(evaluation.baseline.quality_score * 100).toFixed(1)}%)`);
       console.log(`  ✅ Quality Preserved: ${evaluation.qualityEvaluation.overall_quality_preserved ? 'Yes' : 'No'}`);
@@ -526,8 +526,8 @@ program
       }
 
       console.log(chalk.green.bold('\n✅ Audit Report Summary:\n'));
-      console.log(`  💰 Total Cost Savings: ${chalk.green.bold('$' + report.executiveSummary.total_cost_savings.toLocaleString())}/month`);
-      console.log(`  📊 Cost Reduction: ${chalk.cyan(report.executiveSummary.cost_reduction_percentage.toFixed(1) + '%')}`);
+      console.log(`  🚀 Total Performance Gain: ${chalk.green.bold(report.executiveSummary.total_performance_gain.toLocaleString())} tps/month`);
+      console.log(`  📊 Throughput Improvement: ${chalk.cyan(report.executiveSummary.throughput_improvement_percentage.toFixed(1) + '%')}`);
       console.log(`  📈 ROI: ${chalk.yellow(report.executiveSummary.roi_percentage.toFixed(0) + '%')}`);
       console.log(`  ⏱️  Payback Period: ${chalk.blue(report.executiveSummary.payback_period_months.toFixed(1) + ' months')}`);
       console.log(`  ✅ Quality Preserved: ${report.executiveSummary.quality_preserved ? 'Yes' : 'No'}`);
@@ -586,7 +586,7 @@ program
           console.log(`    ${chalk.gray(template.description)}`);
           console.log(`    Confidence: ${chalk.yellow((template.confidence * 100).toFixed(0) + '%')} | ` +
                      `Verified: ${template.success_count} | ` +
-                     `Savings: ${template.optimization.expected_cost_reduction || 'Variable'}`);
+                     `Throughput Gain: ${template.optimization.expected_throughput_improvement || 'Variable'}`);
 
           if (options.detailed) {
             console.log(`    Effort: ${template.optimization.effort_estimate} | ` +
@@ -750,7 +750,7 @@ program
 
       // Print summary
       console.log(chalk.green.bold('\n✨ Optimization Suggestions Summary:\n'));
-      console.log(`  💰 Total Savings Opportunity: ${chalk.green.bold('$' + suggestionReport.summary.totalMonthlySavings.toLocaleString())}/month`);
+      console.log(`  🚀 Total Performance Gain: ${chalk.green.bold(suggestionReport.summary.totalMonthlyGain.toLocaleString())} tps/month`);
       console.log(`  📊 Total Opportunities: ${suggestionReport.summary.totalOpportunities}`);
       console.log(`  🏆 Quick Wins: ${suggestionReport.summary.quickWins.length}`);
       console.log(`  📈 Average ROI: ${chalk.cyan(suggestionReport.metadata.averageROI.toFixed(0) + '%')}`);
@@ -866,9 +866,9 @@ program
         console.log(`  Code Optimizations: ${discoveryResult.codebaseInsights.optimizationOpportunities?.length ?? 0}`);
       }
 
-      console.log(chalk.green('\n💰 Cost Savings Opportunity:'));
-      console.log(`  Monthly Savings: ${chalk.green.bold('$' + suggestionReport.summary.totalMonthlySavings.toLocaleString())}`);
-      console.log(`  Annual Savings: ${chalk.green.bold('$' + suggestionReport.summary.totalAnnualSavings.toLocaleString())}`);
+      console.log(chalk.green('\n🚀 Performance Gain Opportunity:'));
+      console.log(`  Monthly Gain: ${chalk.green.bold(suggestionReport.summary.totalMonthlyGain.toLocaleString())} tps`);
+      console.log(`  Annual Gain: ${chalk.green.bold(suggestionReport.summary.totalAnnualGain.toLocaleString())} tps`);
       console.log(`  Total Opportunities: ${suggestionReport.summary.totalOpportunities}`);
       console.log(`  Quick Wins: ${suggestionReport.summary.quickWins.length}`);
       console.log(`  Average ROI: ${chalk.cyan(suggestionReport.metadata.averageROI.toFixed(0) + '%')}`);

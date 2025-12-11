@@ -1,0 +1,55 @@
+# Ground Truth: R3 - Self-Hosted GPU
+# Manually labeled LLM inference callsites
+# Reviewer: Human expert
+# Last updated: 2024-12-10
+
+fixture: r3-self-hosted-gpu/vllm_service.py
+description: Self-hosted inference (vLLM, SGLang, llama.cpp)
+total_callsites: 5
+
+callsites:
+  - line: 30
+    function: vllm_generate
+    type: text_generation
+    provider: self-hosted
+    model: meta-llama/Llama-3.1-8B-Instruct
+    sdk: vllm.LLM.generate
+    confidence: 1.0
+
+  - line: 35
+    function: sglang_generate
+    type: text_generation
+    provider: self-hosted
+    model: meta-llama/Llama-3.1-8B-Instruct
+    sdk: sglang.Engine.session
+    confidence: 1.0
+    notes: "SGLang session-based generation"
+
+  - line: 42
+    function: llamacpp_generate
+    type: text_generation
+    provider: self-hosted
+    model: llama-3.1-8b-instruct.Q4_K_M.gguf
+    sdk: llama_cpp.Llama.__call__
+    confidence: 1.0
+
+  - line: 51
+    function: batch_inference
+    type: batch_generation
+    provider: self-hosted
+    model: meta-llama/Llama-3.1-8B-Instruct
+    sdk: vllm.LLM.generate
+    confidence: 1.0
+
+# Non-callsites (should NOT be detected)
+non_callsites:
+  - line: 10
+    reason: "LLM initialization, not inference call"
+  - line: 17
+    reason: "Engine initialization, not inference"
+  - line: 20
+    reason: "Model loading, not inference"
+  - line: 26
+    reason: "SamplingParams creation, not inference"
+  - line: 55
+    reason: "torch.cuda check, not LLM inference"

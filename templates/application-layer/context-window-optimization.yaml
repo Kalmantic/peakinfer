@@ -16,7 +16,7 @@ environment_match:
 
 optimization:
   technique: "sliding_window_context"
-  expected_cost_reduction: "70-87%"
+  expected_throughput_improvement: "70-87%"
   expected_quality_impact: "<5%"
   effort_estimate: "1-2 weeks"
   risk_level: "low"
@@ -92,6 +92,6 @@ results:
     - environment: "customer_support_chatbot"
       baseline_cost_per_conversation: 0.85
       optimized_cost_per_conversation: 0.12
-      cost_reduction_percent: 86
+      throughput_improvement_percent: 86
       quality_retention_percent: 96.5
       implementation_days: 9

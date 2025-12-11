@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PeakInfer Report — r1-saas-only</title>
+  <style>
+
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --border-color: #30363d;
+      --accent-blue: #58a6ff;
+      --accent-green: #3fb950;
+      --accent-yellow: #d29922;
+      --accent-red: #f85149;
+      --accent-purple: #a371f7;
+      --accent-orange: #db6d28;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f6f8fa;
+        --bg-tertiary: #eaeef2;
+        --text-primary: #1f2328;
+        --text-secondary: #656d76;
+        --text-muted: #8c959f;
+        --border-color: #d0d7de;
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    /* Header */
+    .header {
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .header h1 {
+      font-size: 28px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header .logo {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .header .meta {
+      margin-top: 8px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    /* Summary Cards */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .summary-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .summary-card .label {
+      color: var(--text-secondary);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .summary-card .value {
+      font-size: 28px;
+      font-weight: 600;
+    }
+
+    .summary-card .detail {
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .summary-card.cost .value {
+      color: var(--accent-green);
+    }
+
+    .summary-card.warning .value {
+      color: var(--accent-yellow);
+    }
+
+    /* Sections */
+    .section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+
+    .section-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .section-header h2 {
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-content {
+      padding: 20px;
+    }
+
+    /* Cost Breakdown */
+    .cost-bar {
+      margin-bottom: 12px;
+    }
+
+    .cost-bar-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .cost-bar-provider {
+      font-weight: 500;
+    }
+
+    .cost-bar-amount {
+      color: var(--text-secondary);
+    }
+
+    .cost-bar-track {
+      height: 8px;
+      background: var(--bg-tertiary);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .cost-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .cost-bar-fill.openai { background: linear-gradient(90deg, #10a37f, #1a7f64); }
+    .cost-bar-fill.anthropic { background: linear-gradient(90deg, #d4a27f, #c4886a); }
+    .cost-bar-fill.google { background: linear-gradient(90deg, #4285f4, #34a853); }
+    .cost-bar-fill.other { background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue)); }
+
+    /* File Tree */
+    .file-tree {
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 13px;
+    }
+
+    .tree-node {
+      padding: 4px 0;
+    }
+
+    .tree-dir {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+
+    .tree-dir:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .tree-dir .icon {
+      color: var(--accent-blue);
+    }
+
+    .tree-file {
+      padding: 4px 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tree-file .icon {
+      color: var(--text-muted);
+    }
+
+    .tree-children {
+      margin-left: 20px;
+      border-left: 1px solid var(--border-color);
+      padding-left: 12px;
+    }
+
+    .tree-callsite {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      margin: 4px 0;
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    .tree-callsite .line {
+      color: var(--text-muted);
+      min-width: 50px;
+    }
+
+    .tree-callsite .provider {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .provider-openai { background: rgba(16, 163, 127, 0.2); color: #10a37f; }
+    .provider-anthropic { background: rgba(212, 162, 127, 0.2); color: #d4a27f; }
+    .provider-google { background: rgba(66, 133, 244, 0.2); color: #4285f4; }
+    .provider-unknown { background: rgba(139, 148, 158, 0.2); color: var(--text-secondary); }
+
+    .tree-callsite .model {
+      color: var(--text-secondary);
+    }
+
+    .model-unknown {
+      color: var(--accent-yellow);
+      font-style: italic;
+    }
+
+    /* Optimizations */
+    .optimization-item {
+      padding: 16px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      background: var(--bg-primary);
+    }
+
+    .optimization-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .optimization-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .optimization-location {
+      font-family: 'SF Mono', 'Cascadia Code', monospace;
+      font-size: 13px;
+    }
+
+    .optimization-model {
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .optimization-suggestion {
+      padding: 12px;
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      border-left: 3px solid var(--accent-green);
+      font-size: 13px;
+    }
+
+    /* Unknown Models Section */
+    .unknown-callout {
+      background: rgba(210, 153, 34, 0.1);
+      border: 1px solid rgba(210, 153, 34, 0.3);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .unknown-callout h3 {
+      color: var(--accent-yellow);
+      font-size: 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .unknown-callout p {
+      color: var(--text-secondary);
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+
+    .unknown-callout ul {
+      margin-left: 20px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .unknown-callout li {
+      margin-bottom: 4px;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-color);
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .footer a {
+      color: var(--accent-blue);
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Utility */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .badge-info {
+      background: rgba(88, 166, 255, 0.1);
+      color: var(--accent-blue);
+    }
+
+    .badge-warning {
+      background: rgba(210, 153, 34, 0.1);
+      color: var(--accent-yellow);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+    }
+
+    /* Tech Stack */
+    .tech-stack {
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 13px;
+    }
+
+    .stack-layer {
+      position: relative;
+      padding-left: 24px;
+      margin-bottom: 16px;
+    }
+
+    .stack-layer::before {
+      content: '';
+      position: absolute;
+      left: 8px;
+      top: 20px;
+      bottom: -8px;
+      width: 1px;
+      background: var(--border-color);
+    }
+
+    .stack-layer.last::before {
+      display: none;
+    }
+
+    .stack-layer-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .stack-connector {
+      color: var(--text-muted);
+      margin-left: -16px;
+    }
+
+    .stack-name {
+      color: var(--text-primary);
+    }
+
+    .stack-layer-content {
+      padding-left: 8px;
+    }
+
+    .stack-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .stack-label {
+      color: var(--text-secondary);
+      min-width: 100px;
+    }
+
+    .stack-values {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .stack-tag {
+      display: inline-block;
+      padding: 2px 10px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      font-size: 12px;
+      color: var(--text-primary);
+    }
+  
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <header class="header">
+      <h1>
+        <span class="logo">P</span>
+        peakinfer
+      </h1>
+      <div class="meta">
+        r1-saas-only / December 10, 2025 at 06:58 PM
+      </div>
+    </header>
+  
+    
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="label">Files Scanned</div>
+        <div class="value">1</div>
+        <div class="detail">48 lines of code</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">LLM Callsites</div>
+        <div class="value">4</div>
+        <div class="detail">2 provider(s) detected</div>
+      </div>
+      <div class="summary-card cost">
+        <div class="label">Est. Monthly Cost</div>
+        <div class="value">$79.55</div>
+        <div class="detail">Range: $1.85 - $79.55</div>
+      </div>
+      <div class="summary-card ">
+        <div class="label">Models Detected</div>
+        <div class="value">4</div>
+        <div class="detail">All models identified</div>
+      </div>
+    </div>
+  
+    
+    <section class="section">
+      <div class="section-header">
+        <h2>inference tech stack</h2>
+        <span class="badge badge-info">application to hardware</span>
+      </div>
+      <div class="section-content">
+        <div class="tech-stack">
+          
+      <div class="stack-layer ">
+        <div class="stack-layer-header">
+          <span class="stack-connector">├─</span>
+          <span class="stack-name">application</span>
+        </div>
+        <div class="stack-layer-content">
+          
+            <div class="stack-item">
+              <span class="stack-label">sdks:</span>
+              <span class="stack-values"><span class="stack-tag">openai</span><span class="stack-tag">anthropic</span></span>
+            </div>
+          
+        </div>
+      </div>
+    
+        </div>
+      </div>
+    </section>
+  
+    
+    <section class="section">
+      <div class="section-header">
+        <h2>cost breakdown by provider</h2>
+        <span class="badge badge-info">based on default usage estimates</span>
+      </div>
+      <div class="section-content">
+        
+      <div class="cost-bar">
+        <div class="cost-bar-header">
+          <span class="cost-bar-provider">anthropic</span>
+          <span class="cost-bar-amount">$45.00/mo (57%)</span>
+        </div>
+        <div class="cost-bar-track">
+          <div class="cost-bar-fill anthropic" style="width: 100%"></div>
+        </div>
+      </div>
+    
+      <div class="cost-bar">
+        <div class="cost-bar-header">
+          <span class="cost-bar-provider">openai</span>
+          <span class="cost-bar-amount">$34.55/mo (43%)</span>
+        </div>
+        <div class="cost-bar-track">
+          <div class="cost-bar-fill openai" style="width: 76.77777777777779%"></div>
+        </div>
+      </div>
+    
+      </div>
+    </section>
+  
+    
+    <section class="section">
+      <div class="section-header">
+        <h2>callsite map</h2>
+        <span class="badge badge-info">4 callsites</span>
+      </div>
+      <div class="section-content">
+        <div class="file-tree">
+          
+    <div class="tree-node">
+      <div class="tree-file">
+        <span>app.py</span>
+      </div>
+      
+      <div class="tree-callsite">
+        <span class="line">:15</span>
+        <span class="provider provider-openai">openai</span>
+        <span class="model ">gpt-4o</span>
+      </div>
+    
+      <div class="tree-callsite">
+        <span class="line">:23</span>
+        <span class="provider provider-anthropic">anthropic</span>
+        <span class="model ">claude-3-5-sonnet-20241022</span>
+      </div>
+    
+      <div class="tree-callsite">
+        <span class="line">:32</span>
+        <span class="provider provider-openai">openai</span>
+        <span class="model ">gpt-4o-mini</span>
+      </div>
+    
+      <div class="tree-callsite">
+        <span class="line">:43</span>
+        <span class="provider provider-openai">openai</span>
+        <span class="model ">text-embedding-3-small</span>
+      </div>
+    
+    </div>
+  
+        </div>
+      </div>
+    </section>
+  
+    
+    <section class="section">
+      <div class="section-header">
+        <h2>optimization suggestions</h2>
+        <span class="badge badge-info">4 opportunities</span>
+      </div>
+      <div class="section-content">
+        
+    <div class="optimization-item">
+      <div class="optimization-header">
+        <div>
+          <div class="optimization-location">app.py:23</div>
+          <div class="optimization-model">current model: claude-3-5-sonnet-20241022</div>
+        </div>
+      </div>
+      <div class="optimization-suggestion">
+        (AI Analysis) Claude 3.5 Sonnet ($3.00/1M input) is premium pricing. For simple chat without advanced reasoning or complex instruction following, use Llama-3-8b on Groq (free tier), Gemini Flash ($0.075/1M), GPT-4o-mini ($0.15/1M), or Claude Haiku ($0.25/1M) for 12-40x cost savings. Reserve Sonnet for complex reasoning, coding, analysis, or long-context tasks.
+      </div>
+    </div>
+  
+    <div class="optimization-item">
+      <div class="optimization-header">
+        <div>
+          <div class="optimization-location">app.py:15</div>
+          <div class="optimization-model">current model: gpt-4o</div>
+        </div>
+      </div>
+      <div class="optimization-suggestion">
+        (AI Analysis) GPT-4o ($2.50/1M input) is expensive for basic chat. For simple conversational tasks without advanced reasoning, switch to Llama-3-8b via Groq (free tier), Gemini Flash ($0.075/1M), GPT-4o-mini ($0.15/1M), or Claude Haiku ($0.25/1M) for 10-33x cost savings. Reserve GPT-4o for complex reasoning or when quality is critical.
+      </div>
+    </div>
+  
+    <div class="optimization-item">
+      <div class="optimization-header">
+        <div>
+          <div class="optimization-location">app.py:32</div>
+          <div class="optimization-model">current model: gpt-4o-mini</div>
+        </div>
+      </div>
+      <div class="optimization-suggestion">
+        (AI Analysis) GPT-4o-mini is cost-effective but has limited streaming speed (~80 tok/s). For ultra-low latency streaming, use Groq with Llama-3-8b (free tier, ~600 tok/s), Gemini Flash ($0.075/1M, ~300 tok/s), or Fireworks AI Llama-3 ($0.20/1M, ~400 tok/s) for 4-8x faster streaming at similar or lower cost.
+      </div>
+    </div>
+  
+    <div class="optimization-item">
+      <div class="optimization-header">
+        <div>
+          <div class="optimization-location">app.py:43</div>
+          <div class="optimization-model">current model: text-embedding-3-small</div>
+        </div>
+      </div>
+      <div class="optimization-suggestion">
+        (AI Analysis) text-embedding-3-small ($0.02/1M) is already cost-effective. For even lower costs at scale, consider Voyage AI embed-v2 ($0.01/1M), Cohere embed-english-light-v3.0 ($0.01/1M), or self-host nomic-embed-text via Ollama/llama.cpp for zero API costs with comparable quality for RAG/search use cases.
+      </div>
+    </div>
+  
+      </div>
+    </section>
+  
+    
+    
+    <footer class="footer">
+      <p>
+        generated by <strong>peakinfer</strong><br>
+        <a href="https://github.com/kalmantic/peakinfer" target="_blank">github</a> ·
+        <a href="https://peakinfer.dev" target="_blank">docs</a>
+      </p>
+    </footer>
+  
+  </div>
+  <script>
+
+    // Toggle collapsed state for directories
+    document.querySelectorAll('.tree-dir').forEach(dir => {
+      dir.addEventListener('click', () => {
+        dir.parentElement.classList.toggle('collapsed');
+      });
+    });
+
+    // Add collapsed style
+    const style = document.createElement('style');
+    style.textContent = '.tree-node.collapsed .tree-children { display: none; }';
+    document.head.appendChild(style);
+  
+  </script>
+</body>
+</html>

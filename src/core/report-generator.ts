@@ -191,9 +191,9 @@ export class ReportGenerator {
 
     <div class="stats-grid">
       <div class="stat-card">
-        <h3>💰 Total Savings Opportunity</h3>
-        <div class="value">$${report.summary.totalMonthlySavings.toLocaleString()}</div>
-        <div class="subtext">per month ($${report.summary.totalAnnualSavings.toLocaleString()}/year)</div>
+        <h3>Total Performance Gain</h3>
+        <div class="value">${report.summary.totalMonthlyGain.toLocaleString()} tps</div>
+        <div class="subtext">per month (${report.summary.totalAnnualGain.toLocaleString()} tps/year)</div>
       </div>
       <div class="stat-card">
         <h3>🎯 Optimization Opportunities</h3>
@@ -249,12 +249,12 @@ export class ReportGenerator {
 
       <div class="metrics">
         <div class="metric">
-          <div class="metric-label">Monthly Savings</div>
-          <div class="metric-value">$${suggestion.estimatedMonthlySavings.toLocaleString()}</div>
+          <div class="metric-label">Monthly Gain</div>
+          <div class="metric-value">${suggestion.estimatedMonthlyGain.toLocaleString()} tps</div>
         </div>
         <div class="metric">
-          <div class="metric-label">Annual Savings</div>
-          <div class="metric-value">$${suggestion.estimatedAnnualSavings.toLocaleString()}</div>
+          <div class="metric-label">Annual Gain</div>
+          <div class="metric-value">${suggestion.estimatedAnnualGain.toLocaleString()} tps</div>
         </div>
         <div class="metric">
           <div class="metric-label">Implementation</div>
@@ -307,8 +307,8 @@ export class ReportGenerator {
 ## Executive Summary
 
 - **Total Optimization Opportunities:** ${report.summary.totalOpportunities}
-- **Estimated Monthly Savings:** $${report.summary.totalMonthlySavings.toLocaleString()}
-- **Estimated Annual Savings:** $${report.summary.totalAnnualSavings.toLocaleString()}
+- **Estimated Monthly Gain:** ${report.summary.totalMonthlyGain.toLocaleString()} tps
+- **Estimated Annual Gain:** ${report.summary.totalAnnualGain.toLocaleString()} tps
 - **Average ROI:** ${report.metadata.averageROI.toFixed(0)}%
 - **Average Implementation Time:** ${Math.round(report.summary.averageImplementationTime)} hours
 
@@ -355,9 +355,9 @@ ${Object.entries(report.summary.byPriority).map(([priority, count]) => `- **${pr
 
 ${suggestion.description}
 
-**Economics:**
-- Monthly Savings: $${suggestion.estimatedMonthlySavings.toLocaleString()}
-- Annual Savings: $${suggestion.estimatedAnnualSavings.toLocaleString()}
+**Performance Impact:**
+- Monthly Gain: ${suggestion.estimatedMonthlyGain.toLocaleString()} tps
+- Annual Gain: ${suggestion.estimatedAnnualGain.toLocaleString()} tps
 - Implementation Time: ${suggestion.implementationTimeHours} hours
 - ROI: ${suggestion.roi.toFixed(0)}%
 - Complexity: ${suggestion.implementationComplexity}

@@ -703,7 +703,7 @@ export async function interactiveTemplateBrowser(): Promise<void> {
       console.log(template.description);
       console.log();
       console.log(chalk.cyan('Expected Impact:'));
-      console.log(`  Cost Reduction: ${template.optimization?.expected_cost_reduction || 'varies'}`);
+      console.log(`  Throughput Improvement: ${template.optimization?.expected_throughput_improvement || 'varies'}`);
       console.log(`  Risk Level: ${template.optimization?.risk_level || 'medium'}`);
       console.log();
 
@@ -714,8 +714,11 @@ export async function interactiveTemplateBrowser(): Promise<void> {
       ]);
 
       if (action === 'apply') {
-        console.log(chalk.yellow('\n⚠️  Template application coming soon!'));
-        console.log('This feature will be available in the next release.\n');
+        console.log(chalk.cyan('\n📋 Manual Application Steps:\n'));
+        console.log('Templates provide optimization strategies for manual implementation.');
+        console.log('Use the "View implementation details" option to see specific steps.');
+        console.log('\nFor automated analysis of your codebase:');
+        console.log(chalk.white('  peakinfer analyze <path>\n'));
       } else if (action === 'details') {
         console.log(chalk.cyan('\nImplementation Steps:'));
         if (template.implementation?.automated_steps) {
@@ -744,7 +747,7 @@ export async function runInteractiveMode(): Promise<void> {
   console.log(chalk.bold.cyan(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║                                                               ║
-║                     🚀 PeakInfer v0.2.1                       ║
+║                     🚀 PeakInfer v0.95.0                      ║
 ║                                                               ║
 ║            LLM Inference Cost Optimization Platform           ║
 ║                                                               ║
@@ -793,7 +796,10 @@ export async function runInteractiveMode(): Promise<void> {
         break;
 
       case 'discover':
-        console.log(chalk.yellow('\n⚠️  Full discovery mode coming soon!\n'));
+        console.log(chalk.cyan('\n📊 Discovery Mode\n'));
+        console.log('For codebase analysis, use the analyze command:');
+        console.log(chalk.white('  peakinfer analyze <path>\n'));
+        console.log('This will scan your code for LLM API calls and provide cost estimates.\n');
         break;
 
       case 'settings':
@@ -805,9 +811,9 @@ export async function runInteractiveMode(): Promise<void> {
         console.log('Documentation: https://github.com/kalmantic/peakinfer');
         console.log('Issues: https://github.com/kalmantic/peakinfer/issues');
         console.log('\nQuick Commands:');
-        console.log('  peakinfer analyze .       # Quick analysis');
-        console.log('  peakinfer recommend .     # Get AI recommendations');
+        console.log('  peakinfer analyze <path>  # Analyze codebase for LLM usage');
         console.log('  peakinfer prices          # View model pricing');
+        console.log('  peakinfer templates       # Browse optimization templates');
         console.log('  peakinfer --help          # Full command reference\n');
         break;
 

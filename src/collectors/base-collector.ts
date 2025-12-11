@@ -73,7 +73,7 @@ export abstract class BaseCollector {
       input_tokens: raw.usage?.prompt_tokens || 0,
       output_tokens: raw.usage?.completion_tokens || 0,
       latency_ms: raw.latency_ms || raw.response_time || 0,
-      cost_usd: this.calculateOpenAICost(raw),
+      throughput_tps: this.calculateThroughput(raw.usage?.prompt_tokens || 0, raw.usage?.completion_tokens || 0, raw.latency_ms || raw.response_time || 0),
       endpoint: 'api.openai.com',
       region: raw.region || 'us-east-1',
       tenant: raw.tenant || raw.user || 'default',
@@ -95,7 +95,7 @@ export abstract class BaseCollector {
       input_tokens: raw.usage?.input_tokens || 0,
       output_tokens: raw.usage?.output_tokens || 0,
       latency_ms: raw.latency_ms || 0,
-      cost_usd: this.calculateAnthropicCost(raw),
+      throughput_tps: this.calculateThroughput(raw.usage?.input_tokens || 0, raw.usage?.output_tokens || 0, raw.latency_ms || 0),
       endpoint: 'api.anthropic.com',
       region: raw.region || 'us-east-1',
       tenant: raw.tenant || 'default',
@@ -117,7 +117,7 @@ export abstract class BaseCollector {
       input_tokens: raw.usage?.prompt_tokens || 0,
       output_tokens: raw.usage?.completion_tokens || 0,
       latency_ms: raw.inference_time_ms || 0,
-      cost_usd: this.calculateTogetherCost(raw),
+      throughput_tps: this.calculateThroughput(raw.usage?.prompt_tokens || 0, raw.usage?.completion_tokens || 0, raw.inference_time_ms || 0),
       endpoint: 'api.together.xyz',
       region: raw.region || 'us-west-1',
       tenant: raw.tenant || 'default',
@@ -137,7 +137,7 @@ export abstract class BaseCollector {
       input_tokens: raw.tokens_in || 0,
       output_tokens: raw.tokens_out || 0,
       latency_ms: raw.latency_ms || 0,
-      cost_usd: raw.cost || 0,
+      throughput_tps: this.calculateThroughput(raw.tokens_in || 0, raw.tokens_out || 0, raw.latency_ms || 0),
       endpoint: 'api.baseten.co',
       region: raw.region || 'us-east-1',
       tenant: raw.tenant || 'default',
@@ -157,7 +157,7 @@ export abstract class BaseCollector {
       input_tokens: raw.input_tokens || raw.prompt_tokens || 0,
       output_tokens: raw.output_tokens || raw.completion_tokens || 0,
       latency_ms: raw.latency_ms || raw.response_time || 0,
-      cost_usd: raw.cost_usd || raw.cost || 0,
+      throughput_tps: raw.throughput_tps || this.calculateThroughput(raw.input_tokens || raw.prompt_tokens || 0, raw.output_tokens || raw.completion_tokens || 0, raw.latency_ms || raw.response_time || 0),
       endpoint: raw.endpoint || 'unknown',
       region: raw.region || 'unknown',
       tenant: raw.tenant || raw.workspace || 'default',
@@ -167,68 +167,12 @@ export abstract class BaseCollector {
   }
 
   /**
-   * Calculate OpenAI cost based on model and tokens
+   * Calculate throughput in tokens per second
    */
-  private calculateOpenAICost(raw: any): number {
-    if (raw.cost_usd) return raw.cost_usd;
-    
-    const model = raw.model || '';
-    const inputTokens = raw.usage?.prompt_tokens || 0;
-    const outputTokens = raw.usage?.completion_tokens || 0;
-
-    // Pricing per 1M tokens (as of Dec 2024)
-    const pricing: Record<string, { input: number; output: number }> = {
-      'gpt-4o': { input: 2.50, output: 10.00 },
-      'gpt-4o-mini': { input: 0.15, output: 0.60 },
-      'gpt-4-turbo': { input: 10.00, output: 30.00 },
-      'gpt-4': { input: 30.00, output: 60.00 },
-      'gpt-3.5-turbo': { input: 0.50, output: 1.50 },
-    };
-
-    const modelPricing = pricing[model] || pricing['gpt-3.5-turbo'];
-    const inputCost = (inputTokens / 1_000_000) * modelPricing.input;
-    const outputCost = (outputTokens / 1_000_000) * modelPricing.output;
-
-    return inputCost + outputCost;
-  }
-
-  /**
-   * Calculate Anthropic cost based on model and tokens
-   */
-  private calculateAnthropicCost(raw: any): number {
-    if (raw.cost_usd) return raw.cost_usd;
-    
-    const model = raw.model || '';
-    const inputTokens = raw.usage?.input_tokens || 0;
-    const outputTokens = raw.usage?.output_tokens || 0;
-
-    // Pricing per 1M tokens
-    const pricing: Record<string, { input: number; output: number }> = {
-      'claude-3-opus': { input: 15.00, output: 75.00 },
-      'claude-3-sonnet': { input: 3.00, output: 15.00 },
-      'claude-3-haiku': { input: 0.25, output: 1.25 },
-      'claude-3-5-sonnet': { input: 3.00, output: 15.00 },
-    };
-
-    const modelPricing = pricing[model] || pricing['claude-3-haiku'];
-    const inputCost = (inputTokens / 1_000_000) * modelPricing.input;
-    const outputCost = (outputTokens / 1_000_000) * modelPricing.output;
-
-    return inputCost + outputCost;
-  }
-
-  /**
-   * Calculate Together.ai cost
-   */
-  private calculateTogetherCost(raw: any): number {
-    if (raw.cost) return raw.cost;
-    
-    // Together.ai typically charges per token, varies by model
-    const inputTokens = raw.usage?.prompt_tokens || 0;
-    const outputTokens = raw.usage?.completion_tokens || 0;
-    const avgCostPerMToken = 0.20; // Average pricing
-    
-    return ((inputTokens + outputTokens) / 1_000_000) * avgCostPerMToken;
+  private calculateThroughput(inputTokens: number, outputTokens: number, latencyMs: number): number {
+    if (latencyMs <= 0) return 0;
+    const totalTokens = inputTokens + outputTokens;
+    return (totalTokens / latencyMs) * 1000; // tokens per second
   }
 
   /**
@@ -282,7 +226,7 @@ export abstract class BaseCollector {
         time_range: stats.time_range,
       },
       stats: {
-        total_cost: stats.total_cost,
+        total_throughput: stats.total_throughput,
         total_tokens: stats.total_tokens,
         unique_providers: stats.unique_providers,
         unique_models: stats.unique_models,
@@ -297,7 +241,7 @@ export abstract class BaseCollector {
   private calculateStats(events: InferenceEvent[]) {
     const providers = new Set<string>();
     const models = new Set<string>();
-    let totalCost = 0;
+    let totalThroughput = 0;
     let totalTokens = 0;
     let minDate = new Date();
     let maxDate = new Date(0);
@@ -305,9 +249,9 @@ export abstract class BaseCollector {
     for (const event of events) {
       providers.add(event.provider);
       models.add(event.model);
-      totalCost += event.cost_usd;
+      totalThroughput += event.throughput_tps;
       totalTokens += event.input_tokens + event.output_tokens;
-      
+
       const eventDate = new Date(event.ts);
       if (eventDate < minDate) minDate = eventDate;
       if (eventDate > maxDate) maxDate = eventDate;
@@ -316,7 +260,7 @@ export abstract class BaseCollector {
     const daysDiff = Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24));
 
     return {
-      total_cost: totalCost,
+      total_throughput: totalThroughput,
       total_tokens: totalTokens,
       unique_providers: Array.from(providers),
       unique_models: Array.from(models),

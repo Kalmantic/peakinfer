@@ -79,7 +79,7 @@ Your task:
 - Batching: asyncio.gather, batch parameter, concurrent.futures, parallel requests
 - Streaming: stream=True, SSE, for chunk in response, async iteration
 - Caching: redis, memcached, gptcache, semantic cache, lru_cache, prompt caching, cache_control
-- Routing: model selection logic, router, cascade patterns, A/B testing, cost-based selection
+- Routing: model selection logic, router, cascade patterns, A/B testing, performance-based selection
 - Fallback: try/except with alternative provider, fallback_model, on_fail handlers
 - Guardrails: nemoguardrails, guardrails-ai, llm_guard, content moderation, PII detection, input validation
 
@@ -107,7 +107,7 @@ Return a JSON object with THREE fields:
       "taskKind": "<chat|completion|embedding|image|audio|other>",
       "confidence": <0.0-1.0>,
       "code": "<the actual code snippet>",
-      "optimizationSuggestion": "<specific advice based on task complexity. Suggest the cheapest viable model regardless of provider (e.g. 'switch to Llama-3-8b or Gemini Flash for this simple task')>"
+      "optimizationSuggestion": "<specific advice based on task complexity. Suggest the fastest viable model regardless of provider (e.g. 'switch to Llama-3-8b or Gemini Flash for this simple task')>"
     }
   ],
   "techStack": {
@@ -174,7 +174,7 @@ Pattern types:
 - batching: client_side, server_side, continuous, offline_batch_api, other
 - streaming: sse, websocket, chunked, other
 - caching: exact_match, semantic, kv_cache, prompt_caching, disk, other
-- routing: static, cost_based, latency_based, quality_based, cascade, ab_test, other
+- routing: static, performance_based, latency_based, quality_based, cascade, ab_test, other
 - fallback: provider_fallback, model_fallback, graceful_degradation, other
 - guardrails: input_validation, output_validation, pii_detection, content_moderation, nemo, guardrails_ai, other
 
@@ -215,6 +215,7 @@ export async function analyzeWithAgent(
 
   let resultText = '';
   let totalCost = 0;
+  let turnCount = 0;
 
   try {
     // Use the agent SDK to analyze
@@ -237,22 +238,43 @@ export async function analyzeWithAgent(
     })) {
       // Handle different message types
       if (message.type === 'assistant') {
+        turnCount++;
         // Extract text content from assistant message
         const textContent = (message.message.content as Array<{ type: string; text?: string }>)
           .filter((c): c is { type: 'text'; text: string } => c.type === 'text')
           .map((c) => c.text)
           .join('');
 
-        if (textContent) {
-          onProgress?.('analyzing...');
+        // Extract tool use to show what file is being analyzed
+        const toolUses = (message.message.content as Array<{ type: string; name?: string; input?: any }>)
+          .filter((c) => c.type === 'tool_use');
+
+        if (toolUses.length > 0) {
+          const tool = toolUses[0];
+          const fileName = tool.input?.file_path || tool.input?.path || tool.input?.pattern || '';
+          const shortName = fileName.split('/').pop() || fileName;
+          onProgress?.(`Turn ${turnCount}/${maxTurns}: ${tool.name} ${shortName ? `→ ${shortName}` : ''}`);
+        } else if (textContent) {
+          onProgress?.(`Turn ${turnCount}/${maxTurns}: Analyzing...`);
         }
       } else if (message.type === 'result') {
         if (message.subtype === 'success') {
           resultText = message.result;
           totalCost = message.total_cost_usd;
           onProgress?.(`Analysis complete (cost: $${totalCost.toFixed(4)})`);
+        } else if (message.subtype === 'error_max_turns') {
+          // Agent hit max turns - try to use partial results
+          const errorResult = message as {
+            subtype: string;
+            result?: string;
+            total_cost_usd: number;
+          };
+          totalCost = errorResult.total_cost_usd || 0;
+          // Use any partial result that might be available
+          resultText = errorResult.result || resultText || '';
+          onProgress?.(`Max turns reached, using partial results (cost: $${totalCost.toFixed(4)})`);
         } else {
-          // Handle error subtypes: error_during_execution, error_max_turns, error_max_budget_usd
+          // Handle other error subtypes: error_during_execution, error_max_budget_usd
           const errorResult = message as {
             subtype: string;
             errors?: string[];

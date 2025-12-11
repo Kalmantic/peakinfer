@@ -1,0 +1,103 @@
+{
+  "root": "/Users/thiyagarajanm/AIProjects/peakinfer/src/slc/__tests__/fixtures/r6-tensorrt-awq-gptq",
+  "tree": [
+    {
+      "name": "src",
+      "path": "src",
+      "type": "directory",
+      "children": [
+        {
+          "name": "slc",
+          "path": "slc",
+          "type": "directory",
+          "children": [
+            {
+              "name": "__tests__",
+              "path": "__tests__",
+              "type": "directory",
+              "children": [
+                {
+                  "name": "fixtures",
+                  "path": "fixtures",
+                  "type": "directory",
+                  "children": [
+                    {
+                      "name": "r6-tensorrt-awq-gptq",
+                      "path": "r6-tensorrt-awq-gptq",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "optimized_inference.py",
+                          "path": "src/slc/__tests__/fixtures/r6-tensorrt-awq-gptq/optimized_inference.py",
+                          "type": "file",
+                          "callsites": [
+                            {
+                              "line": 19,
+                              "pattern": "transformers.other.completion",
+                              "provider": "other",
+                              "model": "meta-llama/Llama-3.1-8B-Instruct"
+                            },
+                            {
+                              "line": 30,
+                              "pattern": "llama_cpp.other.completion",
+                              "provider": "other",
+                              "model": "llama-3.1-8b-instruct"
+                            },
+                            {
+                              "line": 40,
+                              "pattern": "vllm.completion",
+                              "provider": "vllm",
+                              "model": "meta-llama/Llama-3.1-70B-Instruct"
+                            },
+                            {
+                              "line": 50,
+                              "pattern": "vllm.completion",
+                              "provider": "vllm",
+                              "model": "meta-llama/Llama-3.1-70B-Instruct"
+                            },
+                            {
+                              "line": 63,
+                              "pattern": "other.completion",
+                              "provider": "other",
+                              "model": "llama-3.1-8b-exl2-4bit"
+                            },
+                            {
+                              "line": 70,
+                              "pattern": "vllm.completion",
+                              "provider": "vllm",
+                              "model": "TheBloke/Llama-3.1-8B-Instruct-AWQ"
+                            },
+                            {
+                              "line": 80,
+                              "pattern": "vllm.completion",
+                              "provider": "vllm",
+                              "model": null
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "totalCallsites": 7,
+    "providers": [
+      "other",
+      "vllm"
+    ],
+    "models": [
+      "TheBloke/Llama-3.1-8B-Instruct-AWQ",
+      "llama-3.1-8b-exl2-4bit",
+      "llama-3.1-8b-instruct",
+      "meta-llama/Llama-3.1-70B-Instruct",
+      "meta-llama/Llama-3.1-8B-Instruct"
+    ]
+  }
+}

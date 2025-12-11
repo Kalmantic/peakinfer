@@ -23,7 +23,7 @@ import {
   UtilizationMetrics,
   TrafficDistribution,
   QualityRequirement,
-  CostDriver,
+  PerformanceDriver,
   LayerOptimization,
   CrossLayerStrategy,
   ImplementationPhase,
@@ -80,7 +80,7 @@ export class MultiAgentOrchestrator {
     outputPath?: string;
   }): Promise<{
     totalEvents: number;
-    estimatedMonthlyCost: number;
+    estimatedMonthlyThroughput: number;
     discoveryResult: DiscoveryResult;
   }> {
     console.log('🔍 Starting full discovery pipeline...');
@@ -102,11 +102,11 @@ export class MultiAgentOrchestrator {
     );
 
     const totalEvents = events.length;
-    const estimatedMonthlyCost = discoveryResult.configSummary.application.total_monthly_cost;
+    const estimatedMonthlyThroughput = discoveryResult.configSummary.application.total_monthly_throughput;
 
     return {
       totalEvents,
-      estimatedMonthlyCost,
+      estimatedMonthlyThroughput,
       discoveryResult,
     };
   }
@@ -122,7 +122,7 @@ export class MultiAgentOrchestrator {
     clusters: Array<{
       name: string;
       eventCount: number;
-      monthlyCost: number;
+      monthlyThroughput: number;
     }>;
     uniqueIntents: number;
     profileResult: ProfileResult;
@@ -142,7 +142,7 @@ export class MultiAgentOrchestrator {
     const clusters = profileResult.clusters.map(c => ({
       name: c.intent || c.cluster_id,
       eventCount: c.size,
-      monthlyCost: c.monthly_cost,
+      monthlyThroughput: c.monthly_throughput,
     }));
 
     const uniqueIntents = new Set(events.map(e => e.intent).filter(Boolean)).size;
@@ -165,10 +165,10 @@ export class MultiAgentOrchestrator {
   }): Promise<{
     opportunities: Array<{
       title: string;
-      monthlySavings: number;
+      monthlyGain: number;
       layer: string;
     }>;
-    totalPotentialSavings: number;
+    totalPotentialGain: number;
     plan: OptimizationPlan;
   }> {
     console.log('📋 Starting planning pipeline...');
@@ -203,31 +203,31 @@ export class MultiAgentOrchestrator {
     const opportunities = [
       ...coordinatedPlan.applicationLayer.map(o => ({
         title: o.template_name || o.description,
-        monthlySavings: o.expected_savings,
+        monthlyGain: o.expected_gain,
         layer: 'application',
       })),
       ...coordinatedPlan.servingLayer.map(o => ({
         title: o.template_name || o.description,
-        monthlySavings: o.expected_savings,
+        monthlyGain: o.expected_gain,
         layer: 'serving',
       })),
       ...coordinatedPlan.infrastructureLayer.map(o => ({
         title: o.template_name || o.description,
-        monthlySavings: o.expected_savings,
+        monthlyGain: o.expected_gain,
         layer: 'infrastructure',
       })),
       ...coordinatedPlan.crossLayerStrategies.map(s => ({
         title: s.name,
-        monthlySavings: s.synergy_benefit,
+        monthlyGain: s.synergy_benefit,
         layer: 'cross-layer',
       })),
     ];
 
-    const totalPotentialSavings = coordinatedPlan.estimatedSavings;
+    const totalPotentialGain = coordinatedPlan.estimatedGain;
 
     return {
       opportunities,
-      totalPotentialSavings,
+      totalPotentialGain,
       plan: coordinatedPlan,
     };
   }
@@ -278,7 +278,7 @@ export class MultiAgentOrchestrator {
     const auditReport = await this.runAuditorAgent(evaluationResult);
 
     console.log('\n✅ Full pipeline complete!');
-    console.log(`💰 Total savings: $${auditReport.executiveSummary.total_cost_savings.toLocaleString()}/month`);
+    console.log(`📈 Total performance gain: ${auditReport.executiveSummary.total_performance_gain.toLocaleString()} throughput/month`);
     console.log(`📊 ROI: ${auditReport.executiveSummary.roi_percentage.toFixed(0)}%`);
 
     return auditReport;
@@ -326,7 +326,7 @@ export class MultiAgentOrchestrator {
         description: 'Cache high-frequency queries and route cache misses to appropriate models based on complexity',
         layers_involved: ['application'],
         optimizations: [cachingOpt?.optimization_id, routingOpt?.optimization_id].filter(Boolean) as string[],
-        synergy_benefit: (cachingOpt?.expected_savings || 0) * 0.15 + (routingOpt?.expected_savings || 0) * 0.1,
+        synergy_benefit: (cachingOpt?.expected_gain || 0) * 0.15 + (routingOpt?.expected_gain || 0) * 0.1,
         coordination_complexity: 'medium',
         implementation_order: ['caching', 'routing'],
       });
@@ -350,10 +350,10 @@ export class MultiAgentOrchestrator {
       crossLayerStrategies.push({
         strategy_id: 'vllm-spot-synergy',
         name: 'vLLM Migration + Spot Instance Optimization',
-        description: 'Deploy vLLM on spot instances with checkpoint-based recovery for cost-effective high-throughput serving',
+        description: 'Deploy vLLM on spot instances with checkpoint-based recovery for high-efficiency peak-throughput serving',
         layers_involved: ['serving', 'infrastructure'],
         optimizations: [vllmOpt?.optimization_id, spotOpt?.optimization_id].filter(Boolean) as string[],
-        synergy_benefit: (vllmOpt?.expected_savings || 0) * 0.2 + (spotOpt?.expected_savings || 0) * 0.15,
+        synergy_benefit: (vllmOpt?.expected_gain || 0) * 0.2 + (spotOpt?.expected_gain || 0) * 0.15,
         coordination_complexity: 'high',
         implementation_order: ['vllm-migration', 'spot-configuration'],
       });
@@ -380,7 +380,7 @@ export class MultiAgentOrchestrator {
         description: 'Combine model quantization with KV cache optimization for maximum memory efficiency',
         layers_involved: ['serving'],
         optimizations: [quantOpt?.optimization_id, memOpt?.optimization_id].filter(Boolean) as string[],
-        synergy_benefit: (quantOpt?.expected_savings || 0) * 0.25,
+        synergy_benefit: (quantOpt?.expected_gain || 0) * 0.25,
         coordination_complexity: 'medium',
         implementation_order: ['quantization', 'memory-optimization'],
       });
@@ -395,16 +395,16 @@ export class MultiAgentOrchestrator {
       crossLayerStrategies.push({
         strategy_id: 'full-stack-optimization',
         name: 'Full Stack Optimization Strategy',
-        description: 'Coordinated optimization across all layers for compound savings - application caching reduces load, serving optimization improves throughput, infrastructure right-sizing reduces costs',
+        description: 'Coordinated optimization across all layers for compound performance gains - application caching reduces load, serving optimization improves throughput, infrastructure right-sizing maximizes efficiency',
         layers_involved: ['application', 'serving', 'infrastructure'],
         optimizations: [
           topAppOpt?.optimization_id,
           topServingOpt?.optimization_id,
           topInfraOpt?.optimization_id,
         ].filter(Boolean) as string[],
-        synergy_benefit: (topAppOpt?.expected_savings || 0) * 0.1 +
-                         (topServingOpt?.expected_savings || 0) * 0.1 +
-                         (topInfraOpt?.expected_savings || 0) * 0.1,
+        synergy_benefit: (topAppOpt?.expected_gain || 0) * 0.1 +
+                         (topServingOpt?.expected_gain || 0) * 0.1 +
+                         (topInfraOpt?.expected_gain || 0) * 0.1,
         coordination_complexity: 'high',
         implementation_order: ['application-layer', 'serving-layer', 'infrastructure-layer'],
       });
@@ -420,14 +420,14 @@ export class MultiAgentOrchestrator {
     const coordinatedPlan: OptimizationPlan = {
       ...plan,
       crossLayerStrategies,
-      estimatedSavings: plan.estimatedSavings + totalSynergyBenefit,
+      estimatedGain: plan.estimatedGain + totalSynergyBenefit,
       implementationSequence,
     };
 
     // Save coordinated plan
     await fs.writeFile('optimization-plan.yaml', yaml.stringify(coordinatedPlan), 'utf-8');
     console.log(`  ✅ Cross-layer coordination complete: ${crossLayerStrategies.length} synergies identified`);
-    console.log(`  💰 Additional synergy savings: $${totalSynergyBenefit.toFixed(0)}/month`);
+    console.log(`  📈 Additional synergy gain: ${totalSynergyBenefit.toFixed(0)} throughput/month`);
 
     return coordinatedPlan;
   }
@@ -453,7 +453,7 @@ export class MultiAgentOrchestrator {
         estimated_duration_days: Math.max(...quickWins.map(o => o.implementation_time_days)),
         prerequisites_completed: true,
         parallel_execution_possible: true,
-        success_criteria: ['Cost reduction visible in monitoring', 'No quality degradation'],
+        success_criteria: ['Throughput improvement visible in monitoring', 'No quality degradation'],
       });
     }
 
@@ -479,7 +479,7 @@ export class MultiAgentOrchestrator {
         estimated_duration_days: Math.max(...plan.infrastructureLayer.map(o => o.implementation_time_days), 21),
         prerequisites_completed: false,
         parallel_execution_possible: false,
-        success_criteria: ['Cost reduction confirmed', 'Resilience maintained', 'No incidents'],
+        success_criteria: ['Performance improvement confirmed', 'Resilience maintained', 'No incidents'],
       });
     }
 
@@ -492,7 +492,7 @@ export class MultiAgentOrchestrator {
         estimated_duration_days: 7,
         prerequisites_completed: false,
         parallel_execution_possible: true,
-        success_criteria: ['Synergy benefits realized', 'Compound savings validated'],
+        success_criteria: ['Synergy benefits realized', 'Compound performance gains validated'],
       });
     }
 
@@ -524,7 +524,7 @@ export class MultiAgentOrchestrator {
         input_tokens: 500, // Estimated default
         output_tokens: 100, // Estimated default
         latency_ms: 500,
-        cost_usd: call.estimatedCost || 0.01,
+        throughput_tps: call.estimatedThroughput || 50,
         endpoint: `api.${call.apiProvider || 'unknown'}.com`,
         region: 'us-west-2',
         tenant: 'default',
@@ -632,7 +632,7 @@ You combine TWO types of analysis:
 Focus on:
 1. Infrastructure configuration summary across Application, Serving, and Infrastructure layers
 2. Workload pattern analysis from inference events + static code patterns
-3. Cost driver identification (actual usage + code-level inefficiencies)
+3. Performance driver identification (actual usage + code-level inefficiencies)
 4. Performance bottleneck analysis (runtime + code patterns)
 5. Optimization opportunity mapping across all layers
 6. Code-level improvements (add caching, optimize API calls, fix inefficient patterns)
@@ -678,18 +678,18 @@ Generate a comprehensive analysis including:
 1. **Configuration Summary**:
    - Application layer: Runtimes, model usage, API patterns (from events + code)
    - Serving layer: Frameworks, model formats, performance baseline
-   - Infrastructure layer: GPU inventory, utilization, costs
+   - Infrastructure layer: GPU inventory, utilization, performance metrics
 
 2. **Workload Profile**:
    - Request patterns and traffic distribution (runtime events)
    - Static code patterns (LLM API call locations and frequency)
    - Quality requirements and constraints
-   - Cost sensitivity and latency tolerance
+   - Throughput sensitivity and latency tolerance
 
 3. **Optimization Opportunities** (CRITICAL - Merge runtime + code insights):
-   - Application layer: 
+   - Application layer:
      * Caching (especially where code has NO caching but high call volume)
-     * Model routing (detect expensive models that could use cheaper alternatives)
+     * Model routing (detect slower models that could use faster alternatives)
      * Prompt optimization
    - Serving layer: Runtime migration, quantization, batching
    - Infrastructure layer: Spot instances, auto-scaling, right-sizing
@@ -700,10 +700,10 @@ Generate a comprehensive analysis including:
      * Configuration improvements
    - Cross-layer: Compound optimizations across layers
 
-4. **Cost Drivers**:
-   - Runtime cost contributors (from events)
-   - Code-level cost contributors (API calls without optimization)
-   - Identify top opportunities with estimated savings
+4. **Performance Drivers**:
+   - Runtime throughput contributors (from events)
+   - Code-level performance contributors (API calls without optimization)
+   - Identify top opportunities with estimated gains
 
 5. **Codebase Insights** (if codebase was scanned):
    - Files with highest LLM usage
@@ -802,7 +802,7 @@ ${JSON.stringify(limitedEvents, null, 2)}
 
 Aggregate Stats:
 - Total events: ${events.length}
-- Total cost (sample): $${stats.totalCost.toFixed(2)}
+- Total throughput (sample): ${stats.totalThroughput.toFixed(2)} TPS
 - Average latency: ${stats.avgLatencyMs.toFixed(2)} ms
 - Average input tokens: ${stats.avgInputTokens.toFixed(2)}
 - Average output tokens: ${stats.avgOutputTokens.toFixed(2)}
@@ -814,7 +814,7 @@ Generate JSON with:
 2. workloadStats (totals, averages, peak hours)
 3. clusters[] with representative prompts and recommended actions
 4. samplePrompts[] (at least 5) referencing cluster IDs
-5. recommendations[] with impact and estimated savings
+5. recommendations[] with impact and estimated performance gains
 
 Ensure JSON strictly matches the ProfileResult interface.`;
 
@@ -876,7 +876,7 @@ Focus on:
 6. Risk assessment and rollback procedures
 7. Economic impact projections with confidence intervals
 
-Prioritize based on ROI, implementation complexity, and risk.`;
+Prioritize based on throughput impact, implementation complexity, and risk.`;
 
     const prompt = `Create a comprehensive optimization plan using discovery results and community templates:
 
@@ -888,7 +888,7 @@ ${JSON.stringify(communityTemplates.slice(0, 10).map(t => ({
   id: t.id,
   name: t.name,
   category: t.category,
-  expected_savings: t.optimization.expected_cost_reduction,
+  expected_throughput_improvement: t.optimization.expected_throughput_improvement,
   confidence: t.confidence,
 })), null, 2)}
 
@@ -900,7 +900,7 @@ Create an optimization plan with:
    - Infrastructure: Spot instances, reserved capacity, auto-scaling policies
 
 2. **Cross-Layer Strategies**:
-   - Coordination between layers for compound savings
+   - Coordination between layers for compound gains
    - Implementation dependencies
    - Synergy opportunities
 
@@ -911,9 +911,9 @@ Create an optimization plan with:
    - Rollback procedures
 
 4. **Economic Projections**:
-   - Baseline vs optimized costs
-   - Expected savings by layer
-   - Implementation costs
+   - Baseline vs optimized throughput
+   - Expected gains by layer
+   - Implementation effort
    - ROI and payback period
    - Confidence intervals
 
@@ -942,10 +942,10 @@ Format the output as a structured JSON object matching the OptimizationPlan inte
       // Save to file
       await fs.writeFile('optimization-plan.yaml', yaml.stringify(plan), 'utf-8');
       console.log('✅ Planning complete. Plan saved to optimization-plan.yaml');
-      console.log(`💰 Estimated savings: $${plan.estimatedSavings.toLocaleString()}/month`);
+      console.log(`📈 Estimated performance gain: ${plan.estimatedGain.toLocaleString()} throughput/month`);
       console.log(`🔧 Implementation complexity: ${plan.implementationComplexity}`);
       this.logVerbose('Planner output summary', {
-        estimatedSavings: plan.estimatedSavings,
+        estimatedGain: plan.estimatedGain,
         applicationLayer: plan.applicationLayer.length,
         servingLayer: plan.servingLayer.length,
         infrastructureLayer: plan.infrastructureLayer.length,
@@ -984,7 +984,7 @@ Focus on:
 1. Baseline performance measurement
 2. Optimization candidate testing with bandit-style early stopping
 3. Quality evaluation using LLM judges and rule-based metrics
-4. Cost and latency comparison
+4. Throughput and latency comparison
 5. Statistical significance testing
 6. Risk assessment based on performance variance
 
@@ -1001,7 +1001,7 @@ ${JSON.stringify(samplePrompts.slice(0, 5), null, 2)}
 Execute the following evaluation process:
 
 1. **Baseline Measurement**:
-   - Measure current performance (cost, latency, quality)
+   - Measure current performance (throughput, latency, quality)
    - Establish statistical baseline
    - Document current behavior
 
@@ -1054,8 +1054,8 @@ Format the output as a structured JSON object matching the EvaluationResult inte
       await fs.writeFile('evaluation-report.yaml', yaml.stringify(evaluation), 'utf-8');
       console.log('✅ Evaluation complete. Results saved to evaluation-report.yaml');
       this.logVerbose('Runner/Evaluator output summary', {
-        baselineCost: evaluation.baseline.total_cost,
-        optimizedCost: evaluation.optimized.total_cost,
+        baselineThroughput: evaluation.baseline.total_throughput,
+        optimizedThroughput: evaluation.optimized.total_throughput,
         qualityPreserved: evaluation.qualityEvaluation.overall_quality_preserved,
       });
       
@@ -1073,8 +1073,8 @@ Format the output as a structured JSON object matching the EvaluationResult inte
   async runAuditorAgent(evaluationResults: EvaluationResult): Promise<AuditReport> {
     console.log('📊 Running Auditor Agent...');
     this.logVerbose('Auditor Agent invoked', {
-      baselineCost: evaluationResults.baseline.total_cost,
-      optimizedCost: evaluationResults.optimized.total_cost,
+      baselineThroughput: evaluationResults.baseline.total_throughput,
+      optimizedThroughput: evaluationResults.optimized.total_throughput,
       qualityPreserved: evaluationResults.qualityEvaluation.overall_quality_preserved,
     });
 
@@ -1082,7 +1082,7 @@ Format the output as a structured JSON object matching the EvaluationResult inte
 
 Focus on:
 1. Executive summary of optimization results
-2. Detailed cost savings breakdown
+2. Detailed performance gains breakdown
 3. Implementation artifacts (router configs, terraform diffs, cache settings)
 4. Monitoring and alerting recommendations
 5. Rollback procedures and risk mitigation
@@ -1098,17 +1098,17 @@ ${JSON.stringify(evaluationResults, null, 2)}
 Generate comprehensive audit report including:
 
 1. **Executive Summary**:
-   - Total cost savings and ROI
+   - Total performance gains and ROI
    - Payback period
    - Quality preservation status
    - Key achievements
    - Next steps
 
 2. **Detailed Results**:
-   - Savings by layer (Application, Serving, Infrastructure)
+   - Gains by layer (Application, Serving, Infrastructure)
    - Cross-layer synergy benefits
    - Performance improvements
-   - Cost breakdown
+   - Throughput breakdown
 
 3. **Implementation Artifacts**:
    - Router configuration files
@@ -1396,7 +1396,7 @@ Format the output as a structured JSON object matching the AuditReport interface
         },
         workloadStats: parsed.workloadStats || {
           total_events: 0,
-          total_cost: 0,
+          total_throughput: 0,
           avg_latency_ms: 0,
           avg_input_tokens: 0,
           avg_output_tokens: 0,
@@ -1426,7 +1426,7 @@ Format the output as a structured JSON object matching the AuditReport interface
         servingLayer: parsed.servingLayer || [],
         infrastructureLayer: parsed.infrastructureLayer || [],
         crossLayerStrategies: parsed.crossLayerStrategies || [],
-        estimatedSavings: parsed.estimatedSavings || 0,
+        estimatedGain: parsed.estimatedGain || parsed.estimatedSavings || 0,
         implementationComplexity: parsed.implementationComplexity || 'moderate',
         implementationSequence: parsed.implementationSequence || [],
         riskAssessment: parsed.riskAssessment || {},
@@ -1538,7 +1538,7 @@ Format the output as a structured JSON object matching the AuditReport interface
     // Generate terraform diffs
     if (report.implementationArtifacts.terraform_diffs) {
       const diffContent = report.implementationArtifacts.terraform_diffs
-        .map(diff => `# ${diff.resource}\n${diff.changes}\n# Estimated savings: $${diff.estimated_savings}/month\n`)
+        .map(diff => `# ${diff.resource}\n${diff.changes}\n# Estimated performance gain: ${diff.estimated_gain} throughput/month\n`)
         .join('\n---\n\n');
       
       await fs.writeFile(
@@ -1615,18 +1615,18 @@ Format the output as a structured JSON object matching the AuditReport interface
     infrastructureData?: any,
     codebaseAnalysis?: CodebaseAnalysis | null
   ): DiscoveryResult['configSummary'] {
-    const totalCost = events.reduce((sum, event) => sum + (event.cost_usd || 0), 0);
+    const totalThroughput = events.reduce((sum, event) => sum + (event.throughput_tps || 0), 0);
 
     return {
-      application: this.buildApplicationSummary(events, totalCost, codebaseAnalysis),
+      application: this.buildApplicationSummary(events, totalThroughput, codebaseAnalysis),
       serving: this.buildServingSummary(events),
-      infrastructure: this.buildInfrastructureSummary(events, totalCost, infrastructureData),
+      infrastructure: this.buildInfrastructureSummary(events, totalThroughput, infrastructureData),
     };
   }
 
   private buildApplicationSummary(
     events: InferenceEvent[],
-    totalCost: number,
+    totalThroughput: number,
     codebaseAnalysis?: CodebaseAnalysis | null
   ): ApplicationSummary {
     if (!events.length) {
@@ -1634,8 +1634,8 @@ Format the output as a structured JSON object matching the AuditReport interface
         runtimes: ['unknown'],
         model_usage: [],
         api_patterns: [],
-        cost_drivers: [],
-        total_monthly_cost: 0,
+        performance_drivers: [],
+        total_monthly_throughput: 0,
       };
     }
 
@@ -1644,14 +1644,14 @@ Format the output as a structured JSON object matching the AuditReport interface
       model: string;
       provider: string;
       request_count: number;
-      total_cost: number;
+      total_throughput: number;
       latency_sum: number;
       optimization_candidates: Set<string>;
     }>();
     const endpointMap = new Map<string, {
       endpoint: string;
       call_volume: number;
-      cost_contribution: number;
+      throughput_contribution: number;
       intents: Set<string>;
     }>();
 
@@ -1662,18 +1662,18 @@ Format the output as a structured JSON object matching the AuditReport interface
           model: event.model || 'unknown',
           provider: event.provider || 'unknown',
           request_count: 0,
-          total_cost: 0,
+          total_throughput: 0,
           latency_sum: 0,
           optimization_candidates: new Set<string>(),
         });
       }
       const usage = modelUsageMap.get(key)!;
       usage.request_count += 1;
-      usage.total_cost += event.cost_usd || 0;
+      usage.total_throughput += event.throughput_tps || 0;
       usage.latency_sum += event.latency_ms || 0;
 
       if ((event.model || '').toLowerCase().includes('gpt-4') || (event.model || '').toLowerCase().includes('opus')) {
-        usage.optimization_candidates.add('Route tolerant traffic to lower-cost models');
+        usage.optimization_candidates.add('Route tolerant traffic to faster models');
       }
       if ((event.latency_ms || 0) > 2000) {
         usage.optimization_candidates.add('Batch or parallelize high latency workloads');
@@ -1687,13 +1687,13 @@ Format the output as a structured JSON object matching the AuditReport interface
           endpointMap.set(event.endpoint, {
             endpoint: event.endpoint,
             call_volume: 0,
-            cost_contribution: 0,
+            throughput_contribution: 0,
             intents: new Set<string>(),
           });
         }
         const endpointStats = endpointMap.get(event.endpoint)!;
         endpointStats.call_volume += 1;
-        endpointStats.cost_contribution += event.cost_usd || 0;
+        endpointStats.throughput_contribution += event.throughput_tps || 0;
         if (event.intent) {
           endpointStats.intents.add(event.intent);
         }
@@ -1704,7 +1704,7 @@ Format the output as a structured JSON object matching the AuditReport interface
       model: usage.model,
       provider: usage.provider,
       request_count: usage.request_count,
-      total_cost: Number(usage.total_cost.toFixed(4)),
+      total_throughput: Number(usage.total_throughput.toFixed(4)),
       avg_latency: usage.request_count ? usage.latency_sum / usage.request_count : 0,
       optimization_candidates: Array.from(usage.optimization_candidates),
     }));
@@ -1712,7 +1712,7 @@ Format the output as a structured JSON object matching the AuditReport interface
     const api_patterns = Array.from(endpointMap.values()).map(pattern => ({
       endpoint: pattern.endpoint,
       call_volume: pattern.call_volume,
-      cost_contribution: Number(pattern.cost_contribution.toFixed(4)),
+      throughput_contribution: Number(pattern.throughput_contribution.toFixed(4)),
       cacheable_percentage: Math.min(
         90,
         pattern.call_volume > 10 ? 40 + pattern.intents.size * 5 : 25
@@ -1723,14 +1723,14 @@ Format the output as a structured JSON object matching the AuditReport interface
       ],
     }));
 
-    const cost_drivers = this.buildCostDrivers(model_usage, totalCost, codebaseAnalysis);
+    const performance_drivers = this.buildPerformanceDrivers(model_usage, totalThroughput, codebaseAnalysis);
 
     return {
       runtimes,
       model_usage,
       api_patterns,
-      cost_drivers,
-      total_monthly_cost: Number(totalCost.toFixed(4)),
+      performance_drivers,
+      total_monthly_throughput: Number(totalThroughput.toFixed(4)),
     };
   }
 
@@ -1793,7 +1793,7 @@ Format the output as a structured JSON object matching the AuditReport interface
 
   private buildInfrastructureSummary(
     events: InferenceEvent[],
-    totalCost: number,
+    totalThroughput: number,
     infrastructureData?: any
   ): InfrastructureSummary {
     const tenants = Array.from(new Set(events.map(event => event.tenant).filter(Boolean)));
@@ -1803,8 +1803,8 @@ Format the output as a structured JSON object matching the AuditReport interface
       typeof resource.type === 'string' && resource.type.toLowerCase().includes('gpu')
     );
 
-    const total_monthly_cost = Number(
-      (infrastructureData?.totals?.monthly || totalCost * 0.45).toFixed(4)
+    const total_monthly_throughput = Number(
+      (infrastructureData?.totals?.monthly || totalThroughput * 0.45).toFixed(4)
     );
 
     const gpu_inventory: GPUSummary[] = gpuResources.length
@@ -1812,7 +1812,7 @@ Format the output as a structured JSON object matching the AuditReport interface
           type: resource.type || `gpu-cluster-${index + 1}`,
           count: resource.count || 1,
           utilization: resource.utilization || 55,
-          monthly_cost: resource.monthly_cost || Number((total_monthly_cost / gpuResources.length).toFixed(2)),
+          monthly_throughput: resource.monthly_throughput || Number((total_monthly_throughput / gpuResources.length).toFixed(2)),
           optimization_opportunities: resource.optimization_opportunities || ['Consolidate workloads', 'Adopt spot or reserved capacity'],
         }))
       : [
@@ -1820,7 +1820,7 @@ Format the output as a structured JSON object matching the AuditReport interface
             type: 'managed-provider',
             count: tenants.length || 1,
             utilization: 55,
-            monthly_cost: total_monthly_cost,
+            monthly_throughput: total_monthly_throughput,
             optimization_opportunities: ['Introduce autoscaling policies', 'Consider spot-capable serving'],
           },
         ];
@@ -1836,9 +1836,9 @@ Format the output as a structured JSON object matching the AuditReport interface
     return {
       total_resources: resources.length || tenants.length || 1,
       gpu_inventory,
-      total_monthly_cost,
+      total_monthly_throughput,
       utilization_metrics,
-      optimization_potential: Math.min(0.95, 0.5 + (total_monthly_cost > 0 ? 0.00002 * total_monthly_cost : 0.15)),
+      optimization_potential: Math.min(0.95, 0.5 + (total_monthly_throughput > 0 ? 0.00002 * total_monthly_throughput : 0.15)),
     };
   }
 
@@ -1854,7 +1854,7 @@ Format the output as a structured JSON object matching the AuditReport interface
           burst_patterns: false,
         },
         quality_requirements: [],
-        cost_sensitivity: 0.5,
+        throughput_sensitivity: 0.5,
         latency_tolerance: 1200,
       };
     }
@@ -1895,13 +1895,13 @@ Format the output as a structured JSON object matching the AuditReport interface
 
     const traffic_distribution = this.buildTrafficDistribution(events);
     const latencies = events.map(event => event.latency_ms || 0).sort((a, b) => a - b);
-    const totalCost = events.reduce((sum, event) => sum + (event.cost_usd || 0), 0);
+    const totalThroughput = events.reduce((sum, event) => sum + (event.throughput_tps || 0), 0);
 
     return {
       request_patterns,
       traffic_distribution,
       quality_requirements: this.deriveQualityRequirements(events),
-      cost_sensitivity: Math.min(1, Number(((totalCost / (totalEvents || 1)) / 0.1).toFixed(2))),
+      throughput_sensitivity: Math.min(1, Number(((totalThroughput / (totalEvents || 1)) / 100).toFixed(2))),
       latency_tolerance: Math.max(800, this.getPercentile(latencies, 0.95) + 200),
     };
   }
@@ -1914,14 +1914,14 @@ Format the output as a structured JSON object matching the AuditReport interface
       return [];
     }
 
-    const totalCost = events.reduce((sum, event) => sum + (event.cost_usd || 0), 0);
+    const totalThroughput = events.reduce((sum, event) => sum + (event.throughput_tps || 0), 0);
     const modelUsage = new Map<string, number>();
     for (const event of events) {
       const key = `${event.provider || 'unknown'}::${event.model || 'unknown'}`;
-      modelUsage.set(key, (modelUsage.get(key) || 0) + (event.cost_usd || 0));
+      modelUsage.set(key, (modelUsage.get(key) || 0) + (event.throughput_tps || 0));
     }
 
-    const expensiveModels = Array.from(modelUsage.entries())
+    const slowModels = Array.from(modelUsage.entries())
       .filter(([key]) => key.toLowerCase().includes('gpt-4') || key.toLowerCase().includes('opus'))
       .sort((a, b) => b[1] - a[1]);
 
@@ -1930,13 +1930,13 @@ Format the output as a structured JSON object matching the AuditReport interface
     if (events.length) {
       const repeatIntents = this.identifyRepeatIntents(events);
       if (repeatIntents.reusableTraffic > 0.15 || (codebaseAnalysis?.cachingOpportunities?.length || 0) > 0) {
-        const estimatedSavings = Number((totalCost * 0.25).toFixed(4));
+        const estimatedGain = Number((totalThroughput * 0.25).toFixed(4));
         opportunities.push({
           layer: 'application',
           category: 'semantic-caching',
-          description: `Introduce caching for ${repeatIntents.topIntent || 'high-overlap'} prompts to eliminate repeated expensive calls`,
-          estimated_savings_monthly: estimatedSavings,
-          estimated_savings_percentage: totalCost ? Number(((estimatedSavings / totalCost) * 100).toFixed(2)) : 0,
+          description: `Introduce caching for ${repeatIntents.topIntent || 'high-overlap'} prompts to eliminate repeated slow calls`,
+          estimated_gain_monthly: estimatedGain,
+          estimated_gain_percentage: totalThroughput ? Number(((estimatedGain / totalThroughput) * 100).toFixed(2)) : 0,
           implementation_complexity: 'medium',
           risk_level: 'low',
           applicable_templates: ['application-layer/semantic-caching', 'application-layer/prompt-optimization'],
@@ -1945,15 +1945,15 @@ Format the output as a structured JSON object matching the AuditReport interface
       }
     }
 
-    if (expensiveModels.length) {
-      const highCost = expensiveModels.slice(0, 2).reduce((sum, [, cost]) => sum + cost, 0);
-      const estimatedSavings = Number((highCost * 0.35).toFixed(4));
+    if (slowModels.length) {
+      const highThroughput = slowModels.slice(0, 2).reduce((sum, [, throughput]) => sum + throughput, 0);
+      const estimatedGain = Number((highThroughput * 0.35).toFixed(4));
       opportunities.push({
         layer: 'cross-layer',
         category: 'model-routing',
-        description: 'Route tolerant workloads from premium models to cheaper alternates (e.g., GPT-4o → GPT-4o-mini, Claude Opus → Sonnet)',
-        estimated_savings_monthly: estimatedSavings,
-        estimated_savings_percentage: totalCost ? Number(((estimatedSavings / totalCost) * 100).toFixed(2)) : 0,
+        description: 'Route tolerant workloads from slower models to faster alternates (e.g., GPT-4o → GPT-4o-mini, Claude Opus → Sonnet)',
+        estimated_gain_monthly: estimatedGain,
+        estimated_gain_percentage: totalThroughput ? Number(((estimatedGain / totalThroughput) * 100).toFixed(2)) : 0,
         implementation_complexity: 'medium',
         risk_level: 'medium',
         applicable_templates: ['cross-layer/model-routing', 'serving-layer/vllm-migration'],
@@ -1961,13 +1961,13 @@ Format the output as a structured JSON object matching the AuditReport interface
       });
     }
 
-    const infraSavings = Number(((totalCost || 1000) * 0.2).toFixed(4));
+    const infraGain = Number(((totalThroughput || 1000) * 0.2).toFixed(4));
     opportunities.push({
       layer: 'infrastructure',
       category: 'infra-optimization',
       description: 'Adopt autoscaling and spot-friendly serving infrastructure (Databricks/Modal/Terraform)',
-      estimated_savings_monthly: infraSavings,
-      estimated_savings_percentage: totalCost ? Number(((infraSavings / totalCost) * 100).toFixed(2)) : 0,
+      estimated_gain_monthly: infraGain,
+      estimated_gain_percentage: totalThroughput ? Number(((infraGain / totalThroughput) * 100).toFixed(2)) : 0,
       implementation_complexity: 'medium',
       risk_level: 'medium',
       applicable_templates: ['infrastructure-layer/spot-instance-optimization', 'cross-layer/databricks-vllm-optimization'],
@@ -1975,13 +1975,13 @@ Format the output as a structured JSON object matching the AuditReport interface
     });
 
     if ((codebaseAnalysis?.optimizationOpportunities?.length || 0) > 0) {
-      const codeSavings = Number((totalCost * 0.1 || 1000).toFixed(4));
+      const codeGain = Number((totalThroughput * 0.1 || 1000).toFixed(4));
       opportunities.push({
         layer: 'application',
         category: 'code-refactor',
         description: 'Implement code-level optimizations surfaced by codebase analysis (missing caching, retries, configuration cleanup)',
-        estimated_savings_monthly: codeSavings,
-        estimated_savings_percentage: totalCost ? Number(((codeSavings / totalCost) * 100).toFixed(2)) : 0,
+        estimated_gain_monthly: codeGain,
+        estimated_gain_percentage: totalThroughput ? Number(((codeGain / totalThroughput) * 100).toFixed(2)) : 0,
         implementation_complexity: 'low',
         risk_level: 'low',
         applicable_templates: ['application-layer/codebase-hardening', 'application-layer/prompt-optimization'],
@@ -2053,26 +2053,26 @@ Format the output as a structured JSON object matching the AuditReport interface
     return requirements;
   }
 
-  private buildCostDrivers(
+  private buildPerformanceDrivers(
     modelUsage: Array<{
       model: string;
       provider: string;
       request_count: number;
-      total_cost: number;
+      total_throughput: number;
       avg_latency: number;
       optimization_candidates: string[];
     }>,
-    totalCost: number,
+    totalThroughput: number,
     codebaseAnalysis?: CodebaseAnalysis | null
-  ): CostDriver[] {
-    const drivers: CostDriver[] = modelUsage
-      .sort((a, b) => b.total_cost - a.total_cost)
+  ): PerformanceDriver[] {
+    const drivers: PerformanceDriver[] = modelUsage
+      .sort((a, b) => b.total_throughput - a.total_throughput)
       .slice(0, 3)
-      .map((usage, index): CostDriver => ({
+      .map((usage, index): PerformanceDriver => ({
         category: 'model',
         description: `${usage.provider}:${usage.model}`,
-        monthly_cost: Number(usage.total_cost.toFixed(4)),
-        percentage_of_total: totalCost ? Number(((usage.total_cost / totalCost) * 100).toFixed(2)) : 0,
+        monthly_throughput: Number(usage.total_throughput.toFixed(4)),
+        percentage_of_total: totalThroughput ? Number(((usage.total_throughput / totalThroughput) * 100).toFixed(2)) : 0,
         optimization_potential: 0.6 - index * 0.1,
       }));
 
@@ -2080,8 +2080,8 @@ Format the output as a structured JSON object matching the AuditReport interface
       drivers.push({
         category: 'tokens',
         description: 'Redundant prompts without caching',
-        monthly_cost: Number((totalCost * 0.2).toFixed(4)),
-        percentage_of_total: totalCost ? Number(((totalCost * 0.2) / totalCost) * 100) : 0,
+        monthly_throughput: Number((totalThroughput * 0.2).toFixed(4)),
+        percentage_of_total: totalThroughput ? Number(((totalThroughput * 0.2) / totalThroughput) * 100) : 0,
         optimization_potential: 0.75,
       });
     }
@@ -2181,8 +2181,8 @@ Format the output as a structured JSON object matching the AuditReport interface
           runtimes: ['openai', 'anthropic'],
           model_usage: [],
           api_patterns: [],
-          cost_drivers: [],
-          total_monthly_cost: 10000,
+          performance_drivers: [],
+          total_monthly_throughput: 10000,
         },
         serving: {
           frameworks: ['transformers'],
@@ -2202,7 +2202,7 @@ Format the output as a structured JSON object matching the AuditReport interface
         infrastructure: {
           total_resources: 3,
           gpu_inventory: [],
-          total_monthly_cost: 5000,
+          total_monthly_throughput: 5000,
           utilization_metrics: {
             cpu_avg: 40,
             gpu_avg: 30,
@@ -2223,7 +2223,7 @@ Format the output as a structured JSON object matching the AuditReport interface
           burst_patterns: false,
         },
         quality_requirements: [],
-        cost_sensitivity: 0.7,
+        throughput_sensitivity: 0.7,
         latency_tolerance: 1000,
       },
       optimizationOpportunities: [],
@@ -2245,7 +2245,7 @@ Format the output as a structured JSON object matching the AuditReport interface
       servingLayer: [],
       infrastructureLayer: [],
       crossLayerStrategies: [],
-      estimatedSavings: 5000,
+      estimatedGain: 5000,
       implementationComplexity: 'moderate',
       implementationSequence: [],
       riskAssessment: {
@@ -2255,11 +2255,11 @@ Format the output as a structured JSON object matching the AuditReport interface
         rollback_procedures: [],
       },
       economicProjections: {
-        baseline_monthly_cost: 10000,
-        optimized_monthly_cost: 5000,
-        monthly_savings: 5000,
-        annual_savings: 60000,
-        implementation_cost: 10000,
+        baseline_monthly_throughput: 10000,
+        optimized_monthly_throughput: 15000,
+        monthly_gain: 5000,
+        annual_gain: 60000,
+        implementation_effort: 10000,
         payback_period_months: 2,
         roi_percentage: 500,
         confidence_interval: {
@@ -2282,25 +2282,25 @@ Format the output as a structured JSON object matching the AuditReport interface
       evaluation_id: `eval-${Date.now()}`,
       plan_id: '',
       baseline: {
-        cost_per_request: 0.05,
+        throughput_per_request: 50,
         latency_p50: 200,
         latency_p95: 500,
         latency_p99: 1000,
         throughput_rps: 10,
         error_rate: 0.01,
         quality_score: 0.9,
-        total_cost: 10000,
+        total_throughput: 10000,
         sample_count: 1000,
       },
       optimized: {
-        cost_per_request: 0.02,
+        throughput_per_request: 75,
         latency_p50: 150,
         latency_p95: 400,
         latency_p99: 800,
         throughput_rps: 15,
         error_rate: 0.01,
         quality_score: 0.88,
-        total_cost: 5000,
+        total_throughput: 15000,
         sample_count: 1000,
       },
       optimizationResults: [],
@@ -2333,14 +2333,14 @@ Format the output as a structured JSON object matching the AuditReport interface
     return {
       report_id: `report-${Date.now()}`,
       executiveSummary: {
-        total_cost_savings: 5000,
-        cost_reduction_percentage: 50,
+        total_performance_gain: 5000,
+        throughput_improvement_percentage: 50,
         payback_period_months: 2,
         roi_percentage: 500,
         quality_preserved: true,
         optimizations_applied: 5,
         optimizations_successful: 5,
-        key_achievements: ['Reduced costs by 50%', 'Maintained quality', 'Improved latency'],
+        key_achievements: ['Improved throughput by 50%', 'Maintained quality', 'Improved latency'],
         risks_mitigated: [],
         next_steps: ['Monitor metrics', 'Apply remaining optimizations'],
       },
@@ -2348,28 +2348,28 @@ Format the output as a structured JSON object matching the AuditReport interface
         by_layer: {
           application: {
             optimizations_applied: 2,
-            cost_savings: 2000,
-            savings_percentage: 40,
+            performance_gain: 2000,
+            gain_percentage: 40,
             quality_impact: 0,
             key_improvements: [],
           },
           serving: {
             optimizations_applied: 2,
-            cost_savings: 2000,
-            savings_percentage: 40,
+            performance_gain: 2000,
+            gain_percentage: 40,
             quality_impact: 0,
             key_improvements: [],
           },
           infrastructure: {
             optimizations_applied: 1,
-            cost_savings: 1000,
-            savings_percentage: 20,
+            performance_gain: 1000,
+            gain_percentage: 20,
             quality_impact: 0,
             key_improvements: [],
           },
         },
         cross_layer_benefits: {
-          synergy_savings: 500,
+          synergy_gain: 500,
           coordination_effectiveness: 0.8,
           compound_benefits: [],
         },
@@ -2379,11 +2379,11 @@ Format the output as a structured JSON object matching the AuditReport interface
           utilization_improvement_percentage: 100,
           efficiency_gains: [],
         },
-        cost_breakdown: {
+        throughput_breakdown: {
           baseline_monthly: 10000,
-          optimized_monthly: 5000,
-          savings_by_category: {},
-          savings_by_optimization: {},
+          optimized_monthly: 15000,
+          gain_by_category: {},
+          gain_by_optimization: {},
         },
       },
       implementationArtifacts: {
@@ -2420,7 +2420,7 @@ Format the output as a structured JSON object matching the AuditReport interface
       },
       workloadStats: {
         total_events: 100,
-        total_cost: 250,
+        total_throughput: 5000,
         avg_latency_ms: 850,
         p95_latency_ms: 1600,
         avg_input_tokens: 1200,
@@ -2438,8 +2438,8 @@ Format the output as a structured JSON object matching the AuditReport interface
           representative_prompt: 'Summarize the following customer support transcript...',
           avg_input_tokens: 1800,
           avg_output_tokens: 200,
-          cost_per_request: 0.45,
-          monthly_cost: 1200,
+          throughput_per_request: 45,
+          monthly_throughput: 1200,
           dominant_provider: 'openai',
           dominant_model: 'gpt-4',
           recommended_action: 'Introduce hybrid routing to gpt-4o-mini + cache repeated requests',
@@ -2453,7 +2453,7 @@ Format the output as a structured JSON object matching the AuditReport interface
           model: 'gpt-4',
           prompt: 'Summarize the meeting notes below...',
           tokens: { input: 2000, output: 180 },
-          cost_usd: 0.52,
+          throughput_tps: 52,
         },
       ],
       recommendations: [
@@ -2461,7 +2461,7 @@ Format the output as a structured JSON object matching the AuditReport interface
           recommendation_id: 'rec-1',
           description: 'Introduce semantic caching for docs with >30% repetition',
           impact: 'high',
-          estimated_savings: 1200,
+          estimated_gain: 1200,
           action_items: ['Implement SemanticCache', 'Store embeddings in Redis'],
           related_clusters: ['cluster-1'],
           suggested_templates: ['semantic-caching-optimization'],
@@ -2471,7 +2471,7 @@ Format the output as a structured JSON object matching the AuditReport interface
   }
 
   private calculateEventStats(events: InferenceEvent[]) {
-    let totalCost = 0;
+    let totalThroughput = 0;
     let totalLatency = 0;
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
@@ -2479,7 +2479,7 @@ Format the output as a structured JSON object matching the AuditReport interface
     const intentCounts = new Map<string, number>();
 
     for (const event of events) {
-      totalCost += event.cost_usd || 0;
+      totalThroughput += event.throughput_tps || 0;
       totalLatency += event.latency_ms || 0;
       totalInputTokens += event.input_tokens || 0;
       totalOutputTokens += event.output_tokens || 0;
@@ -2508,7 +2508,7 @@ Format the output as a structured JSON object matching the AuditReport interface
       .map(([intent]) => intent);
 
     return {
-      totalCost,
+      totalThroughput,
       avgLatencyMs,
       avgInputTokens,
       avgOutputTokens,
