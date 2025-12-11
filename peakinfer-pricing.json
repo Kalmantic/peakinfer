@@ -1,96 +1,313 @@
 {
   "estimatedRange": {
-    "low": 10.500000000000002,
-    "high": 450
+    "low": 19.3165,
+    "high": 830.9100000000001
   },
-  "mostExpensiveModel": "claude-sonnet-4-5-20250929",
+  "mostExpensiveModel": "claude-sonnet-4-20250514",
   "byProvider": [
     {
       "provider": "anthropic",
-      "cost": 450,
-      "percentage": 100
+      "cost": 564,
+      "percentage": 68
+    },
+    {
+      "provider": "openai",
+      "cost": 266.7,
+      "percentage": 32
+    },
+    {
+      "provider": "nscale",
+      "cost": 0.21,
+      "percentage": 0
+    },
+    {
+      "provider": "vllm",
+      "cost": 0,
+      "percentage": 0
+    },
+    {
+      "provider": "other",
+      "cost": 0,
+      "percentage": 0
     }
   ],
   "byModel": [
     {
-      "model": "claude-sonnet-4-5-20250929",
-      "cost": 360
+      "model": "claude-sonnet-4-20250514",
+      "cost": 315
     },
     {
-      "model": "claude-sonnet-4-20250514",
-      "cost": 90
+      "model": "gpt-4o",
+      "cost": 260
+    },
+    {
+      "model": "claude-3-opus-20240229",
+      "cost": 225
+    },
+    {
+      "model": "claude-3-5-haiku-20241022",
+      "cost": 24
+    },
+    {
+      "model": "gpt-4o-mini",
+      "cost": 5.85
+    },
+    {
+      "model": "text-embedding-3-large",
+      "cost": 0.6500000000000001
+    },
+    {
+      "model": "meta-llama/Llama-3.1-8B-Instruct",
+      "cost": 0.21
+    },
+    {
+      "model": "text-embedding-3-small",
+      "cost": 0.2
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "cost": 0
+    },
+    {
+      "model": "TheBloke/Llama-2-70B-Chat-AWQ",
+      "cost": 0
+    },
+    {
+      "model": "unknown",
+      "cost": 0
     }
   ],
   "hotspots": [
     {
-      "file": "src/slc/agent-analyzer.ts",
-      "line": 166,
-      "model": "claude-sonnet-4-5-20250929",
-      "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
+      "file": "test-codebase/src/services/anthropic_service.py",
+      "line": 155,
+      "model": "claude-3-opus-20240229",
+      "estimatedMonthlyLow": 5.25,
+      "estimatedMonthlyHigh": 225,
+      "suggestion": "(AI Analysis) Opus is very expensive ($15/1M input). For document analysis, test if Claude 3.5 Sonnet ($3/1M) or even GPT-4o ($2.50/1M) provides sufficient quality at 5-6x lower cost."
     },
     {
-      "file": "src/slc/agent-analyzer.ts",
-      "line": 401,
-      "model": "claude-sonnet-4-5-20250929",
-      "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
-    },
-    {
-      "file": "src/slc/detector.ts",
-      "line": 282,
+      "file": "test-codebase/src/services/anthropic_service.py",
+      "line": 21,
       "model": "claude-sonnet-4-20250514",
       "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Claude Sonnet 4 is powerful but expensive ($3/1M input). For general tasks, downgrade to Claude 3.5 Haiku ($0.80/1M) or gpt-4o-mini ($0.15/1M). Use Sonnet only for complex reasoning."
     },
     {
-      "file": "src/slc/detector.ts",
-      "line": 320,
+      "file": "test-codebase/src/services/anthropic_service.py",
+      "line": 56,
       "model": "claude-sonnet-4-20250514",
       "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Streaming is good for UX. For streaming use cases, consider cheaper models like Claude 3.5 Haiku or gpt-4o-mini to reduce costs while maintaining responsiveness."
     },
     {
-      "file": "src/core/multi-agent-orchestrator.ts",
-      "line": 718,
-      "model": "claude-sonnet-4-5-20250929",
+      "file": "test-codebase/src/services/anthropic_service.py",
+      "line": 74,
+      "model": "claude-sonnet-4-20250514",
       "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Excellent use of prompt caching! This reduces costs by 90% for repeated context. Ensure your cache hit rate is high. Consider combining with cheaper base model if complexity allows."
     },
     {
-      "file": "src/core/multi-agent-orchestrator.ts",
-      "line": 822,
-      "model": "claude-sonnet-4-5-20250929",
+      "file": "test-codebase/src/services/anthropic_service.py",
+      "line": 120,
+      "model": "claude-sonnet-4-20250514",
       "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Tool use with Claude Sonnet 4 is powerful. If tools are deterministic, consider routing simple tool calls to Claude 3.5 Haiku for cost savings."
     },
     {
-      "file": "src/core/multi-agent-orchestrator.ts",
-      "line": 923,
-      "model": "claude-sonnet-4-5-20250929",
+      "file": "test-codebase/src/services/anthropic_service.py",
+      "line": 194,
+      "model": "claude-sonnet-4-20250514",
       "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Claude excels at vision tasks. Compare with GPT-4o vision or Gemini 1.5 Pro for cost-quality tradeoffs. Gemini Flash is significantly cheaper for simple image analysis."
     },
     {
-      "file": "src/core/multi-agent-orchestrator.ts",
-      "line": 1034,
-      "model": "claude-sonnet-4-5-20250929",
+      "file": "test-codebase/src/agents/langchain_agent.py",
+      "line": 25,
+      "model": "claude-sonnet-4-20250514",
       "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Using multiple providers is good for fallback. However, Claude Sonnet 4 is expensive. Consider Claude 3.5 Haiku as fallback for cost efficiency."
     },
     {
-      "file": "src/core/multi-agent-orchestrator.ts",
-      "line": 1134,
-      "model": "claude-sonnet-4-5-20250929",
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 134,
+      "model": "claude-sonnet-4-20250514",
       "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Good routing implementation! Refine routing rules by tracking actual quality/cost metrics per task type. Add telemetry to optimize routing decisions over time."
     },
     {
-      "file": "src/core/optimization-suggester.ts",
-      "line": 319,
-      "model": "claude-sonnet-4-5-20250929",
-      "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45
+      "file": "test-codebase/src/services/openai_service.py",
+      "line": 22,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) For general Q&A tasks, consider switching to gpt-4o-mini ($0.15/1M input vs $2.50/1M for gpt-4o) or Gemini Flash 2.0 ($0.10/1M). For even more cost savings on simple queries, try Llama-3.1-8B via Groq or Together AI."
+    },
+    {
+      "file": "test-codebase/src/services/openai_service.py",
+      "line": 79,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) Function calling works well with gpt-4o, but if tools are simple, consider gpt-4o-mini with function calling for 60% cost savings."
+    },
+    {
+      "file": "test-codebase/src/services/openai_service.py",
+      "line": 138,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) For structured extraction tasks, consider gpt-4o-mini with JSON mode (60% cheaper) or fine-tuned Llama-3.1-8B for high-volume extraction."
+    },
+    {
+      "file": "test-codebase/src/services/openai_service.py",
+      "line": 152,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) For vision tasks, compare gpt-4o with Claude 3.5 Sonnet (often better at vision) or Gemini 1.5 Flash (cheaper at $0.075/1M tokens for images). Test which provides best value for your use case."
+    },
+    {
+      "file": "test-codebase/src/agents/langchain_agent.py",
+      "line": 24,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) LangChain adds overhead. For simple chains, consider direct SDK calls. For this gpt-4o usage, evaluate if gpt-4o-mini suffices for your chain logic."
+    },
+    {
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 40,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) Using retry with exponential backoff is good practice. For high-availability, also implement circuit breakers and multi-provider fallback to reduce retry costs."
+    },
+    {
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 85,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) Excellent: caching with deterministic output (temp=0). For high cache hit rates, this can reduce costs by 90%+. Monitor cache hit ratio and TTL to optimize."
+    },
+    {
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 188,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) Excellent fallback pattern! Consider expanding fallback chain to include cheaper models as final fallback (e.g., gpt-4o-mini or Gemini Flash) for graceful degradation."
+    },
+    {
+      "file": "test-codebase/src/services/anthropic_service.py",
+      "line": 136,
+      "model": "claude-3-5-haiku-20241022",
+      "estimatedMonthlyLow": 0.28,
+      "estimatedMonthlyHigh": 12,
+      "suggestion": "(AI Analysis) Perfect choice! Haiku is ideal for classification. For even lower costs on simple classification, consider fine-tuning Llama-3.1-8B or using Gemini Flash ($0.10/1M)."
+    },
+    {
+      "file": "test-codebase/src/services/anthropic_service.py",
+      "line": 175,
+      "model": "claude-3-5-haiku-20241022",
+      "estimatedMonthlyLow": 0.28,
+      "estimatedMonthlyHigh": 12,
+      "suggestion": "(AI Analysis) Good use of async batching with Haiku. Ensure proper error handling and consider rate limiting to avoid API throttling."
+    },
+    {
+      "file": "test-codebase/src/services/openai_service.py",
+      "line": 41,
+      "model": "gpt-4o-mini",
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "(AI Analysis) Good choice using gpt-4o-mini. For streaming simple responses, consider Gemini Flash 2.0 ($0.10/1M tokens) or self-hosted Llama-3.1-8B with vLLM for even lower costs at scale."
+    },
+    {
+      "file": "test-codebase/src/services/openai_service.py",
+      "line": 119,
+      "model": "gpt-4o-mini",
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "(AI Analysis) Good use of async batching with gpt-4o-mini. Ensure you're using asyncio.gather for parallel requests. Consider batch API if processing large volumes offline."
+    },
+    {
+      "file": "test-codebase/src/agents/langchain_agent.py",
+      "line": 186,
+      "model": "gpt-4o-mini",
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "(AI Analysis) Good routing strategy using cheaper model for simple queries. Consider adding more sophisticated routing logic based on query complexity scoring."
+    },
+    {
+      "file": "test-codebase/src/services/openai_service.py",
+      "line": 104,
+      "model": "text-embedding-3-large",
+      "estimatedMonthlyLow": 0.013000000000000001,
+      "estimatedMonthlyHigh": 0.6500000000000001,
+      "suggestion": "(AI Analysis) Unless you need the highest quality embeddings, switch to text-embedding-3-small (10x cheaper) or open-source alternatives. Consider A/B testing to validate if quality difference matters for your use case."
+    },
+    {
+      "file": "test-codebase/src/serving/vllm_server.py",
+      "line": 59,
+      "model": "meta-llama/Llama-3.1-8B-Instruct",
+      "estimatedMonthlyLow": 0.0045000000000000005,
+      "estimatedMonthlyHigh": 0.21,
+      "suggestion": "(AI Analysis) Excellent: 8B model with prefix caching. This is highly cost-effective. Consider AWQ/GPTQ quantization to reduce to 1 GPU and cut costs in half while maintaining quality."
+    },
+    {
+      "file": "test-codebase/src/services/openai_service.py",
+      "line": 95,
+      "model": "text-embedding-3-small",
+      "estimatedMonthlyLow": 0.002,
+      "estimatedMonthlyHigh": 0.1,
+      "suggestion": "(AI Analysis) text-embedding-3-small is cost-effective. For even lower costs, consider open-source models like all-MiniLM-L6-v2 via sentence-transformers (free, self-hosted) or Cohere embed-v3 ($0.10/1M tokens)."
+    },
+    {
+      "file": "test-codebase/src/agents/langchain_agent.py",
+      "line": 47,
+      "model": "text-embedding-3-small",
+      "estimatedMonthlyLow": 0.002,
+      "estimatedMonthlyHigh": 0.1,
+      "suggestion": "(AI Analysis) Good choice for RAG embeddings. For high-volume RAG, consider self-hosting sentence-transformers models (free) or using Cohere embed-v3."
+    },
+    {
+      "file": "test-codebase/src/serving/vllm_server.py",
+      "line": 29,
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "pricing data unavailable for this model"
+    },
+    {
+      "file": "test-codebase/src/serving/vllm_server.py",
+      "line": 109,
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "pricing data unavailable for this model"
+    },
+    {
+      "file": "test-codebase/src/serving/vllm_server.py",
+      "line": 128,
+      "model": "TheBloke/Llama-2-70B-Chat-AWQ",
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "pricing data unavailable for this model"
+    },
+    {
+      "file": "test-codebase/src/serving/sglang_server.py",
+      "line": 16,
+      "model": "unknown",
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0
     }
   ]
 }

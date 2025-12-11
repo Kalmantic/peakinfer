@@ -257,9 +257,27 @@ export async function analyzeWithAgent(
             subtype: string;
             errors?: string[];
             total_cost_usd: number;
+            result?: string;
           };
-          const errorMessages = errorResult.errors?.join(', ') || `Analysis stopped: ${errorResult.subtype}`;
-          throw new Error(errorMessages);
+
+          // If we have partial results despite the error, try to use them
+          if (errorResult.result && errorResult.subtype === 'error_max_turns') {
+            resultText = errorResult.result;
+            totalCost = errorResult.total_cost_usd;
+            onProgress?.(`Analysis hit turn limit but has partial results (cost: $${totalCost.toFixed(4)})`);
+            // Don't throw - continue with partial results
+          } else {
+            const errorMessages = errorResult.errors?.join(', ') || `Analysis stopped: ${errorResult.subtype}`;
+
+            // Provide more helpful error messages based on subtype
+            if (errorResult.subtype === 'error_max_turns') {
+              throw new Error(`Analysis exceeded max turns (${maxTurns}). Try running on a smaller directory or increase timeout.`);
+            } else if (errorResult.subtype === 'error_max_budget_usd') {
+              throw new Error('Analysis exceeded budget limit.');
+            } else {
+              throw new Error(errorMessages);
+            }
+          }
         }
       }
     }

@@ -547,8 +547,8 @@ function renderHeader(projectName: string, timestamp: string): string {
 }
 
 function renderSummaryCards(scan: ScanResult, stackMap: StackMap, pricing: PricingSummary): string {
-  const unknownCount = stackMap.summary.models.filter(m => m === 'unknown').length;
-  const knownModels = stackMap.summary.models.filter(m => m !== 'unknown');
+  const dynamicCount = stackMap.summary.models.filter(m => m === 'unknown' || m === '(runtime-configured)').length;
+  const knownModels = stackMap.summary.models.filter(m => m !== 'unknown' && m !== '(runtime-configured)');
 
   return `
     <div class="summary-grid">
@@ -567,10 +567,10 @@ function renderSummaryCards(scan: ScanResult, stackMap: StackMap, pricing: Prici
         <div class="value">${formatCurrency(pricing.estimatedRange.high)}</div>
         <div class="detail">Range: ${formatCurrency(pricing.estimatedRange.low)} - ${formatCurrency(pricing.estimatedRange.high)}</div>
       </div>
-      <div class="summary-card ${unknownCount > 0 ? 'warning' : ''}">
+      <div class="summary-card ${dynamicCount > 0 ? 'warning' : ''}">
         <div class="label">Models Detected</div>
         <div class="value">${knownModels.length}</div>
-        <div class="detail">${unknownCount > 0 ? `${unknownCount} dynamic/unknown` : 'All models identified'}</div>
+        <div class="detail">${dynamicCount > 0 ? `${dynamicCount} runtime-configured` : 'All models identified'}</div>
       </div>
     </div>
   `;
@@ -585,7 +585,7 @@ function renderCostBreakdown(pricing: PricingSummary): string {
         </div>
         <div class="section-content">
           <div class="empty-state">
-            <p>no cost data available (all models are dynamic/unknown)</p>
+            <p>no cost data available (all models are runtime-configured)</p>
           </div>
         </div>
       </section>
@@ -742,10 +742,10 @@ function renderTreeNode(node: StackMapNode): string {
   }
 
   const callsites = node.callsites?.map(cs => {
-    const provider = cs.provider || 'unknown';
-    const model = cs.model || 'unknown';
-    const providerClass = `provider-${['openai', 'anthropic', 'google'].includes(provider) ? provider : 'unknown'}`;
-    const modelClass = model === 'unknown' ? 'model-unknown' : '';
+    const provider = cs.provider || 'other';
+    const model = cs.model || '(runtime-configured)';
+    const providerClass = `provider-${['openai', 'anthropic', 'google'].includes(provider) ? provider : 'other'}`;
+    const modelClass = (!cs.model || cs.model === 'unknown') ? 'model-dynamic' : '';
 
     return `
       <div class="tree-callsite">
@@ -813,46 +813,46 @@ function renderOptimizations(pricing: PricingSummary): string {
 }
 
 function renderUnknownModelsSection(stackMap: StackMap): string {
-  // Count unknown models in the tree
-  let unknownCount = 0;
-  const countUnknown = (nodes: StackMapNode[]) => {
+  // Count runtime-configured models in the tree
+  let dynamicCount = 0;
+  const countDynamic = (nodes: StackMapNode[]) => {
     for (const node of nodes) {
       if (node.callsites) {
-        unknownCount += node.callsites.filter(cs => !cs.model || cs.model === 'unknown').length;
+        dynamicCount += node.callsites.filter(cs => !cs.model || cs.model === 'unknown' || cs.model === '(runtime-configured)').length;
       }
       if (node.children) {
-        countUnknown(node.children);
+        countDynamic(node.children);
       }
     }
   };
-  countUnknown(stackMap.tree);
+  countDynamic(stackMap.tree);
 
-  if (unknownCount === 0) {
+  if (dynamicCount === 0) {
     return '';
   }
 
   return `
     <section class="section">
       <div class="section-header">
-        <h2>dynamic model references</h2>
-        <span class="badge badge-warning">${unknownCount} callsites</span>
+        <h2>runtime-configured models</h2>
+        <span class="badge badge-warning">${dynamicCount} callsites</span>
       </div>
       <div class="section-content">
         <div class="unknown-callout">
-          <h3>why are some models "unknown"?</h3>
+          <h3>what does "runtime-configured" mean?</h3>
           <p>
-            peakinfer detected ${unknownCount} callsite(s) where the model name couldn't be determined
-            through static analysis. this typically happens when:
+            peakinfer detected ${dynamicCount} callsite(s) where the model name is determined
+            at runtime rather than hardcoded. this is common and expected when:
           </p>
           <ul>
-            <li><strong>dynamic configuration</strong> — model set via environment variables (e.g., <code>process.env.MODEL_NAME</code>)</li>
+            <li><strong>environment variables</strong> — model set via <code>process.env.MODEL_NAME</code> or <code>os.getenv("MODEL")</code></li>
+            <li><strong>config files</strong> — model loaded from YAML, JSON, or TOML configuration</li>
             <li><strong>factory patterns</strong> — client created through factory functions with runtime parameters</li>
-            <li><strong>wrapper classes</strong> — abstraction layers that configure models at runtime</li>
             <li><strong>user selection</strong> — model chosen based on user input or API parameters</li>
           </ul>
           <p style="margin-top: 12px;">
-            to get accurate cost estimates, consider adding model annotations
-            in comments or using a configuration file that peakinfer can parse.
+            <strong>to get accurate cost estimates:</strong> add runtime telemetry by logging
+            inference events to <code>events.jsonl</code>, then re-run <code>peakinfer analyze .</code>
           </p>
         </div>
       </div>
