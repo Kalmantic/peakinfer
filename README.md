@@ -41,8 +41,6 @@ peakinfer analyze . --cached
 |---------|-------------|
 | `peakinfer analyze <path>` | Analyze codebase or runtime events |
 | `peakinfer prices [provider]` | Show model pricing data (API + GPU) |
-| `peakinfer benchmark [model]` | Show model performance benchmarks (throughput, latency) |
-| `peakinfer templates list` | Browse optimization templates |
 
 ## Analysis Modes
 
@@ -142,7 +140,7 @@ peakinfer analyze events.jsonl
 
 ### Static Analysis
 ```
-PeakInfer v0.95
+PeakInfer v1.0
 
 Scanned: 847 files (12,340 LOC)
 Languages: python, typescript
@@ -219,60 +217,6 @@ This helps identify:
 - Events from wrong environment (staging vs production)
 - Drift between code and deployed systems
 - Dynamic routing or A/B testing in production
-
-## Performance Benchmarks
-
-View throughput and latency benchmarks for self-hosted models:
-
-```bash
-# List all benchmarked models
-peakinfer benchmark
-
-# Show benchmarks for a specific model
-peakinfer benchmark llama-3-70b
-peakinfer benchmark mistral-7b
-peakinfer benchmark deepseek-v3
-```
-
-### Example Output
-
-```
-peakinfer benchmark llama-3-70b
-
-  model: Llama 3 70B (70B parameters)
-
-  gpu              throughput   latency    ttft     batch   confidence  source
-  ─────────────────────────────────────────────────────────────────────────────
-  H200               190 tok/s   55 tok/s   120ms    24        95%  inferencemax
-  H100-SXM           155 tok/s   48 tok/s   120ms    16        95%  inferencemax
-  MI300X             145 tok/s   42 tok/s   120ms    16        95%  inferencemax
-  A100-80GB           82 tok/s   36 tok/s   120ms     8        85%  vllm_benchmarks
-```
-
-### Data Sources
-
-| Source | Confidence | Description |
-|--------|------------|-------------|
-| InferenceMAX | 95% | Production benchmarks across H100, H200, MI300X |
-| vLLM Benchmarks | 85% | Official vLLM performance data |
-| Estimated | 40-60% | Calculated from model size + GPU specs |
-
-### Benchmarked Models
-
-- **Llama 3 family**: 8B, 70B, 405B
-- **Mistral family**: 7B, Mixtral 8x7B, 8x22B
-- **Qwen 2.5**: 7B, 32B, 72B
-- **DeepSeek**: V3, R1
-- **Gemma 2**: 9B, 27B
-
-## Templates
-
-Browse optimization strategies:
-
-```bash
-peakinfer templates list
-peakinfer templates info semantic-caching
-```
 
 ## License
 
