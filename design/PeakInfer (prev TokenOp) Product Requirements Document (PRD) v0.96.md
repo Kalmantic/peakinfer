@@ -421,43 +421,41 @@ This is the “Stack Overflow of inference optimization.”
 
 ### **Deliverables:**
 
-* codebase analyzer
+* Codebase analyzer (static analysis via Claude Code SDK)
+* Runtime telemetry analyzer (JSONL/CSV/JSON event logs)
+* Combined analysis with static + runtime correlation
+* StackMap (Knowledge Graph of inference topology)
+* Pricing Delta Engine (multi-provider cost comparison)
+* Performance Benchmarking Engine (InferenceMAX data)
+* Optimization Templates (community-curated strategies)
+* Agent Architecture (callbacks, context management, two-pass execution)
+* HTML report generation
+* Offline cached results viewing
+* ASCII diagrams with Julie Zhou design principles
 
-* StackMap
+### **Commands:**
 
-* Pricing Delta Engine
+| Command | Status |
+|---------|--------|
+| `peakinfer analyze <path>` | ✓ Implemented |
+| `peakinfer analyze <file.jsonl>` | ✓ Implemented |
+| `peakinfer analyze <path> --events <file>` | ✓ Implemented |
+| `peakinfer prices [provider]` | ✓ Implemented |
+| `peakinfer benchmark [model]` | ✓ Implemented |
+| `peakinfer templates list` | ✓ Implemented |
+| `peakinfer templates info <id>` | ✓ Implemented |
 
-* ASCII diagrams
+### **Output:**
 
-* vendor/runtime/hardware comparisons
-
-* offline, local-only
-
-### **Must Ship:**
-
-`peakinfer analyze .`
-
-Output:
-
-* inference inventory
-
-* model usage
-
-* runtimes
-
-* vendor calls
-
-* token counts (static estimates)
-
-* prompt shapes
-
-* latency estimates
-
-* cost deltas
-
-* alternatives
-
-* hotspots
+* Inference callsite inventory (file, line, provider, model)
+* Model usage breakdown with token estimates
+* Vendor/provider distribution
+* Runtime detection (vLLM, SGLang, TensorRT, Ollama)
+* Pricing estimates (monthly cost range)
+* Performance benchmarks (throughput, latency, TTFT)
+* Pattern detection (retry, batching, streaming, caching, routing, fallback)
+* Hotspots with optimization suggestions
+* Correlation analysis (static vs runtime provider alignment)
 
 ---
 
@@ -581,33 +579,84 @@ ASCII diagram showing:
 
   * hosting vs self-hosted tradeoffs
 
+### **Runtime Telemetry Analyzer**
+
+Analyze production inference logs without API key:
+
+```bash
+peakinfer analyze events.jsonl         # Runtime telemetry only
+peakinfer analyze . --events events.jsonl  # Combined static + runtime
+```
+
+**Supported Formats:**
+* JSONL (.jsonl, .ndjson)
+* JSON (.json) - array of events
+* CSV (.csv) - with headers
+
+**Event Schema:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `id` | Yes | Unique event identifier |
+| `ts` | Yes | ISO timestamp |
+| `provider` | Yes | Provider name (openai, anthropic, etc.) |
+| `model` | Yes | Model identifier |
+| `input_tokens` | Yes | Input token count |
+| `output_tokens` | Yes | Output token count |
+| `latency_ms` | Yes | Response latency in milliseconds |
+| `intent` | No | Task type (summarize, extract, chat) |
+| `tenant` | No | Team/workspace identifier |
+| `region` | No | Geographic region |
+
+**Output:**
+* Provider distribution with event counts
+* Model usage breakdown
+* Latency statistics (avg, P50, P95)
+* Cost estimation from actual token counts
+* Intent/task classification
+
+**Correlation Analysis (Combined Mode):**
+
+When using `--events` with a codebase path:
+* Match quality assessment (high, partial, low, none)
+* Provider alignment detection
+* Missing coverage warnings (providers in code without events)
+* Extra provider alerts (events from providers not in codebase)
+
 ---
 
 ## **6.2 Non-Functional Requirements**
 
 **Runtime Dependencies**
 
-* Requires Claude Code SDK for semantic code analysis  
-* Anthropic API key required  
-* Internet connection required for analysis \+ pricing updates
+| Feature | API Key | Internet |
+|---------|---------|----------|
+| Static analysis (`analyze <path>`) | Required | Required |
+| Runtime telemetry (`analyze <file.jsonl>`) | Not needed | Not needed |
+| Cached results (`--cached`) | Not needed | Not needed |
+| Pricing data (`prices`) | Not needed | For refresh |
+| Benchmarks (`benchmark`) | Not needed | Not needed |
 
 **Privacy Model**
 
-* Code is sent to Anthropic API as context for analysis  
-* No telemetry to Kalmantic servers  
-* No data retained beyond API session (subject to Anthropic's data policy)  
+* Code is sent to Anthropic API as context for static analysis
+* Runtime telemetry analysis is fully local (no API calls)
+* No telemetry to Kalmantic servers
+* No data retained beyond API session (subject to Anthropic's data policy)
 * StackMap outputs stored locally only
 
 **Performance**
 
-* Parse 10k LOC repo in \< 60 seconds  
-* Memory \< 500MB
+* Parse 10k LOC repo in < 60 seconds
+* Runtime telemetry: 100k events in < 5 seconds
+* Memory < 500MB
 
 **Offline Capability**
 
-* Previously generated StackMaps viewable offline  
-* Pricing data cached locally (updated weekly when online)  
-* No analysis capability without API access
+* Previously generated StackMaps viewable offline (`--cached`)
+* Runtime telemetry analysis works fully offline
+* Pricing data cached locally (updated weekly when online)
+* Benchmark data embedded (no internet required)
 
 
 ---
@@ -636,9 +685,57 @@ ASCII diagram showing:
 `+----------+-------------+`  
            `|`  
            `v`  
-`+------------------------+`  
-`| Pricing Delta Engine   |`  
 `+------------------------+`
+`| Pricing Delta Engine   |`
+`+------------------------+`
+
+## **7.2 Agent Architecture**
+
+Based on `design/Autonomous Agent Architecture Patterns.md`:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Agent Architecture                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
+│  │  Callbacks  │    │   Context   │    │  Execution  │     │
+│  │  (UI Decouple)│    │  Manager    │    │    Plan     │     │
+│  └─────────────┘    └─────────────┘    └─────────────┘     │
+│         │                  │                  │             │
+│         ▼                  ▼                  ▼             │
+│  ┌──────────────────────────────────────────────────┐      │
+│  │              Two-Pass Execution                   │      │
+│  │                                                   │      │
+│  │  Pass 1: Plan    → Generate task descriptions    │      │
+│  │  Pass 2: Execute → Run tasks, save to disk       │      │
+│  └──────────────────────────────────────────────────┘      │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Key Components:**
+
+| Component | Purpose |
+|-----------|---------|
+| `AgentCallbacks` | Decouple agent from UI (onTaskStart, onComplete, etc.) |
+| `ContextManager` | Filesystem-based persistence (.peakinfer/) |
+| `ExecutionPlan` | Zod-validated task sequence |
+| `Task` | Individual work unit with status tracking |
+
+**Execution Tasks:**
+
+1. `scan` — Discover source files
+2. `analyze` — AI-powered code analysis (Claude Code SDK)
+3. `stackmap` — Build StackMap from callsites
+4. `pricing` — Calculate cost estimates
+5. `render` — Generate output
+
+**Usage:**
+
+```bash
+peakinfer analyze . --verbose   # Show agent task progress
+```
 
 ---
 
@@ -692,11 +789,27 @@ ASCII diagram showing:
 
 ### **Commands**
 
-`peakinfer analyze .`
-`peakinfer stackmap`
-`peakinfer benchmark [provider]`    — Show throughput/latency benchmarks
-`peakinfer recommend`              — Performance optimization recommendations
-`peakinfer diff old.json new.json`
+| Command | Description |
+|---------|-------------|
+| `peakinfer analyze <path>` | Analyze codebase for LLM usage (static analysis) |
+| `peakinfer analyze <file.jsonl>` | Analyze runtime telemetry (no API key needed) |
+| `peakinfer analyze <path> --events <file>` | Combined static + runtime with correlation |
+| `peakinfer prices [provider]` | Show model pricing data (API + GPU) |
+| `peakinfer benchmark [model]` | Show performance benchmarks (throughput, latency, TTFT) |
+| `peakinfer templates list` | Browse optimization templates |
+| `peakinfer templates info <id>` | View template details |
+
+### **Analyze Options**
+
+| Option | Description |
+|--------|-------------|
+| `--html` | Generate HTML report |
+| `--open` | Generate and open HTML report in browser |
+| `--output json` | Machine-readable JSON output |
+| `--cached` | View previous analysis (offline, no API key needed) |
+| `--verbose` | Show detailed task progress (agent architecture) |
+| `--events <file>` | Add runtime telemetry to static analysis |
+| `--mode <static\|runtime>` | Force analysis mode (auto-detected by default) |
 
 ## **9.1 First-Run Experience & State Handling**
 
@@ -1035,40 +1148,75 @@ PeakInfer produces:
 
 # **13\. Performance Benchmarking Engine**
 
+### **Command**
+
+```bash
+peakinfer benchmark [model]
+
+# Examples:
+peakinfer benchmark              # List all benchmarked models
+peakinfer benchmark llama-3-70b  # Show benchmarks for specific model
+peakinfer benchmark mistral-7b   # Fuzzy match supported
+```
+
 ### **The Three Pillars of Inference Intelligence**
 
 PeakInfer measures and compares three fundamental metrics:
 
-**Pillar 1: Throughput (tok/s/GPU)** — System capacity
-- Aggregate tokens generated per second per GPU
+**Pillar 1: Throughput (tok/s)** — System capacity
+- Aggregate tokens generated per second
 - Optimal batch size for maximum throughput
 - GPU utilization efficiency
 
 **Pillar 2: Latency (tok/s/user)** — User experience
 - Time to first token (TTFT)
-- Tokens per second per user
-- P50/P95/P99 latency
+- Tokens per second per user (interactive latency)
 
-**Pillar 3: Cost ($/M tokens)** — Economics (secondary)
+**Pillar 3: Cost ($/M tokens)** — Economics
 - Normalized cost across deployment types
-- TCO for self-hosted options
+- GPU hourly rates from cloud providers
 
 ### **Data Sources**
 
-Benchmark data is assembled from three tiers:
+| Source | Confidence | Description |
+|--------|------------|-------------|
+| InferenceMAX | 95% | Production benchmarks across H100, H200, MI300X |
+| vLLM Benchmarks | 85% | Official vLLM performance data |
+| Estimated | 40-60% | Calculated from model size + GPU specs |
 
-1. **Public benchmarks** — InferenceMAX, vLLM benchmarks, TGI benchmarks, and vendor-published throughput data. Updated weekly.
-2. **Community contributions** — Users may submit benchmark results, regional variations, or newly supported models via GitHub PR to the `peakinfer-benchmarks` repository.
-3. **Estimation engine** — Model size + GPU specs → throughput estimates (labeled with confidence).
+### **Benchmarked Models**
+
+| Model Family | Sizes |
+|--------------|-------|
+| Llama 3 | 8B, 70B, 405B |
+| Mistral | 7B, Mixtral 8x7B, 8x22B |
+| Qwen 2.5 | 7B, 32B, 72B |
+| DeepSeek | V3, R1 |
+| Gemma 2 | 9B, 27B |
+
+### **Benchmark Output**
+
+```
+peakinfer benchmark llama-3-70b
+
+  model: Llama 3 70B (70B parameters)
+
+  gpu              throughput   latency    ttft     batch   confidence  source
+  ─────────────────────────────────────────────────────────────────────────────
+  H200               190 tok/s   55 tok/s   120ms    24        95%  inferencemax
+  H100-SXM           155 tok/s   48 tok/s   120ms    16        95%  inferencemax
+  MI300X             145 tok/s   42 tok/s   120ms    16        95%  inferencemax
+  A100-80GB           82 tok/s   36 tok/s   120ms     8        85%  vllm_benchmarks
+```
 
 ### **Must track:**
 
-* throughput (tok/s/GPU)
-* latency (TTFT, tok/s/user)
+* throughput (tok/s)
+* latency (tok/s/user)
+* time to first token (TTFT)
 * optimal batch sizes
 * GPU memory requirements
-* runtime efficiency (vLLM, TGI, TensorRT-LLM)
-* hardware accelerators (Groq LPU, Cerebras WSE)
+* confidence level and data source
 * cost per token (secondary)
 
 ### **Output:**
