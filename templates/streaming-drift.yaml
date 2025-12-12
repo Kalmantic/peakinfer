@@ -1,0 +1,25 @@
+id: streaming-drift
+name: Streaming Drift Detection
+version: "1.0"
+category: latency
+severity: critical
+
+match:
+  scope: callsite
+  conditions:
+    - field: patterns.streaming
+      op: eq
+      value: true
+    - field: usage
+      op: exists
+    - field: usage.latency_p99
+      op: ratio_gt
+      compare_to: usage.latency_p50
+      value: 5
+
+output:
+  headline: "Streaming enabled but responses arrive in bursts"
+  evidence: "p99/p50 ratio is {{ratio}}x — true streaming would be under 2x"
+
+defaults:
+  threshold: 2

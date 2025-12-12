@@ -1,0 +1,26 @@
+id: overpowered-model
+name: Overpowered Model Detection
+version: "1.0"
+category: waste
+severity: info
+
+match:
+  scope: callsite
+  conditions:
+    - field: model
+      op: in
+      value: ["gpt-4o", "gpt-4", "gpt-4-turbo", "claude-3-opus", "claude-3-opus-20240229"]
+    - field: usage.avg_output_tokens
+      op: lt
+      value: 100
+    - field: usage.calls
+      op: gt
+      value: 100
+
+output:
+  headline: "{{model}} used for short outputs (avg {{avg_tokens}} tokens)"
+  evidence: "Premium models have minimum cost overhead regardless of output length"
+
+defaults:
+  output_threshold: 100
+  calls_threshold: 100

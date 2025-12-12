@@ -1,0 +1,3 @@
+id,ts,provider,model,input_tokens,output_tokens,latency_ms
+1,2024-01-01T00:00:00Z,openai,gpt-4o,100,50,420
+2,2024-01-01T00:01:00Z,openai,gpt-4o,200,80,580
