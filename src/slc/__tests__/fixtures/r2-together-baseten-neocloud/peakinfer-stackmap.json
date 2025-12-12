@@ -1,0 +1,56 @@
+{
+  "root": "/Users/thiyagarajanm/AIProjects/peakinfer/src/slc/__tests__/fixtures/r2-together-baseten-neocloud",
+  "tree": [
+    {
+      "name": "api_service.py",
+      "path": "api_service.py",
+      "type": "file",
+      "callsites": [
+        {
+          "line": 19,
+          "pattern": "openai.chat",
+          "provider": "openai",
+          "model": "gpt-4o"
+        },
+        {
+          "line": 27,
+          "pattern": "anthropic.chat",
+          "provider": "anthropic",
+          "model": "claude-3-5-sonnet-20241022"
+        },
+        {
+          "line": 36,
+          "pattern": "together.chat",
+          "provider": "together",
+          "model": "meta-llama/Llama-3.1-70B-Instruct-Turbo"
+        },
+        {
+          "line": 51,
+          "pattern": "other.completion",
+          "provider": "other",
+          "model": null
+        },
+        {
+          "line": 64,
+          "pattern": "other.chat",
+          "provider": "other",
+          "model": null
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "totalCallsites": 5,
+    "providers": [
+      "anthropic",
+      "openai",
+      "other",
+      "together"
+    ],
+    "models": [
+      "claude-3-5-sonnet-20241022",
+      "gpt-4o",
+      "meta-llama/Llama-3.1-70B-Instruct-Turbo"
+    ]
+  }
+}

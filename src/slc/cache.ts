@@ -72,7 +72,7 @@ export function writeCacheSync(
   const cached: CachedAnalysis = {
     ...data,
     timestamp: new Date().toISOString(),
-    version: '0.95.0',
+    version: '1.0.0',
   };
 
   const cachePath = path.join(cacheDir, CACHE_FILE);

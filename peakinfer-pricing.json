@@ -1,90 +1,656 @@
 {
   "estimatedRange": {
-    "low": 8.4,
-    "high": 360
+    "low": 31.344000000000012,
+    "high": 1350.4900000000002
   },
-  "mostExpensiveModel": "claude-sonnet-4-5-20250929",
+  "mostExpensiveModel": "gpt-4o",
   "byProvider": [
     {
       "provider": "anthropic",
-      "cost": 360,
-      "percentage": 100
+      "throughput": 711,
+      "percentage": 53
+    },
+    {
+      "provider": "openai",
+      "throughput": 571.1000000000001,
+      "percentage": 42
+    },
+    {
+      "provider": "aws-bedrock",
+      "throughput": 51.93,
+      "percentage": 4
+    },
+    {
+      "provider": "gcp-vertex",
+      "throughput": 16.25,
+      "percentage": 1
+    },
+    {
+      "provider": "nscale",
+      "throughput": 0.21,
+      "percentage": 0
+    },
+    {
+      "provider": "vllm",
+      "throughput": 0,
+      "percentage": 0
+    },
+    {
+      "provider": "other",
+      "throughput": 0,
+      "percentage": 0
+    },
+    {
+      "provider": "together",
+      "throughput": 0,
+      "percentage": 0
     }
   ],
   "byModel": [
     {
-      "model": "claude-sonnet-4-5-20250929",
-      "cost": 315
+      "model": "gpt-4o",
+      "throughput": 552.5
     },
     {
       "model": "claude-sonnet-4-20250514",
-      "cost": 45
+      "throughput": 315
+    },
+    {
+      "model": "claude-3-opus-20240229",
+      "throughput": 225
+    },
+    {
+      "model": "claude-3-5-sonnet-20241022",
+      "throughput": 135
+    },
+    {
+      "model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+      "throughput": 45
+    },
+    {
+      "model": "claude-3-5-haiku-20241022",
+      "throughput": 36
+    },
+    {
+      "model": "gpt-4o-mini",
+      "throughput": 17.549999999999997
+    },
+    {
+      "model": "gemini-1.5-pro",
+      "throughput": 16.25
+    },
+    {
+      "model": "meta.llama3-1-70b-instruct-v1:0",
+      "throughput": 6.930000000000001
+    },
+    {
+      "model": "text-embedding-3-large",
+      "throughput": 0.6500000000000001
+    },
+    {
+      "model": "text-embedding-3-small",
+      "throughput": 0.4
+    },
+    {
+      "model": "meta-llama/Llama-3.1-8B-Instruct",
+      "throughput": 0.21
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "throughput": 0
+    },
+    {
+      "model": "TheBloke/Llama-2-70B-Chat-AWQ",
+      "throughput": 0
+    },
+    {
+      "model": "unknown",
+      "throughput": 0
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct-Turbo",
+      "throughput": 0
     }
   ],
   "hotspots": [
     {
-      "file": "src/core/multi-agent-orchestrator.ts",
-      "line": 718,
-      "model": "claude-sonnet-4-5-20250929",
-      "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45,
-      "suggestion": "(AI Analysis) This is a discovery/analysis task. Consider using Claude Haiku (3x cheaper) or Gemini Flash for comparable quality at lower cost for codebase analysis tasks."
+      "file": "test-codebase/src/services/anthropic_service.py",
+      "line": 155,
+      "model": "claude-3-opus-20240229",
+      "estimatedThroughputLow": 5.25,
+      "estimatedThroughputHigh": 225,
+      "estimatedMonthlyLow": 5.25,
+      "estimatedMonthlyHigh": 225,
+      "suggestion": "[AI Suggestion - verify with your usage data] Opus is expensive ($15/M input) - only use for truly complex reasoning. Consider Claude Sonnet 4 for better price/performance"
     },
     {
-      "file": "src/core/multi-agent-orchestrator.ts",
-      "line": 822,
-      "model": "claude-sonnet-4-5-20250929",
-      "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45,
-      "suggestion": "(AI Analysis) Profiling/clustering is a structured task. Switch to Llama-3-70B via Together AI or Gemini-1.5-Flash for 5-10x cost savings with similar quality."
-    },
-    {
-      "file": "src/core/multi-agent-orchestrator.ts",
-      "line": 923,
-      "model": "claude-sonnet-4-5-20250929",
-      "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45,
-      "suggestion": "(AI Analysis) Planning/recommendation generation. Consider GPT-4o-mini or Claude Haiku for 10x cost reduction while maintaining structured output quality."
-    },
-    {
-      "file": "src/core/multi-agent-orchestrator.ts",
-      "line": 1034,
-      "model": "claude-sonnet-4-5-20250929",
-      "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45,
-      "suggestion": "(AI Analysis) Evaluation task with structured output. GPT-4o-mini or Gemini Flash would be 8-12x cheaper for this type of analysis."
-    },
-    {
-      "file": "src/core/multi-agent-orchestrator.ts",
-      "line": 1134,
-      "model": "claude-sonnet-4-5-20250929",
-      "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45,
-      "suggestion": "(AI Analysis) Report generation/auditing. Switch to GPT-4o-mini or Llama-3-70B for 10x savings - this is a summarization task suitable for cheaper models."
-    },
-    {
-      "file": "src/core/optimization-suggester.ts",
-      "line": 319,
-      "model": "claude-sonnet-4-5-20250929",
-      "estimatedMonthlyLow": 1.05,
-      "estimatedMonthlyHigh": 45,
-      "suggestion": "(AI Analysis) Optimization suggestion generation. Consider Claude Haiku or GPT-4o-mini for 8x cost reduction on this recommendation task."
-    },
-    {
-      "file": "src/slc/detector.ts",
-      "line": 282,
+      "file": "test-codebase/src/services/anthropic_service.py",
+      "line": 21,
       "model": "claude-sonnet-4-20250514",
+      "estimatedThroughputLow": 1.05,
+      "estimatedThroughputHigh": 45,
       "estimatedMonthlyLow": 1.05,
       "estimatedMonthlyHigh": 45,
-      "suggestion": "(AI Analysis) Code analysis/detection task. Batch similar requests and consider using Gemini-1.5-Flash or GPT-4o-mini for 5-8x cost savings."
+      "suggestion": "[AI Suggestion - verify with your usage data] For simple Q&A, switch to Claude Haiku (10x cheaper) or gpt-4o-mini (similar cost but faster)"
     },
     {
-      "file": "src/slc/agent-analyzer.ts",
-      "line": 222,
-      "model": "claude-sonnet-4-5-20250929",
+      "file": "test-codebase/src/services/anthropic_service.py",
+      "line": 56,
+      "model": "claude-sonnet-4-20250514",
+      "estimatedThroughputLow": 1.05,
+      "estimatedThroughputHigh": 45,
       "estimatedMonthlyLow": 1.05,
       "estimatedMonthlyHigh": 45,
-      "suggestion": "(AI Analysis) Agentic codebase analysis with tool use. This requires strong reasoning - keep current model or test Claude Sonnet 3.5 (legacy) for slight cost savings."
+      "suggestion": "[AI Suggestion - verify with your usage data] For streaming chat, consider Claude Haiku for 10x cost savings on simple conversations"
+    },
+    {
+      "file": "test-codebase/src/services/anthropic_service.py",
+      "line": 74,
+      "model": "claude-sonnet-4-20250514",
+      "estimatedThroughputLow": 1.05,
+      "estimatedThroughputHigh": 45,
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "[AI Suggestion - verify with your usage data] Prompt caching is excellent for repeated contexts - ensure you're reusing the same context to maximize cache hits"
+    },
+    {
+      "file": "test-codebase/src/services/anthropic_service.py",
+      "line": 120,
+      "model": "claude-sonnet-4-20250514",
+      "estimatedThroughputLow": 1.05,
+      "estimatedThroughputHigh": 45,
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "[AI Suggestion - verify with your usage data] Tool use pattern is good with Claude Sonnet, consider Haiku for simpler tool calls"
+    },
+    {
+      "file": "test-codebase/src/services/anthropic_service.py",
+      "line": 194,
+      "model": "claude-sonnet-4-20250514",
+      "estimatedThroughputLow": 1.05,
+      "estimatedThroughputHigh": 45,
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "[AI Suggestion - verify with your usage data] Vision analysis with Claude is good, but consider Gemini Flash for 3-5x cost savings on image tasks"
+    },
+    {
+      "file": "test-codebase/src/agents/langchain_agent.py",
+      "line": 25,
+      "model": "claude-sonnet-4-20250514",
+      "estimatedThroughputLow": 1.05,
+      "estimatedThroughputHigh": 45,
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "[AI Suggestion - verify with your usage data] Claude Sonnet is powerful but expensive - consider Haiku for simpler LangChain tasks"
+    },
+    {
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 200,
+      "model": "claude-sonnet-4-20250514",
+      "estimatedThroughputLow": 1.05,
+      "estimatedThroughputHigh": 45,
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "[AI Suggestion - verify with your usage data] Fallback to Anthropic is good for redundancy but expensive. Consider cheaper fallback like Claude Haiku or gpt-4o-mini"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r1-openai-anthropic-saas/app.py",
+      "line": 23,
+      "model": "claude-3-5-sonnet-20241022",
+      "estimatedThroughputLow": 1.05,
+      "estimatedThroughputHigh": 45,
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "[AI Suggestion - verify with your usage data] Consider Claude Haiku for 10x cost savings on simpler queries"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-aws-bedrock-databricks-snowflake/aws_bedrock.py",
+      "line": 33,
+      "model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+      "estimatedThroughputLow": 1.05,
+      "estimatedThroughputHigh": 45,
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "[AI Suggestion - verify with your usage data] AWS Bedrock adds ~20% markup over direct API. Consider direct Anthropic API or Bedrock with cheaper models like Haiku"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r9-nemo-guardrails-llmguard/guardrails_system.py",
+      "line": 144,
+      "model": "claude-3-5-sonnet-20241022",
+      "estimatedThroughputLow": 1.05,
+      "estimatedThroughputHigh": 45,
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "[AI Suggestion - verify with your usage data] Self-critique pattern doubles costs. Consider doing critique with cheaper model (Haiku) or sampling technique"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r14-martian-notdiamond-routing/model_routing.py",
+      "line": 78,
+      "model": "claude-3-5-sonnet-20241022",
+      "estimatedThroughputLow": 1.05,
+      "estimatedThroughputHigh": 45,
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "[AI Suggestion - verify with your usage data] Semantic routing is excellent. Consider Haiku as default for 'general' intent to maximize savings"
+    },
+    {
+      "file": "test-codebase/src/services/openai_service.py",
+      "line": 22,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] For general Q&A tasks, consider switching to gpt-4o-mini (4x cheaper) or Claude Haiku (5x cheaper) which are sufficient for most simple queries"
+    },
+    {
+      "file": "test-codebase/src/services/openai_service.py",
+      "line": 79,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] Tool use pattern is optimal with gpt-4o for reliability, but consider gpt-4o-mini for simpler tool calls"
+    },
+    {
+      "file": "test-codebase/src/services/openai_service.py",
+      "line": 138,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] For structured extraction, consider gpt-4o-mini (4x cheaper) or Llama-3.1-70B-Instruct on vLLM (10x cheaper)"
+    },
+    {
+      "file": "test-codebase/src/services/openai_service.py",
+      "line": 152,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] Vision tasks require multimodal models - gpt-4o is appropriate, but consider Gemini Flash for cheaper vision analysis"
+    },
+    {
+      "file": "test-codebase/src/agents/langchain_agent.py",
+      "line": 24,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] For LangChain chains, consider gpt-4o-mini for simpler tasks to reduce costs by 4x"
+    },
+    {
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 40,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] Good retry pattern with tenacity. Consider adding fallback to cheaper model on final retry"
+    },
+    {
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 85,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] Redis caching is excellent for deterministic responses (temp=0). Consider semantic caching for near-duplicate queries"
+    },
+    {
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 188,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] Good fallback pattern. Consider cascading to cheaper models first (mini -> 4o) before switching providers"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r1-openai-anthropic-saas/app.py",
+      "line": 15,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] For basic chat, consider gpt-4o-mini (4x cheaper) unless you need advanced reasoning"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r2-together-baseten-neocloud/api_service.py",
+      "line": 19,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] Good multi-provider setup. Route simple queries to Together AI (5-10x cheaper)"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-aws-bedrock-databricks-snowflake/aws_bedrock.py",
+      "line": 69,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] Azure OpenAI has same pricing as direct OpenAI. Consider gpt-4o-mini for 4x cost savings"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r7-langchain-llamaindex-rag/rag_pipeline.py",
+      "line": 20,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] For RAG retrieval tasks, gpt-4o-mini is often sufficient and 4x cheaper"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r7-langchain-llamaindex-rag/rag_pipeline.py",
+      "line": 25,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] DSPy is excellent for optimization. Consider gpt-4o-mini as base model for even lower costs"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r9-nemo-guardrails-llmguard/guardrails_system.py",
+      "line": 33,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] With moderation overhead, consider gpt-4o-mini to reduce base costs while maintaining safety"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r9-nemo-guardrails-llmguard/guardrails_system.py",
+      "line": 109,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] Guardrails AI adds validation overhead. Use gpt-4o-mini for base generation to offset costs"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r10-portkey-helicone-gateway/gateway_proxy.py",
+      "line": 14,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] LiteLLM is excellent for multi-provider management. Use Router for automatic cost-based routing"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r10-portkey-helicone-gateway/gateway_proxy.py",
+      "line": 127,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] Portkey provides observability but adds latency. Consider direct API calls for latency-sensitive workloads"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-aws-bedrock-databricks-snowflake/aws_bedrock.py",
+      "line": 56,
+      "model": "gemini-1.5-pro",
+      "estimatedThroughputLow": 0.375,
+      "estimatedThroughputHigh": 16.25,
+      "estimatedMonthlyLow": 0.375,
+      "estimatedMonthlyHigh": 16.25,
+      "suggestion": "[AI Suggestion - verify with your usage data] Gemini Pro is powerful but expensive. For most tasks, Gemini Flash is 10x cheaper with great quality"
+    },
+    {
+      "file": "test-codebase/src/services/anthropic_service.py",
+      "line": 136,
+      "model": "claude-3-5-haiku-20241022",
+      "estimatedThroughputLow": 0.28,
+      "estimatedThroughputHigh": 12,
+      "estimatedMonthlyLow": 0.28,
+      "estimatedMonthlyHigh": 12,
+      "suggestion": "[AI Suggestion - verify with your usage data] Perfect optimization - Haiku is ideal for classification tasks (10x cheaper than Sonnet)"
+    },
+    {
+      "file": "test-codebase/src/services/anthropic_service.py",
+      "line": 175,
+      "model": "claude-3-5-haiku-20241022",
+      "estimatedThroughputLow": 0.28,
+      "estimatedThroughputHigh": 12,
+      "estimatedMonthlyLow": 0.28,
+      "estimatedMonthlyHigh": 12,
+      "suggestion": "[AI Suggestion - verify with your usage data] Well optimized async batching with Haiku"
+    },
+    {
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 134,
+      "model": "claude-3-5-haiku-20241022",
+      "estimatedThroughputLow": 0.28,
+      "estimatedThroughputHigh": 12,
+      "estimatedMonthlyLow": 0.28,
+      "estimatedMonthlyHigh": 12,
+      "suggestion": "[AI Suggestion - verify with your usage data] Excellent routing - using Haiku for summarization is cost-effective (10x cheaper than Sonnet)"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r4-aws-bedrock-databricks-snowflake/aws_bedrock.py",
+      "line": 47,
+      "model": "meta.llama3-1-70b-instruct-v1:0",
+      "estimatedThroughputLow": 0.14850000000000002,
+      "estimatedThroughputHigh": 6.930000000000001,
+      "estimatedMonthlyLow": 0.14850000000000002,
+      "estimatedMonthlyHigh": 6.930000000000001,
+      "suggestion": "[AI Suggestion - verify with your usage data] Llama on Bedrock is cost-effective. Consider running on Inferentia2 for 50% cost savings over GPU instances"
+    },
+    {
+      "file": "test-codebase/src/services/openai_service.py",
+      "line": 41,
+      "model": "gpt-4o-mini",
+      "estimatedThroughputLow": 0.045,
+      "estimatedThroughputHigh": 1.95,
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "[AI Suggestion - verify with your usage data] Already optimized - gpt-4o-mini is cost-effective for streaming responses"
+    },
+    {
+      "file": "test-codebase/src/services/openai_service.py",
+      "line": 119,
+      "model": "gpt-4o-mini",
+      "estimatedThroughputLow": 0.045,
+      "estimatedThroughputHigh": 1.95,
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "[AI Suggestion - verify with your usage data] Well optimized for async batching with gpt-4o-mini"
+    },
+    {
+      "file": "test-codebase/src/agents/langchain_agent.py",
+      "line": 186,
+      "model": "gpt-4o-mini",
+      "estimatedThroughputLow": 0.045,
+      "estimatedThroughputHigh": 1.95,
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "[AI Suggestion - verify with your usage data] Great routing pattern - using mini for simple queries is cost-effective"
+    },
+    {
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 56,
+      "model": "gpt-4o-mini",
+      "estimatedThroughputLow": 0.045,
+      "estimatedThroughputHigh": 1.95,
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "[AI Suggestion - verify with your usage data] Manual retry with exponential backoff is solid. gpt-4o-mini is cost-effective choice"
+    },
+    {
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 106,
+      "model": "gpt-4o-mini",
+      "estimatedThroughputLow": 0.045,
+      "estimatedThroughputHigh": 1.95,
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "[AI Suggestion - verify with your usage data] LRU cache is simple but effective. Ensure prompts are identical strings for cache hits"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r1-openai-anthropic-saas/app.py",
+      "line": 32,
+      "model": "gpt-4o-mini",
+      "estimatedThroughputLow": 0.045,
+      "estimatedThroughputHigh": 1.95,
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "[AI Suggestion - verify with your usage data] Optimal choice - gpt-4o-mini is excellent for streaming responses"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r9-nemo-guardrails-llmguard/guardrails_system.py",
+      "line": 177,
+      "model": "gpt-4o-mini",
+      "estimatedThroughputLow": 0.045,
+      "estimatedThroughputHigh": 1.95,
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "[AI Suggestion - verify with your usage data] Good optimization - using mini for PII detection is smart. Consider regex-based PII detection for even lower costs"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r14-martian-notdiamond-routing/model_routing.py",
+      "line": 131,
+      "model": "gpt-4o-mini",
+      "estimatedThroughputLow": 0.045,
+      "estimatedThroughputHigh": 1.95,
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "[AI Suggestion - verify with your usage data] Cost-based routing is smart. Consider adding Together AI or Groq for even cheaper options on low complexity"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r14-martian-notdiamond-routing/model_routing.py",
+      "line": 254,
+      "model": "gpt-4o-mini",
+      "estimatedThroughputLow": 0.045,
+      "estimatedThroughputHigh": 1.95,
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "[AI Suggestion - verify with your usage data] Cascade pattern is excellent for cost optimization. Using mini for evaluation is smart"
+    },
+    {
+      "file": "test-codebase/src/services/openai_service.py",
+      "line": 104,
+      "model": "text-embedding-3-large",
+      "estimatedThroughputLow": 0.013000000000000001,
+      "estimatedThroughputHigh": 0.6500000000000001,
+      "estimatedMonthlyLow": 0.013000000000000001,
+      "estimatedMonthlyHigh": 0.6500000000000001,
+      "suggestion": "[AI Suggestion - verify with your usage data] Consider switching to text-embedding-3-small (5x cheaper) unless you need the extra precision"
+    },
+    {
+      "file": "test-codebase/src/serving/vllm_server.py",
+      "line": 59,
+      "model": "meta-llama/Llama-3.1-8B-Instruct",
+      "estimatedThroughputLow": 0.0045000000000000005,
+      "estimatedThroughputHigh": 0.21,
+      "estimatedMonthlyLow": 0.0045000000000000005,
+      "estimatedMonthlyHigh": 0.21,
+      "suggestion": "[AI Suggestion - verify with your usage data] Excellent - prefix caching with 8B model is highly cost-effective for repeated prompts. 20-30x cheaper than GPT-4"
+    },
+    {
+      "file": "test-codebase/src/services/openai_service.py",
+      "line": 95,
+      "model": "text-embedding-3-small",
+      "estimatedThroughputLow": 0.002,
+      "estimatedThroughputHigh": 0.1,
+      "estimatedMonthlyLow": 0.002,
+      "estimatedMonthlyHigh": 0.1,
+      "suggestion": "[AI Suggestion - verify with your usage data] Already optimized - text-embedding-3-small is the most cost-effective OpenAI embedding model"
+    },
+    {
+      "file": "test-codebase/src/agents/langchain_agent.py",
+      "line": 47,
+      "model": "text-embedding-3-small",
+      "estimatedThroughputLow": 0.002,
+      "estimatedThroughputHigh": 0.1,
+      "estimatedMonthlyLow": 0.002,
+      "estimatedMonthlyHigh": 0.1,
+      "suggestion": "[AI Suggestion - verify with your usage data] Optimal embedding choice for RAG - consider self-hosted alternatives like sentence-transformers for high-volume use"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r1-openai-anthropic-saas/app.py",
+      "line": 43,
+      "model": "text-embedding-3-small",
+      "estimatedThroughputLow": 0.002,
+      "estimatedThroughputHigh": 0.1,
+      "estimatedMonthlyLow": 0.002,
+      "estimatedMonthlyHigh": 0.1,
+      "suggestion": "[AI Suggestion - verify with your usage data] Best OpenAI embedding model for cost/performance. For high volume, consider self-hosted sentence-transformers"
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r7-langchain-llamaindex-rag/rag_pipeline.py",
+      "line": 22,
+      "model": "text-embedding-3-small",
+      "estimatedThroughputLow": 0.002,
+      "estimatedThroughputHigh": 0.1,
+      "estimatedMonthlyLow": 0.002,
+      "estimatedMonthlyHigh": 0.1,
+      "suggestion": "[AI Suggestion - verify with your usage data] Optimal embedding model. For very high volume (>100M tokens/month), consider self-hosted sentence-transformers"
+    },
+    {
+      "file": "test-codebase/src/serving/vllm_server.py",
+      "line": 29,
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "benchmark data unavailable for this model"
+    },
+    {
+      "file": "test-codebase/src/serving/vllm_server.py",
+      "line": 109,
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "benchmark data unavailable for this model"
+    },
+    {
+      "file": "test-codebase/src/serving/vllm_server.py",
+      "line": 128,
+      "model": "TheBloke/Llama-2-70B-Chat-AWQ",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "benchmark data unavailable for this model"
+    },
+    {
+      "file": "test-codebase/src/serving/sglang_server.py",
+      "line": 16,
+      "model": "unknown",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r2-together-baseten-neocloud/api_service.py",
+      "line": 36,
+      "model": "meta-llama/Llama-3.1-70B-Instruct-Turbo",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "benchmark data unavailable for this model"
     }
   ]
 }

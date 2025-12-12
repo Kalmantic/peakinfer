@@ -1,0 +1,113 @@
+{
+  "root": "/Users/thiyagarajanm/AIProjects/peakinfer/src/slc/__tests__/fixtures/r7-langchain-llamaindex-rag",
+  "tree": [
+    {
+      "name": "src",
+      "path": "src",
+      "type": "directory",
+      "children": [
+        {
+          "name": "slc",
+          "path": "slc",
+          "type": "directory",
+          "children": [
+            {
+              "name": "__tests__",
+              "path": "__tests__",
+              "type": "directory",
+              "children": [
+                {
+                  "name": "fixtures",
+                  "path": "fixtures",
+                  "type": "directory",
+                  "children": [
+                    {
+                      "name": "r7-langchain-llamaindex-rag",
+                      "path": "r7-langchain-llamaindex-rag",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "rag_pipeline.py",
+                          "path": "src/slc/__tests__/fixtures/r7-langchain-llamaindex-rag/rag_pipeline.py",
+                          "type": "file",
+                          "callsites": [
+                            {
+                              "line": 20,
+                              "pattern": "langchain.openai.chat",
+                              "provider": "openai",
+                              "model": "gpt-4o"
+                            },
+                            {
+                              "line": 21,
+                              "pattern": "langchain.anthropic.chat",
+                              "provider": "anthropic",
+                              "model": "claude-3-5-sonnet-20241022"
+                            },
+                            {
+                              "line": 22,
+                              "pattern": "langchain.openai.embedding",
+                              "provider": "openai",
+                              "model": "text-embedding-3-small"
+                            },
+                            {
+                              "line": 25,
+                              "pattern": "dspy.openai.completion",
+                              "provider": "openai",
+                              "model": "gpt-4o"
+                            },
+                            {
+                              "line": 39,
+                              "pattern": "langchain.openai.chat",
+                              "provider": "openai",
+                              "model": "gpt-4o"
+                            },
+                            {
+                              "line": 53,
+                              "pattern": "langchain.anthropic.chat",
+                              "provider": "anthropic",
+                              "model": "claude-3-5-sonnet-20241022"
+                            },
+                            {
+                              "line": 73,
+                              "pattern": "llamaindex.openai.chat",
+                              "provider": "openai",
+                              "model": null
+                            },
+                            {
+                              "line": 83,
+                              "pattern": "llamaindex.openai.chat",
+                              "provider": "openai",
+                              "model": null
+                            },
+                            {
+                              "line": 93,
+                              "pattern": "langchain.openai.embedding",
+                              "provider": "openai",
+                              "model": "text-embedding-3-small"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "totalCallsites": 9,
+    "providers": [
+      "anthropic",
+      "openai"
+    ],
+    "models": [
+      "claude-3-5-sonnet-20241022",
+      "gpt-4o",
+      "text-embedding-3-small"
+    ]
+  }
+}

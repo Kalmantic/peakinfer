@@ -43,7 +43,7 @@
       "estimatedThroughputHigh": 45,
       "estimatedMonthlyLow": 1.05,
       "estimatedMonthlyHigh": 45,
-      "suggestion": "[AI Suggestion - verify with your usage data] Claude 3.5 Sonnet is top-tier. For general chat, consider Claude Haiku (same provider, 20x cheaper), Llama-3.1-8b on Groq, or Gemini 1.5 Flash. Reserve Sonnet for complex reasoning tasks."
+      "suggestion": "[AI Suggestion - verify with your usage data] Claude 3.5 Sonnet ($3/1M input) is premium-tier. For simple chat, switch to Llama-3.1-8b via Groq (free, 600+ tok/s), Gemini Flash ($0.075/1M), or Claude Haiku ($0.80/1M) for 96-99% cost reduction. Use Sonnet only for nuanced writing, analysis, or code generation requiring advanced reasoning."
     },
     {
       "file": "app.py",
@@ -53,7 +53,7 @@
       "estimatedThroughputHigh": 32.5,
       "estimatedMonthlyLow": 0.75,
       "estimatedMonthlyHigh": 32.5,
-      "suggestion": "[AI Suggestion - verify with your usage data] For simple chat tasks, switch to Llama-3.1-8b on Groq (ultra-fast inference on LPU), Gemini 1.5 Flash, or Claude Haiku. GPT-4o is premium-tier and overkill for most chat use cases - 98% cost savings possible."
+      "suggestion": "[AI Suggestion - verify with your usage data] GPT-4o is overkill for most chat tasks. Switch to Llama-3.1-8b via Groq (free tier, 600+ tok/s, $0/1M), Gemini Flash ($0.075/1M, 300 tok/s), or Claude Haiku ($0.80/1M) for 95%+ cost savings with comparable quality for standard conversations. Reserve GPT-4o only for complex reasoning tasks."
     },
     {
       "file": "app.py",
@@ -63,7 +63,7 @@
       "estimatedThroughputHigh": 1.95,
       "estimatedMonthlyLow": 0.045,
       "estimatedMonthlyHigh": 1.95,
-      "suggestion": "[AI Suggestion - verify with your usage data] GPT-4o-mini is already cost-efficient. For even faster streaming, try Groq's Llama-3.1-8b (500+ tokens/sec) or Gemini 1.5 Flash. Both support streaming and are significantly cheaper."
+      "suggestion": "[AI Suggestion - verify with your usage data] GPT-4o-mini is cost-effective but has limited streaming speed (~80 tok/s). For ultra-low latency streaming, use Groq with Llama-3.1-8b (free tier, ~600 tok/s), Gemini Flash ($0.075/1M, ~300 tok/s), or Fireworks AI Llama-3 ($0.20/1M, ~400 tok/s) for 4-8x faster streaming at similar or lower cost."
     },
     {
       "file": "app.py",
@@ -73,7 +73,7 @@
       "estimatedThroughputHigh": 0.1,
       "estimatedMonthlyLow": 0.002,
       "estimatedMonthlyHigh": 0.1,
-      "suggestion": "[AI Suggestion - verify with your usage data] For embeddings, consider open-source alternatives: all-MiniLM-L6-v2 (self-hosted via sentence-transformers), Nomic Embed, or Cohere's embed-english-light-v3.0. OpenAI embeddings are premium - 90%+ cost savings with comparable quality."
+      "suggestion": "[AI Suggestion - verify with your usage data] text-embedding-3-small ($0.02/1M) is already cost-effective. For even lower costs at scale, consider Voyage AI embed-v2 ($0.01/1M), Cohere embed-english-light-v3.0 ($0.01/1M), or self-host nomic-embed-text via Ollama/llama.cpp for zero API costs with comparable quality for RAG/search use cases."
     }
   ]
 }

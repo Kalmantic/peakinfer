@@ -39,7 +39,7 @@
                             },
                             {
                               "line": 30,
-                              "pattern": "llama_cpp.other.completion",
+                              "pattern": "other.completion",
                               "provider": "other",
                               "model": "llama-3.1-8b-instruct"
                             },

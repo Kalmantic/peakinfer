@@ -1,0 +1,97 @@
+{
+  "estimatedRange": {
+    "low": 1.8,
+    "high": 77.5
+  },
+  "mostExpensiveModel": "claude-3-5-sonnet-20241022",
+  "byProvider": [
+    {
+      "provider": "anthropic",
+      "throughput": 45,
+      "percentage": 58
+    },
+    {
+      "provider": "openai",
+      "throughput": 32.5,
+      "percentage": 42
+    },
+    {
+      "provider": "together",
+      "throughput": 0,
+      "percentage": 0
+    },
+    {
+      "provider": "other",
+      "throughput": 0,
+      "percentage": 0
+    }
+  ],
+  "byModel": [
+    {
+      "model": "claude-3-5-sonnet-20241022",
+      "throughput": 45
+    },
+    {
+      "model": "gpt-4o",
+      "throughput": 32.5
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct-Turbo",
+      "throughput": 0
+    },
+    {
+      "model": "unknown",
+      "throughput": 0
+    }
+  ],
+  "hotspots": [
+    {
+      "file": "api_service.py",
+      "line": 27,
+      "model": "claude-3-5-sonnet-20241022",
+      "estimatedThroughputLow": 1.05,
+      "estimatedThroughputHigh": 45,
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "[AI Suggestion - verify with your usage data] Claude 3.5 Sonnet is a premium model ($3/$15 per 1M tokens). For simple tasks like classification or extraction, use Llama-3-8b via Together AI or Gemini Flash 1.5 (20x cheaper). For medium complexity, use Claude Haiku (10x cheaper at $0.25/$1.25, 3x faster). Enable prompt caching for repeated system prompts to reduce costs by 90%. Reserve Sonnet for complex reasoning only."
+    },
+    {
+      "file": "api_service.py",
+      "line": 19,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] GPT-4o is expensive ($2.50/$10 per 1M tokens). For simple tasks like summarization, classification, or extraction, switch to Llama-3-8b via Together AI (20x cheaper at $0.20/$0.20), Gemini Flash 1.5 (15x cheaper, 3x faster), or Claude Haiku (10x cheaper at $0.25/$1.25). Reserve GPT-4o only for complex reasoning requiring frontier capabilities."
+    },
+    {
+      "file": "api_service.py",
+      "line": 36,
+      "model": "meta-llama/Llama-3.1-70B-Instruct-Turbo",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "benchmark data unavailable for this model"
+    },
+    {
+      "file": "api_service.py",
+      "line": 51,
+      "model": "unknown",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0
+    },
+    {
+      "file": "api_service.py",
+      "line": 64,
+      "model": "unknown",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0
+    }
+  ]
+}

@@ -1,0 +1,127 @@
+{
+  "estimatedRange": {
+    "low": 4.354,
+    "high": 187.7
+  },
+  "mostExpensiveModel": "gpt-4o",
+  "byProvider": [
+    {
+      "provider": "openai",
+      "throughput": 97.69999999999999,
+      "percentage": 52
+    },
+    {
+      "provider": "anthropic",
+      "throughput": 90,
+      "percentage": 48
+    }
+  ],
+  "byModel": [
+    {
+      "model": "gpt-4o",
+      "throughput": 97.5
+    },
+    {
+      "model": "claude-3-5-sonnet-20241022",
+      "throughput": 90
+    },
+    {
+      "model": "text-embedding-3-small",
+      "throughput": 0.2
+    },
+    {
+      "model": "unknown",
+      "throughput": 0
+    }
+  ],
+  "hotspots": [
+    {
+      "file": "src/slc/__tests__/fixtures/r7-langchain-llamaindex-rag/rag_pipeline.py",
+      "line": 21,
+      "model": "claude-3-5-sonnet-20241022",
+      "estimatedThroughputLow": 1.05,
+      "estimatedThroughputHigh": 45,
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "[AI Suggestion - verify with your usage data] Claude Sonnet is a premium model. For RAG synthesis tasks, Claude Haiku or Llama-3-8b would be sufficient at 10x lower cost. Reserve Sonnet for complex reasoning."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r7-langchain-llamaindex-rag/rag_pipeline.py",
+      "line": 53,
+      "model": "claude-3-5-sonnet-20241022",
+      "estimatedThroughputLow": 1.05,
+      "estimatedThroughputHigh": 45,
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "[AI Suggestion - verify with your usage data] Claude Sonnet is overqualified for basic RAG retrieval. Switch to Claude Haiku for 15x cost savings, or use Llama-3-8b on Together AI/Groq for even better price-performance."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r7-langchain-llamaindex-rag/rag_pipeline.py",
+      "line": 20,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] GPT-4o is expensive for RAG. Consider switching to Llama-3-8b-instruct, Claude Haiku, or Gemini Flash for this simple retrieval task - they're 10-20x cheaper with comparable quality for RAG queries."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r7-langchain-llamaindex-rag/rag_pipeline.py",
+      "line": 25,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] DSPy works well with smaller models. Try Llama-3-70b, Mixtral-8x7b, or Gemini Pro for DSPy prompting - they're faster and cheaper than GPT-4o while maintaining quality."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r7-langchain-llamaindex-rag/rag_pipeline.py",
+      "line": 39,
+      "model": "gpt-4o",
+      "estimatedThroughputLow": 0.75,
+      "estimatedThroughputHigh": 32.5,
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "[AI Suggestion - verify with your usage data] RAG QA chains work well with smaller models. Try Groq-hosted Llama-3-8b for 100x faster responses at 20x lower cost. GPT-4o is overkill for document QA."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r7-langchain-llamaindex-rag/rag_pipeline.py",
+      "line": 22,
+      "model": "text-embedding-3-small",
+      "estimatedThroughputLow": 0.002,
+      "estimatedThroughputHigh": 0.1,
+      "estimatedMonthlyLow": 0.002,
+      "estimatedMonthlyHigh": 0.1,
+      "suggestion": "[AI Suggestion - verify with your usage data] text-embedding-3-small is already cost-effective. Consider open alternatives like instructor-xl or e5-mistral-7b-instruct for self-hosting to eliminate per-token costs."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r7-langchain-llamaindex-rag/rag_pipeline.py",
+      "line": 93,
+      "model": "text-embedding-3-small",
+      "estimatedThroughputLow": 0.002,
+      "estimatedThroughputHigh": 0.1,
+      "estimatedMonthlyLow": 0.002,
+      "estimatedMonthlyHigh": 0.1,
+      "suggestion": "[AI Suggestion - verify with your usage data] Embedding API calls add latency. For high-throughput scenarios, self-host instructor-xl or e5-mistral-7b-instruct with FastEmbed or sentence-transformers."
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r7-langchain-llamaindex-rag/rag_pipeline.py",
+      "line": 73,
+      "model": "unknown",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0
+    },
+    {
+      "file": "src/slc/__tests__/fixtures/r7-langchain-llamaindex-rag/rag_pipeline.py",
+      "line": 83,
+      "model": "unknown",
+      "estimatedThroughputLow": 0,
+      "estimatedThroughputHigh": 0,
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0
+    }
+  ]
+}

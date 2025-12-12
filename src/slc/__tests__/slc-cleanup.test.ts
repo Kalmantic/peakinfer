@@ -118,7 +118,7 @@ describe('SLC Cleanup Sprint', () => {
       // Just now
       const justNow: CachedAnalysis = {
         timestamp: now.toISOString(),
-        version: '0.95.0',
+        version: '1.0.0',
         targetPath: TEST_DIR,
         callsites: [],
         stackMap: { providers: {}, models: {}, files: {} },
@@ -154,7 +154,7 @@ describe('SLC Cleanup Sprint', () => {
     it('should format timestamp for display', () => {
       const cached: CachedAnalysis = {
         timestamp: '2025-12-10T14:30:00.000Z',
-        version: '0.95.0',
+        version: '1.0.0',
         targetPath: TEST_DIR,
         callsites: [],
         stackMap: { providers: {}, models: {}, files: {} },
@@ -235,10 +235,9 @@ describe('SLC Cleanup Sprint', () => {
     });
 
     it('should list only core commands in help', () => {
-      // Should show core commands
+      // Should show core commands (simplified: only analyze and prices remain)
       expect(helpOutput).toContain('analyze');
-      expect(helpOutput).toContain('benchmark');
-      expect(helpOutput).toContain('templates');
+      expect(helpOutput).toContain('prices');
 
       // Should show --cached option
       expect(helpOutput).toContain('--cached');

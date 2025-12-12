@@ -7,90 +7,527 @@
       "type": "directory",
       "children": [
         {
-          "name": "core",
-          "path": "core",
-          "type": "directory",
-          "children": [
-            {
-              "name": "multi-agent-orchestrator.ts",
-              "path": "src/core/multi-agent-orchestrator.ts",
-              "type": "file",
-              "callsites": [
-                {
-                  "line": 718,
-                  "pattern": "anthropic.chat",
-                  "provider": "anthropic",
-                  "model": "claude-sonnet-4-5-20250929"
-                },
-                {
-                  "line": 822,
-                  "pattern": "anthropic.chat",
-                  "provider": "anthropic",
-                  "model": "claude-sonnet-4-5-20250929"
-                },
-                {
-                  "line": 923,
-                  "pattern": "anthropic.chat",
-                  "provider": "anthropic",
-                  "model": "claude-sonnet-4-5-20250929"
-                },
-                {
-                  "line": 1034,
-                  "pattern": "anthropic.chat",
-                  "provider": "anthropic",
-                  "model": "claude-sonnet-4-5-20250929"
-                },
-                {
-                  "line": 1134,
-                  "pattern": "anthropic.chat",
-                  "provider": "anthropic",
-                  "model": "claude-sonnet-4-5-20250929"
-                }
-              ]
-            },
-            {
-              "name": "optimization-suggester.ts",
-              "path": "src/core/optimization-suggester.ts",
-              "type": "file",
-              "callsites": [
-                {
-                  "line": 319,
-                  "pattern": "anthropic.chat",
-                  "provider": "anthropic",
-                  "model": "claude-sonnet-4-5-20250929"
-                }
-              ]
-            }
-          ]
-        },
-        {
           "name": "slc",
           "path": "slc",
           "type": "directory",
           "children": [
             {
-              "name": "agent-analyzer.ts",
-              "path": "src/slc/agent-analyzer.ts",
-              "type": "file",
-              "callsites": [
+              "name": "__tests__",
+              "path": "__tests__",
+              "type": "directory",
+              "children": [
                 {
-                  "line": 222,
-                  "pattern": "claude-agent-sdk.anthropic.chat",
-                  "provider": "anthropic",
-                  "model": "claude-sonnet-4-5-20250929"
+                  "name": "fixtures",
+                  "path": "fixtures",
+                  "type": "directory",
+                  "children": [
+                    {
+                      "name": "r1-openai-anthropic-saas",
+                      "path": "r1-openai-anthropic-saas",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "app.py",
+                          "path": "src/slc/__tests__/fixtures/r1-openai-anthropic-saas/app.py",
+                          "type": "file",
+                          "callsites": [
+                            {
+                              "line": 15,
+                              "pattern": "openai.chat",
+                              "provider": "openai",
+                              "model": "gpt-4o"
+                            },
+                            {
+                              "line": 23,
+                              "pattern": "anthropic.chat",
+                              "provider": "anthropic",
+                              "model": "claude-3-5-sonnet-20241022"
+                            },
+                            {
+                              "line": 32,
+                              "pattern": "openai.chat",
+                              "provider": "openai",
+                              "model": "gpt-4o-mini"
+                            },
+                            {
+                              "line": 43,
+                              "pattern": "openai.embedding",
+                              "provider": "openai",
+                              "model": "text-embedding-3-small"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "r10-portkey-helicone-gateway",
+                      "path": "r10-portkey-helicone-gateway",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "gateway_proxy.py",
+                          "path": "src/slc/__tests__/fixtures/r10-portkey-helicone-gateway/gateway_proxy.py",
+                          "type": "file",
+                          "callsites": [
+                            {
+                              "line": 14,
+                              "pattern": "litellm.chat",
+                              "provider": "litellm",
+                              "model": "gpt-4o"
+                            },
+                            {
+                              "line": 127,
+                              "pattern": "openai.chat",
+                              "provider": "openai",
+                              "model": "gpt-4o"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "r14-martian-notdiamond-routing",
+                      "path": "r14-martian-notdiamond-routing",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "model_routing.py",
+                          "path": "src/slc/__tests__/fixtures/r14-martian-notdiamond-routing/model_routing.py",
+                          "type": "file",
+                          "callsites": [
+                            {
+                              "line": 78,
+                              "pattern": "anthropic.chat",
+                              "provider": "anthropic",
+                              "model": "claude-3-5-sonnet-20241022"
+                            },
+                            {
+                              "line": 131,
+                              "pattern": "openai.chat",
+                              "provider": "openai",
+                              "model": "gpt-4o-mini"
+                            },
+                            {
+                              "line": 254,
+                              "pattern": "openai.chat",
+                              "provider": "openai",
+                              "model": "gpt-4o-mini"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "r2-together-baseten-neocloud",
+                      "path": "r2-together-baseten-neocloud",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "api_service.py",
+                          "path": "src/slc/__tests__/fixtures/r2-together-baseten-neocloud/api_service.py",
+                          "type": "file",
+                          "callsites": [
+                            {
+                              "line": 19,
+                              "pattern": "openai.chat",
+                              "provider": "openai",
+                              "model": "gpt-4o"
+                            },
+                            {
+                              "line": 36,
+                              "pattern": "together.chat",
+                              "provider": "together",
+                              "model": "meta-llama/Llama-3.1-70B-Instruct-Turbo"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "r4-aws-bedrock-databricks-snowflake",
+                      "path": "r4-aws-bedrock-databricks-snowflake",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "aws_bedrock.py",
+                          "path": "src/slc/__tests__/fixtures/r4-aws-bedrock-databricks-snowflake/aws_bedrock.py",
+                          "type": "file",
+                          "callsites": [
+                            {
+                              "line": 33,
+                              "pattern": "aws-bedrock.chat",
+                              "provider": "aws-bedrock",
+                              "model": "anthropic.claude-3-5-sonnet-20241022-v2:0"
+                            },
+                            {
+                              "line": 47,
+                              "pattern": "aws-bedrock.chat",
+                              "provider": "aws-bedrock",
+                              "model": "meta.llama3-1-70b-instruct-v1:0"
+                            },
+                            {
+                              "line": 56,
+                              "pattern": "gcp-vertex.chat",
+                              "provider": "gcp-vertex",
+                              "model": "gemini-1.5-pro"
+                            },
+                            {
+                              "line": 69,
+                              "pattern": "azure-openai.chat",
+                              "provider": "azure-openai",
+                              "model": "gpt-4o"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "r7-langchain-llamaindex-rag",
+                      "path": "r7-langchain-llamaindex-rag",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "rag_pipeline.py",
+                          "path": "src/slc/__tests__/fixtures/r7-langchain-llamaindex-rag/rag_pipeline.py",
+                          "type": "file",
+                          "callsites": [
+                            {
+                              "line": 20,
+                              "pattern": "langchain.openai.chat",
+                              "provider": "openai",
+                              "model": "gpt-4o"
+                            },
+                            {
+                              "line": 22,
+                              "pattern": "langchain.openai.embedding",
+                              "provider": "openai",
+                              "model": "text-embedding-3-small"
+                            },
+                            {
+                              "line": 25,
+                              "pattern": "dspy.openai.chat",
+                              "provider": "openai",
+                              "model": "gpt-4o"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "r9-nemo-guardrails-llmguard",
+                      "path": "r9-nemo-guardrails-llmguard",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "guardrails_system.py",
+                          "path": "src/slc/__tests__/fixtures/r9-nemo-guardrails-llmguard/guardrails_system.py",
+                          "type": "file",
+                          "callsites": [
+                            {
+                              "line": 33,
+                              "pattern": "openai.chat",
+                              "provider": "openai",
+                              "model": "gpt-4o"
+                            },
+                            {
+                              "line": 109,
+                              "pattern": "guardrails.openai.chat",
+                              "provider": "openai",
+                              "model": "gpt-4o"
+                            },
+                            {
+                              "line": 144,
+                              "pattern": "anthropic.chat",
+                              "provider": "anthropic",
+                              "model": "claude-3-5-sonnet-20241022"
+                            },
+                            {
+                              "line": 177,
+                              "pattern": "openai.chat",
+                              "provider": "openai",
+                              "model": "gpt-4o-mini"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "test-codebase",
+      "path": "test-codebase",
+      "type": "directory",
+      "children": [
+        {
+          "name": "src",
+          "path": "src",
+          "type": "directory",
+          "children": [
+            {
+              "name": "agents",
+              "path": "agents",
+              "type": "directory",
+              "children": [
+                {
+                  "name": "langchain_agent.py",
+                  "path": "test-codebase/src/agents/langchain_agent.py",
+                  "type": "file",
+                  "callsites": [
+                    {
+                      "line": 24,
+                      "pattern": "langchain.openai.chat",
+                      "provider": "openai",
+                      "model": "gpt-4o"
+                    },
+                    {
+                      "line": 25,
+                      "pattern": "langchain.anthropic.chat",
+                      "provider": "anthropic",
+                      "model": "claude-sonnet-4-20250514"
+                    },
+                    {
+                      "line": 47,
+                      "pattern": "langchain.openai.embedding",
+                      "provider": "openai",
+                      "model": "text-embedding-3-small"
+                    },
+                    {
+                      "line": 186,
+                      "pattern": "langchain.openai.chat",
+                      "provider": "openai",
+                      "model": "gpt-4o-mini"
+                    }
+                  ]
                 }
               ]
             },
             {
-              "name": "detector.ts",
-              "path": "src/slc/detector.ts",
-              "type": "file",
-              "callsites": [
+              "name": "services",
+              "path": "services",
+              "type": "directory",
+              "children": [
                 {
-                  "line": 282,
-                  "pattern": "anthropic.completion",
-                  "provider": "anthropic",
-                  "model": "claude-sonnet-4-20250514"
+                  "name": "anthropic_service.py",
+                  "path": "test-codebase/src/services/anthropic_service.py",
+                  "type": "file",
+                  "callsites": [
+                    {
+                      "line": 21,
+                      "pattern": "anthropic.chat",
+                      "provider": "anthropic",
+                      "model": "claude-sonnet-4-20250514"
+                    },
+                    {
+                      "line": 56,
+                      "pattern": "anthropic.chat",
+                      "provider": "anthropic",
+                      "model": "claude-sonnet-4-20250514"
+                    },
+                    {
+                      "line": 74,
+                      "pattern": "anthropic.chat",
+                      "provider": "anthropic",
+                      "model": "claude-sonnet-4-20250514"
+                    },
+                    {
+                      "line": 120,
+                      "pattern": "anthropic.chat",
+                      "provider": "anthropic",
+                      "model": "claude-sonnet-4-20250514"
+                    },
+                    {
+                      "line": 136,
+                      "pattern": "anthropic.chat",
+                      "provider": "anthropic",
+                      "model": "claude-3-5-haiku-20241022"
+                    },
+                    {
+                      "line": 155,
+                      "pattern": "anthropic.chat",
+                      "provider": "anthropic",
+                      "model": "claude-3-opus-20240229"
+                    },
+                    {
+                      "line": 175,
+                      "pattern": "anthropic.chat",
+                      "provider": "anthropic",
+                      "model": "claude-3-5-haiku-20241022"
+                    },
+                    {
+                      "line": 194,
+                      "pattern": "anthropic.image",
+                      "provider": "anthropic",
+                      "model": "claude-sonnet-4-20250514"
+                    }
+                  ]
+                },
+                {
+                  "name": "openai_service.py",
+                  "path": "test-codebase/src/services/openai_service.py",
+                  "type": "file",
+                  "callsites": [
+                    {
+                      "line": 22,
+                      "pattern": "openai.chat",
+                      "provider": "openai",
+                      "model": "gpt-4o"
+                    },
+                    {
+                      "line": 41,
+                      "pattern": "openai.chat",
+                      "provider": "openai",
+                      "model": "gpt-4o-mini"
+                    },
+                    {
+                      "line": 79,
+                      "pattern": "openai.chat",
+                      "provider": "openai",
+                      "model": "gpt-4o"
+                    },
+                    {
+                      "line": 95,
+                      "pattern": "openai.embedding",
+                      "provider": "openai",
+                      "model": "text-embedding-3-small"
+                    },
+                    {
+                      "line": 104,
+                      "pattern": "openai.embedding",
+                      "provider": "openai",
+                      "model": "text-embedding-3-large"
+                    },
+                    {
+                      "line": 119,
+                      "pattern": "openai.chat",
+                      "provider": "openai",
+                      "model": "gpt-4o-mini"
+                    },
+                    {
+                      "line": 138,
+                      "pattern": "openai.chat",
+                      "provider": "openai",
+                      "model": "gpt-4o"
+                    },
+                    {
+                      "line": 152,
+                      "pattern": "openai.image",
+                      "provider": "openai",
+                      "model": "gpt-4o"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "serving",
+              "path": "serving",
+              "type": "directory",
+              "children": [
+                {
+                  "name": "sglang_server.py",
+                  "path": "test-codebase/src/serving/sglang_server.py",
+                  "type": "file",
+                  "callsites": [
+                    {
+                      "line": 16,
+                      "pattern": "other.chat",
+                      "provider": "other",
+                      "model": null
+                    }
+                  ]
+                },
+                {
+                  "name": "vllm_server.py",
+                  "path": "test-codebase/src/serving/vllm_server.py",
+                  "type": "file",
+                  "callsites": [
+                    {
+                      "line": 29,
+                      "pattern": "vllm.chat",
+                      "provider": "vllm",
+                      "model": "meta-llama/Llama-3.1-70B-Instruct"
+                    },
+                    {
+                      "line": 59,
+                      "pattern": "vllm.chat",
+                      "provider": "vllm",
+                      "model": "meta-llama/Llama-3.1-8B-Instruct"
+                    },
+                    {
+                      "line": 109,
+                      "pattern": "vllm.chat",
+                      "provider": "vllm",
+                      "model": "meta-llama/Llama-3.1-70B-Instruct"
+                    },
+                    {
+                      "line": 128,
+                      "pattern": "vllm.chat",
+                      "provider": "vllm",
+                      "model": "TheBloke/Llama-2-70B-Chat-AWQ"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "utils",
+              "path": "utils",
+              "type": "directory",
+              "children": [
+                {
+                  "name": "inference_patterns.py",
+                  "path": "test-codebase/src/utils/inference_patterns.py",
+                  "type": "file",
+                  "callsites": [
+                    {
+                      "line": 40,
+                      "pattern": "openai.chat",
+                      "provider": "openai",
+                      "model": "gpt-4o"
+                    },
+                    {
+                      "line": 56,
+                      "pattern": "openai.chat",
+                      "provider": "openai",
+                      "model": "gpt-4o-mini"
+                    },
+                    {
+                      "line": 85,
+                      "pattern": "openai.chat",
+                      "provider": "openai",
+                      "model": "gpt-4o"
+                    },
+                    {
+                      "line": 106,
+                      "pattern": "openai.chat",
+                      "provider": "openai",
+                      "model": "gpt-4o-mini"
+                    },
+                    {
+                      "line": 134,
+                      "pattern": "anthropic.chat",
+                      "provider": "anthropic",
+                      "model": "claude-3-5-haiku-20241022"
+                    },
+                    {
+                      "line": 188,
+                      "pattern": "openai.chat",
+                      "provider": "openai",
+                      "model": "gpt-4o"
+                    },
+                    {
+                      "line": 200,
+                      "pattern": "anthropic.chat",
+                      "provider": "anthropic",
+                      "model": "claude-sonnet-4-20250514"
+                    }
+                  ]
                 }
               ]
             }
@@ -100,13 +537,34 @@
     }
   ],
   "summary": {
-    "totalCallsites": 8,
+    "totalCallsites": 54,
     "providers": [
-      "anthropic"
+      "anthropic",
+      "aws-bedrock",
+      "azure-openai",
+      "gcp-vertex",
+      "litellm",
+      "openai",
+      "other",
+      "together",
+      "vllm"
     ],
     "models": [
+      "TheBloke/Llama-2-70B-Chat-AWQ",
+      "anthropic.claude-3-5-sonnet-20241022-v2:0",
+      "claude-3-5-haiku-20241022",
+      "claude-3-5-sonnet-20241022",
+      "claude-3-opus-20240229",
       "claude-sonnet-4-20250514",
-      "claude-sonnet-4-5-20250929"
+      "gemini-1.5-pro",
+      "gpt-4o",
+      "gpt-4o-mini",
+      "meta-llama/Llama-3.1-70B-Instruct",
+      "meta-llama/Llama-3.1-70B-Instruct-Turbo",
+      "meta-llama/Llama-3.1-8B-Instruct",
+      "meta.llama3-1-70b-instruct-v1:0",
+      "text-embedding-3-large",
+      "text-embedding-3-small"
     ]
   }
 }

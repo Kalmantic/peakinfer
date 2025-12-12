@@ -1,6 +1,6 @@
 {
   "name": "@kalmantic/peakinfer",
-  "version": "0.95.0",
+  "version": "1.0.0",
   "description": "Peak performance of inference - analyze and optimize across Application, Serving, and Infrastructure layers",
   "main": "dist/slc/index.js",
   "type": "module",

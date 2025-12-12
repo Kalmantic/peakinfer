@@ -27,7 +27,7 @@ import type {
 // CONSTANTS
 // =============================================================================
 
-const VERSION = 'v0.95';
+const VERSION = 'v1.0';
 const BOX_WIDTH = 69;
 
 // Box drawing characters

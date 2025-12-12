@@ -56,7 +56,7 @@
       "estimatedThroughputHigh": 4.529999999999999,
       "estimatedMonthlyLow": 0.0985,
       "estimatedMonthlyHigh": 4.529999999999999,
-      "suggestion": "[AI Suggestion - verify with your usage data] Already using Q4_K_M quantization with Flash Attention - excellent for CPU/mixed inference. For simple extraction/summarization tasks, consider Gemini Flash 2.0 or Claude Haiku which offer better latency at similar cost."
+      "suggestion": "[AI Suggestion - verify with your usage data] GGUF Q4_K_M with Flash Attention is excellent for edge/CPU deployment. For cloud production with simple tasks (extraction, summarization), switch to managed Groq (200+ tok/s), Together AI, or Gemini Flash 2.0 for 3-5x better latency without managing infrastructure."
     },
     {
       "file": "src/slc/__tests__/fixtures/r6-tensorrt-awq-gptq/optimized_inference.py",
@@ -66,7 +66,7 @@
       "estimatedThroughputHigh": 4.529999999999999,
       "estimatedMonthlyLow": 0.0985,
       "estimatedMonthlyHigh": 4.529999999999999,
-      "suggestion": "[AI Suggestion - verify with your usage data] EXL2 is great for consumer GPUs but complex to maintain. For production, consider managed services like Together AI (Llama-3-8B), Groq (ultra-low latency), or Gemini Flash for simpler operations."
+      "suggestion": "[AI Suggestion - verify with your usage data] EXL2 is excellent for consumer GPUs (RTX 4090, 3090) but adds maintenance complexity. For production, switch to managed services: Together AI (Llama-3-8B), Fireworks AI, or Groq for ultra-low latency (<100ms). For simple extraction/summarization, use Gemini Flash 1.5 (20x cheaper) or Claude Haiku."
     },
     {
       "file": "src/slc/__tests__/fixtures/r6-tensorrt-awq-gptq/optimized_inference.py",
@@ -76,7 +76,7 @@
       "estimatedThroughputHigh": 0.21,
       "estimatedMonthlyLow": 0.0045000000000000005,
       "estimatedMonthlyHigh": 0.21,
-      "suggestion": "[AI Suggestion - verify with your usage data] Already using 4-bit quantization which is optimal. For simple tasks like summarization or classification, consider switching to smaller models like Llama-3.1-1B or Gemini Flash 1.5 for 10-50x cost reduction with comparable quality."
+      "suggestion": "[AI Suggestion - verify with your usage data] Already using 4-bit quantization which is optimal for memory efficiency. For simple tasks like summarization or classification, consider switching to Gemini Flash 1.5 (2x faster, 50% cheaper) or Claude Haiku (better quality at similar cost). For complex reasoning, current setup is appropriate."
     },
     {
       "file": "src/slc/__tests__/fixtures/r6-tensorrt-awq-gptq/optimized_inference.py",
