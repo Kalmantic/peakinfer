@@ -377,12 +377,15 @@ function renderStackMapBox(
 
   // Show top 5 callsites
   const topCallsites = callsites.slice(0, 5);
+  const FILE_COL_WIDTH = 45; // Fixed width for file:line column
   for (let i = 0; i < topCallsites.length; i++) {
     const cs = topCallsites[i];
     const prefix = i === topCallsites.length - 1 && callsites.length <= 5 ? '└' : '├';
-    const model = cs.model || 'unknown';
-    const streaming = cs.isStreaming ? ', streaming' : '';
-    console.log(boxRow(`   ${prefix}──► ${cs.file}:${cs.line}         ${model}${streaming}`));
+    const model = cs.model || '(runtime-configured)';
+    // Truncate long file paths and pad for alignment
+    const fileLoc = `${cs.file}:${cs.line}`.slice(0, FILE_COL_WIDTH - 1);
+    const paddedLoc = fileLoc.padEnd(FILE_COL_WIDTH);
+    console.log(boxRow(`   ${prefix}──► ${paddedLoc} ${model}`));
   }
 
   if (callsites.length > 5) {
@@ -399,11 +402,16 @@ function renderStackMapBox(
   console.log(boxRow('   │'));
 
   const models = Object.entries(modelCounts).sort((a, b) => b[1] - a[1]);
+  const MODEL_COL_WIDTH = 32; // Fixed width for model name column
   for (let i = 0; i < models.length; i++) {
     const [model, count] = models[i];
     const prefix = i === models.length - 1 ? '└' : '├';
     const estTokens = estimateMonthlyTokens(count);
-    console.log(boxRow(`   ${prefix}──► ${model || 'unknown'}                    ${count} calls   ~${estTokens}`));
+    // Truncate long model names and pad for alignment
+    const modelName = (model || '(runtime-configured)').slice(0, MODEL_COL_WIDTH - 1);
+    const paddedModel = modelName.padEnd(MODEL_COL_WIDTH);
+    const countStr = `${count} calls`.padEnd(10);
+    console.log(boxRow(`   ${prefix}──► ${paddedModel} ${countStr} ~${estTokens}`));
   }
 
   console.log(boxEmpty());
@@ -416,11 +424,15 @@ function renderStackMapBox(
   console.log(boxRow('   │'));
 
   const providers = Object.entries(providerCounts).sort((a, b) => b[1] - a[1]);
+  const PROVIDER_COL_WIDTH = 20; // Fixed width for provider name column
   for (let i = 0; i < providers.length; i++) {
     const [provider, count] = providers[i];
     const prefix = i === providers.length - 1 ? '└' : '├';
     const via = detectProviderVia(callsites, provider);
-    console.log(boxRow(`   ${prefix}──► ${provider || 'unknown'} API              ${count} calls   ${via}`));
+    const providerName = `${provider || 'other'} API`.slice(0, PROVIDER_COL_WIDTH - 1);
+    const paddedProvider = providerName.padEnd(PROVIDER_COL_WIDTH);
+    const countStr = `${count} calls`.padEnd(10);
+    console.log(boxRow(`   ${prefix}──► ${paddedProvider} ${countStr} ${via}`));
   }
 
   console.log(boxEmpty());
@@ -575,8 +587,8 @@ function renderPricingBox(pricing: PricingSummary): void {
   // ALTERNATIVE PRICING section
   console.log(boxRow('ALTERNATIVE PRICING (same models, different providers)'));
   console.log(boxRow('   │'));
-  console.log(boxRow('   ├──► Run `peakinfer pricing --alternatives` for comparison'));
-  console.log(boxRow('   └──► Self-hosted TCO available with `peakinfer pricing --tco`'));
+  console.log(boxRow('   ├──► Run `peakinfer pricing --detailed` for live model pricing'));
+  console.log(boxRow('   └──► Use `peakinfer diff old.json new.json` to track changes'));
   console.log(boxEmpty());
 
   console.log(boxBottom());
@@ -598,7 +610,7 @@ function renderHotspotsBox(hotspots: CallsiteCost[]): void {
   for (const h of hotspots.slice(0, 3)) {
     const costRange = formatCurrencyRange(h.estimatedMonthlyLow, h.estimatedMonthlyHigh);
     console.log(boxRow(`⚠  ${h.file}:${h.line}`));
-    console.log(boxRow(`   └─ ${h.model || 'unknown'}, ${costRange}/mo`));
+    console.log(boxRow(`   └─ ${h.model || '(runtime-configured)'}, ${costRange}/mo`));
 
     if (h.suggestion) {
       console.log(boxRow(`   └─ Suggestion: ${h.suggestion}`));
@@ -625,7 +637,7 @@ function countByField(
 ): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const cs of callsites) {
-    const value = cs[field] || 'unknown';
+    const value = cs[field] || (field === 'model' ? '(runtime-configured)' : 'other');
     counts[value] = (counts[value] || 0) + 1;
   }
   return counts;

@@ -761,15 +761,14 @@ export async function runInteractiveMode(): Promise<void> {
     }
   }
 
-  // Main menu loop
+  // Main menu loop (PRD Section 9 commands: analyze, stackmap, pricing, diff)
   while (true) {
     const choice = await interactive.select(
       'What would you like to do?',
       [
         { value: 'analyze', label: 'Analyze Codebase', hint: 'Find LLM API usage and costs' },
-        { value: 'recommend', label: 'Get Recommendations', hint: 'AI-powered optimization suggestions' },
-        { value: 'templates', label: 'Browse Templates', hint: 'Community optimization strategies' },
-        { value: 'discover', label: 'Full Discovery', hint: 'Comprehensive infrastructure analysis' },
+        { value: 'stackmap', label: 'View StackMap', hint: 'Show inference topology from previous analysis' },
+        { value: 'pricing', label: 'View Pricing', hint: 'Show cost breakdown' },
         { value: 'settings', label: 'Settings', hint: 'Configure PeakInfer' },
         { value: 'help', label: 'Help', hint: 'Documentation and guides' },
         { value: 'exit', label: 'Exit', hint: 'Goodbye!' },
@@ -781,19 +780,18 @@ export async function runInteractiveMode(): Promise<void> {
         await interactiveAnalysis();
         break;
 
-      case 'recommend':
-        console.log(chalk.cyan('\n🤖 AI Recommendations\n'));
-        const path = await interactive.text('Path to analyze', { default: '.' });
-        const { recommend } = await import('./cli.js');
-        await recommend(path);
+      case 'stackmap':
+        console.log(chalk.cyan('\nStackMap - Inference Topology\n'));
+        console.log('Run this command to view your StackMap:');
+        console.log(chalk.dim('  peakinfer stackmap'));
+        console.log(chalk.dim('  peakinfer stackmap --json  # Raw JSON output\n'));
         break;
 
-      case 'templates':
-        await interactiveTemplateBrowser();
-        break;
-
-      case 'discover':
-        console.log(chalk.yellow('\n⚠️  Full discovery mode coming soon!\n'));
+      case 'pricing':
+        console.log(chalk.cyan('\nPricing - Cost Breakdown\n'));
+        console.log('Run these commands to view pricing:');
+        console.log(chalk.dim('  peakinfer pricing'));
+        console.log(chalk.dim('  peakinfer pricing --detailed  # Live pricing from LiteLLM\n'));
         break;
 
       case 'settings':
@@ -801,18 +799,19 @@ export async function runInteractiveMode(): Promise<void> {
         break;
 
       case 'help':
-        console.log(chalk.cyan('\n📚 PeakInfer Help\n'));
+        console.log(chalk.cyan('\nPeakInfer Help\n'));
         console.log('Documentation: https://github.com/kalmantic/peakinfer');
         console.log('Issues: https://github.com/kalmantic/peakinfer/issues');
-        console.log('\nQuick Commands:');
-        console.log('  peakinfer analyze .       # Quick analysis');
-        console.log('  peakinfer recommend .     # Get AI recommendations');
-        console.log('  peakinfer prices          # View model pricing');
+        console.log('\nCommands (PRD v0.95):');
+        console.log('  peakinfer analyze .       # Analyze codebase for LLM usage');
+        console.log('  peakinfer stackmap        # View inference topology');
+        console.log('  peakinfer pricing         # View cost breakdown');
+        console.log('  peakinfer diff a.json b.json  # Compare analyses');
         console.log('  peakinfer --help          # Full command reference\n');
         break;
 
       case 'exit':
-        console.log(chalk.green('\n👋 Thanks for using PeakInfer!\n'));
+        console.log(chalk.green('\nThanks for using PeakInfer!\n'));
         interactive.close();
         return;
     }

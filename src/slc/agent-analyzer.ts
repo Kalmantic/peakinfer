@@ -31,11 +31,31 @@ export interface AgentAnalysisResult {
   durationMs: number;
 }
 
+/**
+ * Progress event types for rich progress reporting.
+ */
+export interface AnalysisProgressEvent {
+  /** Event type */
+  type: 'start' | 'turn' | 'tool_use' | 'tool_result' | 'complete' | 'error';
+  /** Current turn number */
+  turn?: number;
+  /** Maximum turns */
+  maxTurns?: number;
+  /** Tool name being used (Glob, Grep, Read) */
+  toolName?: string;
+  /** Target of the tool (file pattern, search term, etc.) */
+  toolTarget?: string;
+  /** Human-readable message */
+  message?: string;
+  /** Cost so far in USD */
+  costSoFar?: number;
+}
+
 export interface AgentAnalysisOptions {
   /** Maximum turns for the agent (default: 10) */
   maxTurns?: number;
-  /** Show progress messages */
-  onProgress?: (message: string) => void;
+  /** Show progress messages (enhanced to support rich events) */
+  onProgress?: (event: AnalysisProgressEvent | string) => void;
   /** Abort signal */
   abortController?: AbortController;
 }
@@ -211,10 +231,16 @@ export async function analyzeWithAgent(
 
   const { maxTurns = 10, onProgress, abortController } = options;
 
-  onProgress?.('Starting agent analysis...');
+  // Helper to emit progress events (supports both string and object format)
+  const emitProgress = (event: AnalysisProgressEvent | string) => {
+    onProgress?.(event);
+  };
+
+  emitProgress({ type: 'start', maxTurns, message: 'Starting agent analysis...' });
 
   let resultText = '';
   let totalCost = 0;
+  let currentTurn = 0;
 
   try {
     // Use the agent SDK to analyze
@@ -237,29 +263,97 @@ export async function analyzeWithAgent(
     })) {
       // Handle different message types
       if (message.type === 'assistant') {
-        // Extract text content from assistant message
-        const textContent = (message.message.content as Array<{ type: string; text?: string }>)
-          .filter((c): c is { type: 'text'; text: string } => c.type === 'text')
-          .map((c) => c.text)
-          .join('');
+        currentTurn++;
+        
+        // Emit turn progress
+        emitProgress({ 
+          type: 'turn', 
+          turn: currentTurn, 
+          maxTurns,
+          message: 'analyzing...'
+        });
 
-        if (textContent) {
-          onProgress?.('analyzing...');
+        // Extract tool uses from assistant message
+        const toolUses = (message.message.content as Array<{ type: string; name?: string; input?: unknown }>)
+          .filter((c): c is { type: 'tool_use'; name: string; input: unknown } => c.type === 'tool_use');
+
+        // Emit tool use events
+        for (const tool of toolUses) {
+          let toolTarget: string | undefined;
+          
+          // Extract target info based on tool type
+          if (tool.input && typeof tool.input === 'object') {
+            const input = tool.input as Record<string, unknown>;
+            if (tool.name === 'Glob' && typeof input.pattern === 'string') {
+              toolTarget = input.pattern;
+            } else if (tool.name === 'Grep' && typeof input.pattern === 'string') {
+              toolTarget = input.pattern;
+            } else if (tool.name === 'Read' && typeof input.file_path === 'string') {
+              // Show just the filename for Read
+              const filePath = input.file_path as string;
+              toolTarget = filePath.split('/').pop() || filePath;
+            }
+          }
+
+          emitProgress({
+            type: 'tool_use',
+            turn: currentTurn,
+            maxTurns,
+            toolName: tool.name,
+            toolTarget,
+          });
         }
       } else if (message.type === 'result') {
         if (message.subtype === 'success') {
           resultText = message.result;
           totalCost = message.total_cost_usd;
-          onProgress?.(`Analysis complete (cost: $${totalCost.toFixed(4)})`);
+          emitProgress({ 
+            type: 'complete', 
+            turn: currentTurn, 
+            maxTurns,
+            costSoFar: totalCost,
+            message: `Analysis complete (cost: $${totalCost.toFixed(4)})`
+          });
         } else {
           // Handle error subtypes: error_during_execution, error_max_turns, error_max_budget_usd
           const errorResult = message as {
             subtype: string;
             errors?: string[];
             total_cost_usd: number;
+            result?: string;
           };
-          const errorMessages = errorResult.errors?.join(', ') || `Analysis stopped: ${errorResult.subtype}`;
-          throw new Error(errorMessages);
+
+          // If we have partial results despite the error, try to use them
+          if (errorResult.result && errorResult.subtype === 'error_max_turns') {
+            resultText = errorResult.result;
+            totalCost = errorResult.total_cost_usd;
+            emitProgress({ 
+              type: 'complete', 
+              turn: currentTurn, 
+              maxTurns,
+              costSoFar: totalCost,
+              message: `Analysis hit turn limit but has partial results (cost: $${totalCost.toFixed(4)})`
+            });
+            // Don't throw - continue with partial results
+          } else {
+            const errorMessages = errorResult.errors?.join(', ') || `Analysis stopped: ${errorResult.subtype}`;
+
+            emitProgress({ 
+              type: 'error', 
+              turn: currentTurn, 
+              maxTurns,
+              message: errorMessages 
+            });
+
+            // Provide more helpful error messages based on subtype
+            if (errorResult.subtype === 'error_max_turns') {
+              throw new Error(`Analysis exceeded max turns (${maxTurns}). Try running on a smaller directory or increase timeout.`);
+            } else if (errorResult.subtype === 'error_max_budget_usd') {
+              throw new Error('Analysis exceeded budget limit.');
+            } else {
+              throw new Error(errorMessages);
+            }
+          }
         }
       }
     }
@@ -268,7 +362,7 @@ export async function analyzeWithAgent(
     const { callsites, techStack, patterns } = parseResultWithTechStack(resultText, root);
 
     // Initialize pricing engine (fetches real-time data from LiteLLM)
-    onProgress?.('Loading pricing data...');
+    emitProgress({ type: 'turn', turn: currentTurn, maxTurns, message: 'Loading pricing data...' });
     await initPricingEngine();
 
     // Build derived data structures
