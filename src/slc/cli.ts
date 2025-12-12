@@ -116,6 +116,8 @@ interface AnalyzeOptions {
   open?: boolean;
   output?: 'json' | 'text';  // Output format: json for machine-readable, text for human-readable
   cached?: boolean;  // View cached results without API call (offline mode)
+  events?: string;   // Path to runtime telemetry file (JSONL/JSON/CSV)
+  mode?: 'static' | 'runtime';  // Explicit analysis mode override
 }
 
 /**
@@ -595,6 +597,587 @@ function openInBrowser(filePath: string): void {
       console.log(`  (could not open browser automatically)`);
     }
   });
+}
+
+// =============================================================================
+// ANALYZE EVENTS - Runtime Telemetry Analysis
+// =============================================================================
+
+/**
+ * Analyze runtime inference telemetry from JSONL/JSON/CSV files.
+ *
+ * Design: SLC + Julie Zhou principles
+ * - Simple: Just pass a file, get recommendations
+ * - Lovable: Smart defaults, clear output
+ * - Complete: Full analysis with actionable insights
+ */
+async function analyzeEvents(eventsPath: string, options: AnalyzeOptions = {}): Promise<void> {
+  const resolvedPath = path.resolve(eventsPath);
+
+  // Check file exists
+  if (!fs.existsSync(resolvedPath)) {
+    renderErrorState({
+      code: 'INVALID_PATH',
+      message: `Events file not found: ${resolvedPath}`,
+      suggestion: 'Check the file path and try again',
+    });
+    process.exit(1);
+  }
+
+  // Validate file extension
+  const ext = path.extname(resolvedPath).toLowerCase();
+  const supportedExtensions = ['.jsonl', '.json', '.csv', '.ndjson'];
+  if (!supportedExtensions.includes(ext)) {
+    renderErrorState({
+      code: 'INVALID_FORMAT',
+      message: `Unsupported file format: ${ext}`,
+      suggestion: `Supported formats: ${supportedExtensions.join(', ')}`,
+    });
+    process.exit(1);
+  }
+
+  // Import progress utilities
+  const { ProgressManager } = await import('./progress.js');
+  const progress = new ProgressManager({ showTime: true, color: true });
+
+  try {
+    // Phase 1: Load events
+    progress.start('Loading inference events...');
+
+    // Import manual collector for file loading
+    const { ManualCollector } = await import('../collectors/manual-collector.js');
+    const collector = new ManualCollector({
+      input: { files: [resolvedPath], format: ext.slice(1) as 'jsonl' | 'json' | 'csv' },
+      trustBoundaries: { noNetworkEgress: true, leastPrivilege: true, auditableCode: true, noPIIExfiltration: true },
+      outputFormat: 'events.jsonl',
+      normalization: 'canonical_schema',
+    });
+
+    const events = await collector.collect();
+
+    if (events.length === 0) {
+      progress.fail('No events found');
+      console.log(`
+  No inference events found in ${path.basename(resolvedPath)}.
+
+  Expected format (JSONL - one JSON object per line):
+    {"id":"evt_001","ts":"2025-12-09T08:15:23Z","provider":"openai","model":"gpt-4o",...}
+    {"id":"evt_002","ts":"2025-12-09T08:16:45Z","provider":"anthropic","model":"claude-3-5-sonnet",...}
+
+  See: peakinfer --help for event schema details
+`);
+      process.exit(0);
+    }
+
+    progress.succeed(`Loaded ${events.length} inference events`);
+
+    // Phase 2: Aggregate and analyze
+    progress.start('Analyzing inference patterns...');
+
+    // Aggregate events by provider, model, intent
+    const aggregation = aggregateEvents(events);
+
+    progress.succeed(`Analyzed ${aggregation.uniqueProviders} providers, ${aggregation.uniqueModels} models`);
+
+    // Phase 3: Generate recommendations
+    progress.start('Generating optimization recommendations...');
+
+    // Convert events to callsite-like format for recommender
+    const pseudoCallsites = eventsToPseudoCallsites(events, aggregation);
+
+    // Import recommender
+    const { generateRecommendations, generateReport, detectRisks, generateRiskReport } = await import('./recommender.js');
+
+    // Generate patterns from event analysis
+    const patterns = detectPatternsFromEvents(events, aggregation);
+
+    // Generate recommendations
+    const summary = generateRecommendations(pseudoCallsites, 'throughput');
+
+    // Detect risks
+    const riskAssessment = detectRisks(patterns, pseudoCallsites);
+
+    progress.succeed(`Generated ${summary.recommendations.length} recommendations`);
+
+    // JSON output mode
+    if (options.output === 'json') {
+      const jsonOutput = {
+        success: true,
+        type: 'runtime',
+        eventsFile: resolvedPath,
+        eventCount: events.length,
+        aggregation,
+        patterns,
+        riskAssessment,
+        recommendations: summary,
+      };
+      console.log(JSON.stringify(jsonOutput, null, 2));
+      return;
+    }
+
+    // Render results
+    console.log(`
+  RUNTIME TELEMETRY ANALYSIS
+  ═══════════════════════════════════════════════════════════════
+
+  Source: ${path.basename(resolvedPath)}
+  Events: ${events.length.toLocaleString()}
+  Time Range: ${aggregation.timeRange.start} → ${aggregation.timeRange.end}
+`);
+
+    // Provider breakdown
+    console.log('  PROVIDERS');
+    console.log('  ─────────────────────────────────────────────────────────────────');
+    for (const [provider, stats] of Object.entries(aggregation.byProvider) as [string, { count: number; avgLatency: number }][]) {
+      const pct = ((stats.count / events.length) * 100).toFixed(1);
+      console.log(`  ${provider.padEnd(16)} ${stats.count.toString().padStart(6)} events (${pct}%)  avg ${stats.avgLatency.toFixed(0)}ms`);
+    }
+
+    // Model breakdown
+    console.log('\n  MODELS');
+    console.log('  ─────────────────────────────────────────────────────────────────');
+    const topModels = Object.entries(aggregation.byModel)
+      .sort((a, b) => (b[1] as { count: number }).count - (a[1] as { count: number }).count)
+      .slice(0, 8) as [string, { count: number; avgLatency: number }][];
+    for (const [model, stats] of topModels) {
+      const pct = ((stats.count / events.length) * 100).toFixed(1);
+      console.log(`  ${model.padEnd(28)} ${stats.count.toString().padStart(6)} (${pct}%)  ${stats.avgLatency.toFixed(0)}ms`);
+    }
+
+    // Intent breakdown (if available)
+    if (Object.keys(aggregation.byIntent).length > 0) {
+      console.log('\n  INTENTS');
+      console.log('  ─────────────────────────────────────────────────────────────────');
+      const topIntents = Object.entries(aggregation.byIntent)
+        .sort((a, b) => (b[1] as { count: number }).count - (a[1] as { count: number }).count)
+        .slice(0, 5) as [string, { count: number }][];
+      for (const [intent, stats] of topIntents) {
+        const pct = ((stats.count / events.length) * 100).toFixed(1);
+        console.log(`  ${intent.padEnd(24)} ${stats.count.toString().padStart(6)} (${pct}%)`);
+      }
+    }
+
+    // Risk assessment
+    console.log(generateRiskReport(riskAssessment));
+
+    // Recommendations
+    console.log(generateReport(summary));
+
+    // Write output files if requested
+    if (options.html) {
+      const outputDir = path.dirname(resolvedPath);
+      const htmlPath = path.join(outputDir, 'peakinfer-events-report.html');
+      // TODO: Generate HTML report for events analysis
+      console.log(`\n  HTML report: ${htmlPath} (coming soon)`);
+    }
+
+  } catch (error) {
+    progress.fail('Analysis failed');
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    renderErrorState({
+      code: 'ANALYSIS_ERROR',
+      message: errorMessage,
+      suggestion: 'Check the events file format matches the expected schema',
+    });
+    process.exit(1);
+  }
+}
+
+// =============================================================================
+// COMBINED ANALYSIS - Static + Runtime with Intelligent Matching
+// =============================================================================
+
+/**
+ * Analyze codebase with runtime telemetry correlation.
+ *
+ * Design: SLC + Julie Zhou principles
+ * - Intelligent: Detects mismatches between codebase and events
+ * - Helpful: Clear guidance when data doesn't correlate
+ * - Complete: Shows both static findings and runtime insights
+ */
+async function analyzeCombined(
+  codebasePath: string,
+  eventsPath: string,
+  options: AnalyzeOptions = {}
+): Promise<void> {
+  const resolvedCodebase = path.resolve(codebasePath);
+  const resolvedEvents = path.resolve(eventsPath);
+
+  // Validate paths
+  if (!fs.existsSync(resolvedCodebase)) {
+    renderErrorState({
+      code: 'INVALID_PATH',
+      message: `Codebase path not found: ${resolvedCodebase}`,
+      suggestion: 'Check the path and try again',
+    });
+    process.exit(1);
+  }
+
+  if (!fs.existsSync(resolvedEvents)) {
+    renderErrorState({
+      code: 'INVALID_PATH',
+      message: `Events file not found: ${resolvedEvents}`,
+      suggestion: 'Check the events file path and try again',
+    });
+    process.exit(1);
+  }
+
+  // Import progress utilities
+  const { ProgressManager } = await import('./progress.js');
+  const progress = new ProgressManager({ showTime: true, color: true });
+
+  try {
+    // Phase 1: Load events first (fast, no API key needed)
+    progress.start('Loading runtime events...');
+
+    const { ManualCollector } = await import('../collectors/manual-collector.js');
+    const ext = path.extname(resolvedEvents).toLowerCase();
+    const collector = new ManualCollector({
+      input: { files: [resolvedEvents], format: ext.slice(1) as 'jsonl' | 'json' | 'csv' },
+      trustBoundaries: { noNetworkEgress: true, leastPrivilege: true, auditableCode: true, noPIIExfiltration: true },
+      outputFormat: 'events.jsonl',
+      normalization: 'canonical_schema',
+    });
+
+    const events = await collector.collect();
+    const eventsAggregation = aggregateEvents(events);
+
+    progress.succeed(`Loaded ${events.length} runtime events`);
+
+    // Phase 2: Check for cached static analysis or API key
+    const { readCacheSync } = await import('./cache.js');
+    const cached = readCacheSync(resolvedCodebase);
+
+    let codebaseCallsites: any[] = [];
+    let hasCachedAnalysis = false;
+
+    if (cached && cached.callsites) {
+      progress.succeed('Using cached codebase analysis');
+      codebaseCallsites = cached.callsites;
+      hasCachedAnalysis = true;
+    } else if (process.env.ANTHROPIC_API_KEY) {
+      progress.start('Scanning codebase...');
+      // We'll run full analysis after correlation check
+    } else {
+      progress.warn('No cached analysis - skipping codebase correlation');
+      console.log(`
+  Note: Set ANTHROPIC_API_KEY or run 'peakinfer analyze ${codebasePath}' first
+  to enable codebase correlation.
+`);
+    }
+
+    // Phase 3: Correlation analysis
+    progress.start('Analyzing correlation...');
+
+    // Build a pseudo-scan result for correlation
+    const scanForCorrelation = { callsites: codebaseCallsites };
+    const correlation = correlateCodebaseWithEvents(scanForCorrelation, eventsAggregation);
+
+    progress.succeed('Correlation analysis complete');
+
+    // Render combined results header
+    console.log(`
+  COMBINED ANALYSIS: Static + Runtime
+  ═══════════════════════════════════════════════════════════════
+
+  Codebase: ${codebasePath}
+  Events:   ${path.basename(resolvedEvents)} (${events.length} events)
+`);
+
+    // Show correlation status
+    renderCorrelationStatus(correlation, scanForCorrelation, eventsAggregation);
+
+    // Run full static analysis if we have API key and no cache
+    if (process.env.ANTHROPIC_API_KEY && !hasCachedAnalysis) {
+      console.log('  Running static codebase analysis...\n');
+      await analyze(codebasePath, options);
+    } else if (hasCachedAnalysis && codebaseCallsites.length > 0) {
+      // Show summary from cache
+      console.log(`  CODEBASE (from cache): ${codebaseCallsites.length} callsites detected`);
+      const providers = [...new Set(codebaseCallsites.map((c: any) => c.provider).filter(Boolean))];
+      const models = [...new Set(codebaseCallsites.map((c: any) => c.model).filter(Boolean))];
+      console.log(`    Providers: ${providers.join(', ') || '(not detected)'}`);
+      console.log(`    Models: ${models.slice(0, 5).join(', ') || '(not detected)'}${models.length > 5 ? ` (+${models.length - 5} more)` : ''}`);
+    }
+
+    // Show runtime insights
+    if (events.length > 0) {
+      console.log(`
+  RUNTIME INSIGHTS (from ${events.length} production events)
+  ─────────────────────────────────────────────────────────────────`);
+
+      // Provider breakdown
+      console.log('\n  Provider Distribution:');
+      for (const [provider, stats] of Object.entries(eventsAggregation.byProvider) as [string, { count: number; avgLatency: number }][]) {
+        const pct = ((stats.count / events.length) * 100).toFixed(1);
+        console.log(`    ${provider.padEnd(16)} ${stats.count.toString().padStart(5)} calls (${pct}%)  avg ${stats.avgLatency.toFixed(0)}ms`);
+      }
+
+      // Model latency from production
+      console.log('\n  Actual Latency (production):');
+      const topModels = Object.entries(eventsAggregation.byModel)
+        .sort((a, b) => (b[1] as any).count - (a[1] as any).count)
+        .slice(0, 5) as [string, { count: number; avgLatency: number }][];
+      for (const [model, stats] of topModels) {
+        console.log(`    ${model.padEnd(30)} ${stats.avgLatency.toFixed(0)}ms avg (${stats.count} calls)`);
+      }
+    }
+
+  } catch (error) {
+    progress.fail('Combined analysis failed');
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    renderErrorState({
+      code: 'ANALYSIS_ERROR',
+      message: errorMessage,
+      suggestion: 'Check both the codebase path and events file',
+    });
+    process.exit(1);
+  }
+}
+
+/**
+ * Correlate static codebase findings with runtime events.
+ * Returns match quality and insights.
+ */
+function correlateCodebaseWithEvents(
+  scan: any,
+  eventsAggregation: any
+): { matchQuality: 'high' | 'partial' | 'low' | 'none'; insights: string[]; warnings: string[] } {
+  const insights: string[] = [];
+  const warnings: string[] = [];
+
+  // Extract providers and models from codebase
+  const codebaseProviders = new Set<string>();
+  const codebaseModels = new Set<string>();
+
+  for (const callsite of scan.callsites || []) {
+    if (callsite.provider) codebaseProviders.add(callsite.provider.toLowerCase());
+    if (callsite.model) codebaseModels.add(callsite.model.toLowerCase());
+  }
+
+  // Extract from events
+  const eventProviders = new Set(Object.keys(eventsAggregation.byProvider || {}).map(p => p.toLowerCase()));
+  const eventModels = new Set(Object.keys(eventsAggregation.byModel || {}).map(m => m.toLowerCase()));
+
+  // Calculate overlap
+  const providerOverlap = [...codebaseProviders].filter(p => eventProviders.has(p));
+  const modelOverlap = [...codebaseModels].filter(m =>
+    [...eventModels].some(em => em.includes(m) || m.includes(em))
+  );
+
+  // Determine match quality
+  let matchQuality: 'high' | 'partial' | 'low' | 'none';
+
+  if (codebaseProviders.size === 0) {
+    matchQuality = 'none';
+    warnings.push('No providers detected in codebase - unable to correlate');
+  } else if (providerOverlap.length === 0) {
+    matchQuality = 'none';
+    warnings.push(`Provider mismatch: Codebase uses [${[...codebaseProviders].join(', ')}] but events are from [${[...eventProviders].join(', ')}]`);
+    warnings.push('The events file may be from a different application or environment');
+  } else if (providerOverlap.length === codebaseProviders.size) {
+    if (modelOverlap.length > 0) {
+      matchQuality = 'high';
+      insights.push(`Strong correlation: ${providerOverlap.length} providers and ${modelOverlap.length} models match`);
+    } else {
+      matchQuality = 'partial';
+      insights.push(`Providers match but models differ - events may be from different deployment`);
+    }
+  } else {
+    matchQuality = 'partial';
+    insights.push(`Partial match: ${providerOverlap.length}/${codebaseProviders.size} providers overlap`);
+    const missingInEvents = [...codebaseProviders].filter(p => !eventProviders.has(p));
+    if (missingInEvents.length > 0) {
+      warnings.push(`Codebase uses [${missingInEvents.join(', ')}] but no events found for these providers`);
+    }
+  }
+
+  // Check for events from providers not in codebase
+  const extraEventProviders = [...eventProviders].filter(p => !codebaseProviders.has(p));
+  if (extraEventProviders.length > 0 && codebaseProviders.size > 0) {
+    insights.push(`Events include [${extraEventProviders.join(', ')}] not detected in codebase (may be from dependencies)`);
+  }
+
+  return { matchQuality, insights, warnings };
+}
+
+/**
+ * Render correlation status with appropriate visual feedback.
+ */
+function renderCorrelationStatus(
+  correlation: { matchQuality: string; insights: string[]; warnings: string[] },
+  scan: any,
+  eventsAggregation: any
+): void {
+  const statusIcons: Record<string, string> = {
+    high: '✓',
+    partial: '⚠',
+    low: '⚠',
+    none: '✗',
+  };
+
+  const statusMessages: Record<string, string> = {
+    high: 'Strong correlation between codebase and runtime events',
+    partial: 'Partial correlation - some providers/models match',
+    low: 'Weak correlation - limited overlap detected',
+    none: 'No correlation - events may be from different application',
+  };
+
+  const icon = statusIcons[correlation.matchQuality] || '?';
+  const message = statusMessages[correlation.matchQuality] || 'Unknown correlation';
+
+  console.log(`  CORRELATION: [${icon}] ${message}`);
+  console.log('  ─────────────────────────────────────────────────────────────────');
+
+  // Show what was found in each
+  const codebaseProviders = [...new Set((scan.callsites || []).map((c: any) => c.provider).filter(Boolean))];
+  const eventProviders = Object.keys(eventsAggregation.byProvider || {});
+
+  console.log(`  Codebase: ${codebaseProviders.length > 0 ? codebaseProviders.join(', ') : '(no providers detected)'}`);
+  console.log(`  Events:   ${eventProviders.length > 0 ? eventProviders.join(', ') : '(no events)'}`);
+
+  // Show warnings prominently
+  if (correlation.warnings.length > 0) {
+    console.log('');
+    for (const warning of correlation.warnings) {
+      console.log(`  ⚠  ${warning}`);
+    }
+  }
+
+  // Show insights
+  if (correlation.insights.length > 0) {
+    console.log('');
+    for (const insight of correlation.insights) {
+      console.log(`  ℹ  ${insight}`);
+    }
+  }
+
+  console.log('');
+}
+
+/**
+ * Aggregate events for analysis.
+ */
+function aggregateEvents(events: any[]): any {
+  const byProvider: Record<string, { count: number; totalLatency: number; avgLatency: number }> = {};
+  const byModel: Record<string, { count: number; totalLatency: number; avgLatency: number; totalTokens: number }> = {};
+  const byIntent: Record<string, { count: number }> = {};
+
+  let minTs = events[0]?.ts || '';
+  let maxTs = events[0]?.ts || '';
+
+  for (const event of events) {
+    // By provider
+    const provider = event.provider || 'unknown';
+    if (!byProvider[provider]) {
+      byProvider[provider] = { count: 0, totalLatency: 0, avgLatency: 0 };
+    }
+    byProvider[provider].count++;
+    byProvider[provider].totalLatency += event.latency_ms || 0;
+
+    // By model
+    const model = event.model || 'unknown';
+    if (!byModel[model]) {
+      byModel[model] = { count: 0, totalLatency: 0, avgLatency: 0, totalTokens: 0 };
+    }
+    byModel[model].count++;
+    byModel[model].totalLatency += event.latency_ms || 0;
+    byModel[model].totalTokens += (event.input_tokens || 0) + (event.output_tokens || 0);
+
+    // By intent
+    if (event.intent) {
+      if (!byIntent[event.intent]) {
+        byIntent[event.intent] = { count: 0 };
+      }
+      byIntent[event.intent].count++;
+    }
+
+    // Time range
+    if (event.ts < minTs) minTs = event.ts;
+    if (event.ts > maxTs) maxTs = event.ts;
+  }
+
+  // Calculate averages
+  for (const stats of Object.values(byProvider)) {
+    stats.avgLatency = stats.count > 0 ? stats.totalLatency / stats.count : 0;
+  }
+  for (const stats of Object.values(byModel)) {
+    stats.avgLatency = stats.count > 0 ? stats.totalLatency / stats.count : 0;
+  }
+
+  return {
+    totalEvents: events.length,
+    uniqueProviders: Object.keys(byProvider).length,
+    uniqueModels: Object.keys(byModel).length,
+    byProvider,
+    byModel,
+    byIntent,
+    timeRange: { start: minTs, end: maxTs },
+  };
+}
+
+/**
+ * Convert events to pseudo-callsites for the recommender.
+ */
+function eventsToPseudoCallsites(events: any[], aggregation: any): any[] {
+  // Group events by model and create representative callsites
+  const callsites: any[] = [];
+  let id = 1;
+
+  for (const [model, stats] of Object.entries(aggregation.byModel) as [string, any][]) {
+    // Find a representative event for this model
+    const repEvent = events.find(e => e.model === model);
+    if (!repEvent) continue;
+
+    callsites.push({
+      id: `evt-${id++}`,
+      file: `[runtime:${model}]`,
+      line: 0,
+      provider: repEvent.provider || 'unknown',
+      model: model,
+      taskKind: repEvent.intent === 'generate_embeddings' ? 'embedding' : 'chat',
+      isStreaming: false,
+      confidence: 0.9,
+      framework: null,
+      // Add estimated workload based on actual event counts
+      _eventCount: stats.count,
+      _avgLatency: stats.avgLatency,
+    });
+  }
+
+  return callsites;
+}
+
+/**
+ * Detect patterns from runtime events.
+ */
+function detectPatternsFromEvents(events: any[], aggregation: any): any {
+  // Analyze events for patterns
+  const hasMultipleProviders = aggregation.uniqueProviders > 1;
+  const hasMultipleModels = aggregation.uniqueModels > 1;
+
+  // Check for retry patterns (same request ID appearing multiple times)
+  const requestIds = events.map(e => e.id).filter(Boolean);
+  const uniqueIds = new Set(requestIds);
+  const hasRetries = requestIds.length > uniqueIds.size;
+
+  // Check for batching patterns (events with same timestamp)
+  const timestamps = events.map(e => e.ts);
+  const tsCounts: Record<string, number> = timestamps.reduce((acc: Record<string, number>, ts: string) => {
+    acc[ts] = (acc[ts] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const hasBatching = (Object.values(tsCounts) as number[]).some(count => count > 3);
+
+  return {
+    retry: { detected: hasRetries, instances: [], type: hasRetries ? 'implicit' : null },
+    batching: { detected: hasBatching, instances: [], type: hasBatching ? 'concurrent' : null },
+    streaming: { detected: false, instances: [], type: null },
+    caching: { detected: false, instances: [], type: null },
+    routing: { detected: hasMultipleModels, instances: [], type: hasMultipleModels ? 'multi-model' : null },
+    fallback: { detected: hasMultipleProviders, instances: [], type: hasMultipleProviders ? 'multi-provider' : null },
+    guardrails: { detected: false, instances: [], type: null },
+  };
 }
 
 // =============================================================================
@@ -1347,16 +1930,188 @@ peakinfer prices
   }
 }
 
+/**
+ * Benchmark command — Show model performance benchmarks (throughput, latency)
+ * Separate from prices: this focuses on performance, not cost
+ */
+async function benchmark(filterModel?: string): Promise<void> {
+  try {
+    const { MODEL_PROFILES, BENCHMARK_DATA, getThroughputAcrossGPUs } = await import('./throughput-estimator.js');
+    const { GPU_PRICING } = await import('./gpu-pricing.js');
+
+    console.log(`
+peakinfer benchmark
+─────────────────────────────────────────────────────────────────
+
+  Performance benchmarks for self-hosted LLM inference.
+  Data sources: InferenceMAX, vLLM benchmarks, estimated.
+`);
+
+    // If a specific model is requested, show detailed benchmarks
+    if (filterModel) {
+      const estimates = getThroughputAcrossGPUs(filterModel);
+      if (estimates.length === 0) {
+        console.log(`  no benchmarks found for model: ${filterModel}`);
+        console.log('');
+        console.log('  available models:');
+        for (const key of Object.keys(MODEL_PROFILES)) {
+          console.log(`    ${key}`);
+        }
+        console.log('');
+        return;
+      }
+
+      const modelName = estimates[0].model;
+      const modelSize = estimates[0].modelSizeB;
+      console.log(`  model: ${modelName} (${modelSize}B parameters)`);
+      console.log('');
+      console.log('  gpu              throughput   latency    ttft     batch   confidence  source');
+      console.log('  ─────────────────────────────────────────────────────────────────────────────');
+
+      for (const est of estimates) {
+        const gpuPad = est.gpu.padEnd(15);
+        const throughput = `${est.throughputTokPerSec} tok/s`.padStart(12);
+        const latency = `${est.latencyTokPerSecUser} tok/s`.padStart(10);
+        const ttft = `${est.ttftMs}ms`.padStart(7);
+        const batch = `${est.optimalBatchSize}`.padStart(5);
+        const conf = `${Math.round(est.confidence * 100)}%`.padStart(10);
+        const source = est.source.padEnd(15);
+        console.log(`  ${gpuPad} ${throughput} ${latency} ${ttft} ${batch} ${conf}  ${source}`);
+      }
+
+      if (estimates.some(e => e.notes)) {
+        console.log('');
+        console.log('  note: estimates are based on model size and GPU specs.');
+        console.log('        actual performance may vary based on configuration.');
+      }
+    } else {
+      // Show summary of benchmarked models
+      console.log('  benchmarked models (with known performance data):');
+      console.log('  ─────────────────────────────────────────────────────────────');
+      console.log('  model               size      gpus                              source');
+      console.log('  ─────────────────────────────────────────────────────────────');
+
+      for (const [modelKey, gpuData] of Object.entries(BENCHMARK_DATA)) {
+        const profile = MODEL_PROFILES[modelKey];
+        const modelPad = modelKey.padEnd(20);
+        const sizePad = profile ? `${profile.sizeB}B`.padStart(5) : '  ?B';
+        const gpus = Object.keys(gpuData).join(', ');
+        const gpusPad = gpus.padEnd(35);
+        const sources = [...new Set(Object.values(gpuData).map((d: any) => d.source))].join(', ');
+        console.log(`  ${modelPad} ${sizePad}   ${gpusPad} ${sources}`);
+      }
+
+      console.log('');
+      console.log('  model profiles (estimated performance available):');
+      console.log('  ─────────────────────────────────────────────────────────────');
+
+      const profileEntries = Object.entries(MODEL_PROFILES)
+        .filter(([key]) => !(key in BENCHMARK_DATA))
+        .slice(0, 15);
+
+      for (const [key, profile] of profileEntries) {
+        const keyPad = key.padEnd(20);
+        const sizePad = `${profile.sizeB}B`.padStart(5);
+        const arch = profile.architecture === 'moe' ? 'MoE' : 'Dense';
+        const ctx = `${(profile.contextLength / 1000).toFixed(0)}K ctx`;
+        console.log(`  ${keyPad} ${sizePad}   ${arch.padEnd(6)} ${ctx}`);
+      }
+
+      if (Object.keys(MODEL_PROFILES).length > profileEntries.length + Object.keys(BENCHMARK_DATA).length) {
+        console.log(`  ... and ${Object.keys(MODEL_PROFILES).length - profileEntries.length - Object.keys(BENCHMARK_DATA).length} more`);
+      }
+
+      console.log('');
+      console.log('  available gpus:');
+      console.log('  ─────────────────────────────────────────────────────────────');
+
+      const gpuEntries = Object.entries(GPU_PRICING).slice(0, 10);
+      for (const [key, gpu] of gpuEntries) {
+        const keyPad = key.padEnd(15);
+        const memory = `${(gpu as any).specs?.memory || '?'}GB`.padStart(6);
+        const bandwidth = `${(gpu as any).specs?.bandwidthGBps || '?'} GB/s`.padStart(12);
+        console.log(`  ${keyPad} ${memory}  ${bandwidth}`);
+      }
+
+      if (Object.keys(GPU_PRICING).length > 10) {
+        console.log(`  ... and ${Object.keys(GPU_PRICING).length - 10} more`);
+      }
+    }
+
+    console.log('');
+    console.log('  usage:');
+    console.log('    peakinfer benchmark                   # list all benchmarked models');
+    console.log('    peakinfer benchmark llama-3-70b       # show benchmarks for specific model');
+    console.log('    peakinfer benchmark mistral-7b        # show benchmarks for mistral-7b');
+    console.log('');
+    console.log('  for pricing data:');
+    console.log('    peakinfer prices                      # show model pricing (API + GPU)');
+    console.log('');
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`  error loading benchmark data: ${errorMessage}`);
+    process.exit(1);
+  }
+}
+
 // =============================================================================
 // EXPORTS
 // =============================================================================
 
 // Export functions for use in other modules
-export { analyze, recommend, discover, profile, plan, report, templates, prices };
+export { analyze, recommend, discover, profile, plan, report, templates, prices, benchmark };
 
 // =============================================================================
 // CLI ENTRY POINT
 // =============================================================================
+
+/**
+ * Detect analysis mode from path.
+ * - Directory → static analysis
+ * - File with .jsonl/.json/.csv/.ndjson → runtime telemetry
+ * - Other files → static analysis (single file)
+ */
+function detectAnalysisMode(targetPath: string): 'static' | 'runtime' | 'ambiguous' {
+  const resolvedPath = path.resolve(targetPath);
+
+  if (!fs.existsSync(resolvedPath)) {
+    return 'ambiguous';  // Let the analyze function handle the error
+  }
+
+  const stat = fs.statSync(resolvedPath);
+
+  if (stat.isDirectory()) {
+    return 'static';
+  }
+
+  // Check file extension for telemetry files
+  const ext = path.extname(resolvedPath).toLowerCase();
+  const telemetryExtensions = ['.jsonl', '.ndjson', '.csv'];
+  const maybeTelemtry = ['.json'];  // JSON could be either
+
+  if (telemetryExtensions.includes(ext)) {
+    return 'runtime';
+  }
+
+  if (maybeTelemtry.includes(ext)) {
+    // Peek at the file to determine type
+    try {
+      const content = fs.readFileSync(resolvedPath, 'utf-8').slice(0, 1000);
+      // If it has inference event fields, treat as runtime
+      if (content.includes('"provider"') && content.includes('"model"') &&
+          (content.includes('"latency_ms"') || content.includes('"input_tokens"'))) {
+        return 'runtime';
+      }
+    } catch {
+      // Fall through to static
+    }
+    return 'static';
+  }
+
+  // Default: treat other files as static analysis targets
+  return 'static';
+}
 
 /** Parse command line arguments and run */
 function main(): void {
@@ -1368,32 +2123,38 @@ function main(): void {
 peakinfer — llm inference performance optimization
 
 usage:
-  peakinfer analyze <path>       analyze codebase for LLM usage + performance
-  peakinfer recommend <path>     analyze and show optimization recommendations
+  peakinfer analyze <path>       analyze codebase or runtime events
   peakinfer prices [provider]    show model pricing data
   peakinfer benchmark [provider] show model performance benchmarks
   peakinfer templates [list|info] browse optimization templates
   peakinfer --help               show this help
 
+analyze modes:
+  peakinfer analyze ./src              # static: scan codebase for LLM calls
+  peakinfer analyze events.jsonl       # runtime: analyze inference telemetry
+  peakinfer analyze ./src --events events.jsonl  # combined analysis
+
 analyze options:
+  --events <file>       add runtime telemetry to static analysis
+  --mode <static|runtime>  force analysis mode (auto-detected by default)
   --html                generate html report
   --open                open html report in browser
   --output <format>     output format: text (default) or json
   --cached              view previous analysis (offline, no API key needed)
 
-benchmark options:
-  --refresh             refresh cache from sources
+event schema (JSONL):
+  {"id":"evt_001","ts":"2025-12-09T08:15:23Z","provider":"openai","model":"gpt-4o",
+   "input_tokens":4250,"output_tokens":380,"latency_ms":2340,"intent":"summarize"}
 
 examples:
-  peakinfer analyze .              # analyze current directory
-  peakinfer analyze . --html       # with html report
-  peakinfer analyze . --cached     # view last analysis (offline)
-  peakinfer analyze . --output json # machine-readable output
-  peakinfer benchmark openai       # show openai model benchmarks
-  peakinfer templates list         # browse optimization templates
+  peakinfer analyze .                    # static analysis of current directory
+  peakinfer analyze events.jsonl         # analyze runtime telemetry
+  peakinfer analyze . --events prod.jsonl  # combined static + runtime
+  peakinfer analyze . --cached           # view last analysis (offline)
+  peakinfer prices openai                # show openai pricing
 
 environment:
-  ANTHROPIC_API_KEY     required for fresh analysis (not --cached)
+  ANTHROPIC_API_KEY     required for static analysis (not runtime or --cached)
 `);
     process.exit(0);
   }
@@ -1406,15 +2167,32 @@ environment:
 
   // Parse options
   const outputArg = getArgValue(args, '--output');
+  const eventsArg = getArgValue(args, '--events');
+  const modeArg = getArgValue(args, '--mode') as 'static' | 'runtime' | undefined;
+
   const options: AnalyzeOptions = {
     html: args.includes('--html') || args.includes('--open'),
     open: args.includes('--open'),
     output: outputArg === 'json' ? 'json' : 'text',
     cached: args.includes('--cached'),
+    events: eventsArg,
+    mode: modeArg,
   };
 
-  // Filter out options to get positional args
-  const positionalArgs = args.filter(arg => !arg.startsWith('--'));
+  // Filter out options and their values to get positional args
+  const optionsWithValues = ['--output', '--events', '--mode'];
+  const positionalArgs: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg.startsWith('--')) {
+      // Skip this arg and its value if it takes one
+      if (optionsWithValues.includes(arg)) {
+        i++;  // Skip the value
+      }
+      continue;
+    }
+    positionalArgs.push(arg);
+  }
 
   // Parse command
   const command = positionalArgs[0];
@@ -1423,17 +2201,35 @@ environment:
   const simplifiedCommands = ['discover', 'profile', 'plan', 'report'];
 
   if (command === 'analyze' || command === 'recommend') {
-    // 'recommend' is an alias for 'analyze' (both show recommendations)
     const targetPath = positionalArgs[1] || '.';
-    analyze(targetPath, options);
+
+    // Determine analysis mode
+    let mode: 'static' | 'runtime' | undefined = options.mode;
+    if (!mode) {
+      const detected = detectAnalysisMode(targetPath);
+      mode = detected === 'ambiguous' ? 'static' : detected;
+    }
+
+    // Handle combined analysis (static + events)
+    if (options.events) {
+      // Combined: run static analysis with runtime events correlation
+      analyzeCombined(targetPath, options.events, options);
+    } else if (mode === 'runtime') {
+      // Runtime telemetry analysis (no API key needed)
+      analyzeEvents(targetPath, options);
+    } else {
+      // Static codebase analysis (default)
+      analyze(targetPath, options);
+    }
   } else if (simplifiedCommands.includes(command)) {
     // Friendly message for removed commands
     console.log(`
   '${command}' has been simplified.
 
   Use instead:
-    peakinfer analyze .        # full analysis with recommendations
-    peakinfer analyze . --cached   # view previous analysis offline
+    peakinfer analyze .               # static codebase analysis
+    peakinfer analyze events.jsonl    # runtime telemetry analysis
+    peakinfer analyze . --events events.jsonl  # combined analysis
 
   For pricing info:
     peakinfer prices           # model pricing data
@@ -1454,11 +2250,13 @@ environment:
       process.exit(1);
     }
     templates(subCommand, templateId);
-  } else if (command === 'prices' || command === 'benchmark') {
-    // 'benchmark' is an alias for 'prices' (both show model pricing/performance data)
+  } else if (command === 'prices') {
     const filterProvider = positionalArgs[1];
     const refresh = args.includes('--refresh');
     prices(filterProvider, refresh);
+  } else if (command === 'benchmark') {
+    const filterModel = positionalArgs[1];
+    benchmark(filterModel);
   } else if (!command) {
     // Default: analyze current directory
     analyze('.', options);

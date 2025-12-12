@@ -162,7 +162,7 @@ export type AnalysisState = 'zero' | 'loading' | 'partial' | 'error' | 'success'
 
 /** Error details */
 export interface AnalysisError {
-  code: 'NO_FILES' | 'PERMISSION_DENIED' | 'INVALID_PATH' | 'API_KEY_MISSING' | 'API_ERROR';
+  code: 'NO_FILES' | 'PERMISSION_DENIED' | 'INVALID_PATH' | 'API_KEY_MISSING' | 'API_ERROR' | 'INVALID_FORMAT' | 'ANALYSIS_ERROR';
   message: string;
   suggestion: string;
 }

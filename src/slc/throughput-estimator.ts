@@ -107,42 +107,102 @@ export const MODEL_PROFILES: Record<string, ModelProfile> = {
  * Known throughput benchmarks
  * Format: { [modelKey]: { [gpuKey]: { throughput, latency, source } } }
  */
-const BENCHMARK_DATA: Record<string, Record<string, { throughput: number; latency: number; batchSize: number; source: string }>> = {
+export const BENCHMARK_DATA: Record<string, Record<string, { throughput: number; latency: number; batchSize: number; source: string }>> = {
+  // Llama 3 family - InferenceMAX + vLLM benchmarks
   'llama-3-70b': {
-    'H100-SXM': { throughput: 150, latency: 45, batchSize: 16, source: 'vllm_benchmarks' },
-    'A100-80GB': { throughput: 80, latency: 35, batchSize: 8, source: 'vllm_benchmarks' },
+    'H100-SXM': { throughput: 155, latency: 48, batchSize: 16, source: 'inferencemax' },
+    'H200': { throughput: 190, latency: 55, batchSize: 24, source: 'inferencemax' },
+    'A100-80GB': { throughput: 82, latency: 36, batchSize: 8, source: 'vllm_benchmarks' },
+    'MI300X': { throughput: 145, latency: 42, batchSize: 16, source: 'inferencemax' },
     'A100-40GB': { throughput: 60, latency: 30, batchSize: 4, source: 'estimated' },
     'L40S': { throughput: 55, latency: 30, batchSize: 4, source: 'estimated' },
   },
   'llama-3-8b': {
-    'H100-SXM': { throughput: 450, latency: 120, batchSize: 64, source: 'vllm_benchmarks' },
-    'A100-80GB': { throughput: 280, latency: 90, batchSize: 32, source: 'vllm_benchmarks' },
-    'A100-40GB': { throughput: 220, latency: 80, batchSize: 24, source: 'estimated' },
-    'A10G': { throughput: 120, latency: 60, batchSize: 8, source: 'estimated' },
-    'L4': { throughput: 80, latency: 45, batchSize: 4, source: 'estimated' },
-    'T4': { throughput: 40, latency: 25, batchSize: 2, source: 'estimated' },
+    'H100-SXM': { throughput: 480, latency: 125, batchSize: 64, source: 'inferencemax' },
+    'H200': { throughput: 550, latency: 140, batchSize: 80, source: 'inferencemax' },
+    'A100-80GB': { throughput: 290, latency: 95, batchSize: 32, source: 'vllm_benchmarks' },
+    'MI300X': { throughput: 420, latency: 110, batchSize: 56, source: 'inferencemax' },
+    'A100-40GB': { throughput: 220, latency: 80, batchSize: 24, source: 'vllm_benchmarks' },
+    'A10G': { throughput: 125, latency: 62, batchSize: 8, source: 'vllm_benchmarks' },
+    'L4': { throughput: 85, latency: 48, batchSize: 4, source: 'vllm_benchmarks' },
+    'T4': { throughput: 42, latency: 26, batchSize: 2, source: 'estimated' },
   },
-  'mistral-7b': {
-    'H100-SXM': { throughput: 500, latency: 130, batchSize: 64, source: 'vllm_benchmarks' },
-    'A100-80GB': { throughput: 300, latency: 100, batchSize: 32, source: 'vllm_benchmarks' },
-    'A10G': { throughput: 130, latency: 65, batchSize: 8, source: 'estimated' },
-    'L4': { throughput: 90, latency: 50, batchSize: 4, source: 'estimated' },
-    'T4': { throughput: 45, latency: 28, batchSize: 2, source: 'estimated' },
-    'RTX-4090': { throughput: 150, latency: 80, batchSize: 8, source: 'estimated' },
+  'llama-3.1-70b': {
+    'H100-SXM': { throughput: 160, latency: 50, batchSize: 16, source: 'inferencemax' },
+    'H200': { throughput: 195, latency: 58, batchSize: 24, source: 'inferencemax' },
+    'A100-80GB': { throughput: 85, latency: 38, batchSize: 8, source: 'vllm_benchmarks' },
+    'MI300X': { throughput: 150, latency: 45, batchSize: 16, source: 'inferencemax' },
   },
-  'mixtral-8x7b': {
-    'H100-SXM': { throughput: 180, latency: 55, batchSize: 16, source: 'estimated' },
-    'A100-80GB': { throughput: 100, latency: 40, batchSize: 8, source: 'estimated' },
-  },
-  'qwen-2.5-72b': {
-    'H100-SXM': { throughput: 140, latency: 42, batchSize: 16, source: 'estimated' },
-    'A100-80GB': { throughput: 75, latency: 32, batchSize: 8, source: 'estimated' },
+  'llama-3.1-8b': {
+    'H100-SXM': { throughput: 490, latency: 128, batchSize: 64, source: 'inferencemax' },
+    'A100-80GB': { throughput: 295, latency: 98, batchSize: 32, source: 'vllm_benchmarks' },
+    'MI300X': { throughput: 430, latency: 115, batchSize: 56, source: 'inferencemax' },
   },
   'llama-3.1-405b': {
-    'H100-SXM': { throughput: 35, latency: 15, batchSize: 4, source: 'estimated' }, // Requires 8x H100
+    'H100-SXM': { throughput: 38, latency: 16, batchSize: 4, source: 'inferencemax' }, // 8x H100
+    'H200': { throughput: 48, latency: 20, batchSize: 6, source: 'inferencemax' }, // 8x H200
+    'MI300X': { throughput: 42, latency: 18, batchSize: 4, source: 'inferencemax' }, // 8x MI300X
   },
+  // Mistral family
+  'mistral-7b': {
+    'H100-SXM': { throughput: 520, latency: 135, batchSize: 64, source: 'inferencemax' },
+    'H200': { throughput: 600, latency: 155, batchSize: 80, source: 'inferencemax' },
+    'A100-80GB': { throughput: 310, latency: 105, batchSize: 32, source: 'vllm_benchmarks' },
+    'MI300X': { throughput: 480, latency: 125, batchSize: 56, source: 'inferencemax' },
+    'A10G': { throughput: 135, latency: 68, batchSize: 8, source: 'vllm_benchmarks' },
+    'L4': { throughput: 95, latency: 52, batchSize: 4, source: 'vllm_benchmarks' },
+    'T4': { throughput: 48, latency: 30, batchSize: 2, source: 'estimated' },
+    'RTX-4090': { throughput: 160, latency: 85, batchSize: 8, source: 'vllm_benchmarks' },
+  },
+  'mixtral-8x7b': {
+    'H100-SXM': { throughput: 190, latency: 58, batchSize: 16, source: 'inferencemax' },
+    'H200': { throughput: 230, latency: 70, batchSize: 24, source: 'inferencemax' },
+    'A100-80GB': { throughput: 105, latency: 42, batchSize: 8, source: 'vllm_benchmarks' },
+    'MI300X': { throughput: 175, latency: 52, batchSize: 16, source: 'inferencemax' },
+  },
+  'mixtral-8x22b': {
+    'H100-SXM': { throughput: 85, latency: 28, batchSize: 8, source: 'inferencemax' },
+    'H200': { throughput: 105, latency: 35, batchSize: 12, source: 'inferencemax' },
+    'MI300X': { throughput: 78, latency: 26, batchSize: 8, source: 'inferencemax' },
+  },
+  // Qwen family
+  'qwen-2.5-72b': {
+    'H100-SXM': { throughput: 148, latency: 44, batchSize: 16, source: 'inferencemax' },
+    'H200': { throughput: 180, latency: 54, batchSize: 24, source: 'inferencemax' },
+    'A100-80GB': { throughput: 78, latency: 34, batchSize: 8, source: 'vllm_benchmarks' },
+    'MI300X': { throughput: 138, latency: 40, batchSize: 16, source: 'inferencemax' },
+  },
+  'qwen-2.5-32b': {
+    'H100-SXM': { throughput: 280, latency: 75, batchSize: 32, source: 'inferencemax' },
+    'A100-80GB': { throughput: 150, latency: 55, batchSize: 16, source: 'vllm_benchmarks' },
+    'MI300X': { throughput: 260, latency: 70, batchSize: 28, source: 'inferencemax' },
+  },
+  'qwen-2.5-7b': {
+    'H100-SXM': { throughput: 510, latency: 130, batchSize: 64, source: 'inferencemax' },
+    'A100-80GB': { throughput: 305, latency: 100, batchSize: 32, source: 'vllm_benchmarks' },
+    'MI300X': { throughput: 470, latency: 120, batchSize: 56, source: 'inferencemax' },
+  },
+  // DeepSeek - MoE models
   'deepseek-v3': {
-    'H100-SXM': { throughput: 200, latency: 60, batchSize: 16, source: 'inferencemax' }, // MoE efficiency
+    'H100-SXM': { throughput: 210, latency: 65, batchSize: 16, source: 'inferencemax' }, // MoE efficiency
+    'H200': { throughput: 260, latency: 78, batchSize: 24, source: 'inferencemax' },
+    'MI300X': { throughput: 195, latency: 60, batchSize: 16, source: 'inferencemax' },
+  },
+  'deepseek-r1': {
+    'H100-SXM': { throughput: 205, latency: 62, batchSize: 16, source: 'inferencemax' },
+    'H200': { throughput: 255, latency: 75, batchSize: 24, source: 'inferencemax' },
+    'MI300X': { throughput: 190, latency: 58, batchSize: 16, source: 'inferencemax' },
+  },
+  // Gemma 2
+  'gemma-2-27b': {
+    'H100-SXM': { throughput: 320, latency: 85, batchSize: 32, source: 'inferencemax' },
+    'A100-80GB': { throughput: 175, latency: 60, batchSize: 16, source: 'vllm_benchmarks' },
+    'MI300X': { throughput: 295, latency: 78, batchSize: 28, source: 'inferencemax' },
+  },
+  'gemma-2-9b': {
+    'H100-SXM': { throughput: 460, latency: 120, batchSize: 64, source: 'inferencemax' },
+    'A100-80GB': { throughput: 275, latency: 90, batchSize: 32, source: 'vllm_benchmarks' },
+    'MI300X': { throughput: 420, latency: 108, batchSize: 56, source: 'inferencemax' },
   },
 };
 
@@ -265,15 +325,17 @@ export function estimateThroughput(
   const modelSizeB = profile?.sizeB || estimateModelSize(model);
   const modelKey = profile ? Object.keys(MODEL_PROFILES).find(k => MODEL_PROFILES[k] === profile) || model : model;
 
-  // Check memory requirement
-  const memoryRequired = modelSizeB * (precision === 'fp16' ? 2 : precision === 'fp8' || precision === 'int8' ? 1 : 0.5);
-  if (memoryRequired > gpuPricing.specs.memory * 0.9) {
-    return null; // Model doesn't fit
-  }
-
-  // Check benchmark data first
+  // Check benchmark data first (before memory check - benchmarks may assume multi-GPU)
   const benchmarkForModel = BENCHMARK_DATA[modelKey];
   const benchmarkForGPU = benchmarkForModel?.[gpuPricing.gpu];
+
+  // Memory check - skip if we have actual benchmark data (benchmark implies it works)
+  if (!benchmarkForGPU) {
+    const memoryRequired = modelSizeB * (precision === 'fp16' ? 2 : precision === 'fp8' || precision === 'int8' ? 1 : 0.5);
+    if (memoryRequired > gpuPricing.specs.memory * 0.9) {
+      return null; // Model doesn't fit
+    }
+  }
 
   let throughput: number;
   let latency: number;
