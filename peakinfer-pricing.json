@@ -1,23 +1,23 @@
 {
   "estimatedRange": {
-    "low": 19.3165,
-    "high": 830.9100000000001
+    "low": 22.28600000000001,
+    "high": 958.9700000000003
   },
   "mostExpensiveModel": "claude-sonnet-4-20250514",
   "byProvider": [
     {
       "provider": "anthropic",
-      "cost": 564,
-      "percentage": 68
+      "cost": 621,
+      "percentage": 65
     },
     {
       "provider": "openai",
-      "cost": 266.7,
-      "percentage": 32
+      "cost": 337.54999999999995,
+      "percentage": 35
     },
     {
       "provider": "nscale",
-      "cost": 0.21,
+      "cost": 0.42,
       "percentage": 0
     },
     {
@@ -34,11 +34,11 @@
   "byModel": [
     {
       "model": "claude-sonnet-4-20250514",
-      "cost": 315
+      "cost": 360
     },
     {
       "model": "gpt-4o",
-      "cost": 260
+      "cost": 325
     },
     {
       "model": "claude-3-opus-20240229",
@@ -46,11 +46,11 @@
     },
     {
       "model": "claude-3-5-haiku-20241022",
-      "cost": 24
+      "cost": 36
     },
     {
       "model": "gpt-4o-mini",
-      "cost": 5.85
+      "cost": 11.7
     },
     {
       "model": "text-embedding-3-large",
@@ -58,7 +58,7 @@
     },
     {
       "model": "meta-llama/Llama-3.1-8B-Instruct",
-      "cost": 0.21
+      "cost": 0.42
     },
     {
       "model": "text-embedding-3-small",
@@ -84,7 +84,7 @@
       "model": "claude-3-opus-20240229",
       "estimatedMonthlyLow": 5.25,
       "estimatedMonthlyHigh": 225,
-      "suggestion": "(AI Analysis) Opus is very expensive ($15/1M input). For document analysis, test if Claude 3.5 Sonnet ($3/1M) or even GPT-4o ($2.50/1M) provides sufficient quality at 5-6x lower cost."
+      "suggestion": "(AI Analysis) Opus is the most expensive model. Use only for truly complex reasoning tasks. For analysis, Claude Sonnet 3.5 or gpt-4o often provide similar quality at 3x lower cost. Test if downgrading maintains quality."
     },
     {
       "file": "test-codebase/src/services/anthropic_service.py",
@@ -92,7 +92,7 @@
       "model": "claude-sonnet-4-20250514",
       "estimatedMonthlyLow": 1.05,
       "estimatedMonthlyHigh": 45,
-      "suggestion": "(AI Analysis) Claude Sonnet 4 is powerful but expensive ($3/1M input). For general tasks, downgrade to Claude 3.5 Haiku ($0.80/1M) or gpt-4o-mini ($0.15/1M). Use Sonnet only for complex reasoning."
+      "suggestion": "(AI Analysis) Claude Sonnet 4 is powerful but expensive. For general tasks, switch to Claude Haiku, gpt-4o-mini, or Gemini Flash for 10-15x cost savings. Reserve Sonnet for complex reasoning or long-context tasks."
     },
     {
       "file": "test-codebase/src/services/anthropic_service.py",
@@ -100,7 +100,7 @@
       "model": "claude-sonnet-4-20250514",
       "estimatedMonthlyLow": 1.05,
       "estimatedMonthlyHigh": 45,
-      "suggestion": "(AI Analysis) Streaming is good for UX. For streaming use cases, consider cheaper models like Claude 3.5 Haiku or gpt-4o-mini to reduce costs while maintaining responsiveness."
+      "suggestion": "(AI Analysis) Streaming is implemented correctly. Consider Claude Haiku for simple streaming tasks at much lower cost, or self-hosted Llama-3.1-8B with vLLM for high-volume streaming workloads."
     },
     {
       "file": "test-codebase/src/services/anthropic_service.py",
@@ -108,7 +108,7 @@
       "model": "claude-sonnet-4-20250514",
       "estimatedMonthlyLow": 1.05,
       "estimatedMonthlyHigh": 45,
-      "suggestion": "(AI Analysis) Excellent use of prompt caching! This reduces costs by 90% for repeated context. Ensure your cache hit rate is high. Consider combining with cheaper base model if complexity allows."
+      "suggestion": "(AI Analysis) Excellent use of prompt caching! This can reduce costs by 90% for repeated context. Ensure cache hit rates are high. For non-cached portions, consider cheaper models."
     },
     {
       "file": "test-codebase/src/services/anthropic_service.py",
@@ -116,7 +116,7 @@
       "model": "claude-sonnet-4-20250514",
       "estimatedMonthlyLow": 1.05,
       "estimatedMonthlyHigh": 45,
-      "suggestion": "(AI Analysis) Tool use with Claude Sonnet 4 is powerful. If tools are deterministic, consider routing simple tool calls to Claude 3.5 Haiku for cost savings."
+      "suggestion": "(AI Analysis) Claude excels at tool use. For simpler tool calls, consider Claude Haiku or gpt-4o-mini. For complex multi-tool orchestration, Claude Sonnet is justified."
     },
     {
       "file": "test-codebase/src/services/anthropic_service.py",
@@ -124,7 +124,7 @@
       "model": "claude-sonnet-4-20250514",
       "estimatedMonthlyLow": 1.05,
       "estimatedMonthlyHigh": 45,
-      "suggestion": "(AI Analysis) Claude excels at vision tasks. Compare with GPT-4o vision or Gemini 1.5 Pro for cost-quality tradeoffs. Gemini Flash is significantly cheaper for simple image analysis."
+      "suggestion": "(AI Analysis) Claude Sonnet handles vision well. Compare with Gemini 1.5 Flash for vision tasks - often cheaper with similar quality. For high-volume image analysis, consider specialized vision models."
     },
     {
       "file": "test-codebase/src/agents/langchain_agent.py",
@@ -132,15 +132,23 @@
       "model": "claude-sonnet-4-20250514",
       "estimatedMonthlyLow": 1.05,
       "estimatedMonthlyHigh": 45,
-      "suggestion": "(AI Analysis) Using multiple providers is good for fallback. However, Claude Sonnet 4 is expensive. Consider Claude 3.5 Haiku as fallback for cost efficiency."
+      "suggestion": "(AI Analysis) LangChain overhead + expensive model. Consider Claude Haiku or gpt-4o-mini for most chain operations. Reserve Sonnet for final reasoning steps only."
     },
     {
-      "file": "test-codebase/src/utils/inference_patterns.py",
-      "line": 134,
+      "file": "test-codebase/src/agents/langchain_agent.py",
+      "line": 189,
       "model": "claude-sonnet-4-20250514",
       "estimatedMonthlyLow": 1.05,
       "estimatedMonthlyHigh": 45,
-      "suggestion": "(AI Analysis) Good routing implementation! Refine routing rules by tracking actual quality/cost metrics per task type. Add telemetry to optimize routing decisions over time."
+      "suggestion": "(AI Analysis) Routing pattern is good. Test if Claude Sonnet 3.5 or gpt-4o provide sufficient quality for complex queries at lower cost."
+    },
+    {
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 200,
+      "model": "claude-sonnet-4-20250514",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Fallback to expensive model. Consider cheaper fallback options: Claude Haiku or gpt-4o-mini as secondary, reserve Sonnet as third fallback only."
     },
     {
       "file": "test-codebase/src/services/openai_service.py",
@@ -148,7 +156,7 @@
       "model": "gpt-4o",
       "estimatedMonthlyLow": 0.75,
       "estimatedMonthlyHigh": 32.5,
-      "suggestion": "(AI Analysis) For general Q&A tasks, consider switching to gpt-4o-mini ($0.15/1M input vs $2.50/1M for gpt-4o) or Gemini Flash 2.0 ($0.10/1M). For even more cost savings on simple queries, try Llama-3.1-8B via Groq or Together AI."
+      "suggestion": "(AI Analysis) For simple conversational tasks, consider switching to gpt-4o-mini, Claude Haiku, or Gemini Flash 1.5 for 10-20x cost savings. gpt-4o is overkill unless complex reasoning is required."
     },
     {
       "file": "test-codebase/src/services/openai_service.py",
@@ -156,7 +164,7 @@
       "model": "gpt-4o",
       "estimatedMonthlyLow": 0.75,
       "estimatedMonthlyHigh": 32.5,
-      "suggestion": "(AI Analysis) Function calling works well with gpt-4o, but if tools are simple, consider gpt-4o-mini with function calling for 60% cost savings."
+      "suggestion": "(AI Analysis) Function calling is properly implemented. Consider gpt-4o-mini for simpler tool calls or Claude Sonnet for complex tool orchestration at better price points."
     },
     {
       "file": "test-codebase/src/services/openai_service.py",
@@ -164,7 +172,7 @@
       "model": "gpt-4o",
       "estimatedMonthlyLow": 0.75,
       "estimatedMonthlyHigh": 32.5,
-      "suggestion": "(AI Analysis) For structured extraction tasks, consider gpt-4o-mini with JSON mode (60% cheaper) or fine-tuned Llama-3.1-8B for high-volume extraction."
+      "suggestion": "(AI Analysis) For structured extraction with JSON output, consider gpt-4o-mini or open-source models with guided decoding (vLLM + outlines library) for 10-100x cost savings."
     },
     {
       "file": "test-codebase/src/services/openai_service.py",
@@ -172,7 +180,7 @@
       "model": "gpt-4o",
       "estimatedMonthlyLow": 0.75,
       "estimatedMonthlyHigh": 32.5,
-      "suggestion": "(AI Analysis) For vision tasks, compare gpt-4o with Claude 3.5 Sonnet (often better at vision) or Gemini 1.5 Flash (cheaper at $0.075/1M tokens for images). Test which provides best value for your use case."
+      "suggestion": "(AI Analysis) Vision tasks require multimodal models. gpt-4o is appropriate here. Consider Gemini 1.5 Flash or Claude Sonnet as alternatives with competitive pricing for vision tasks."
     },
     {
       "file": "test-codebase/src/agents/langchain_agent.py",
@@ -180,7 +188,7 @@
       "model": "gpt-4o",
       "estimatedMonthlyLow": 0.75,
       "estimatedMonthlyHigh": 32.5,
-      "suggestion": "(AI Analysis) LangChain adds overhead. For simple chains, consider direct SDK calls. For this gpt-4o usage, evaluate if gpt-4o-mini suffices for your chain logic."
+      "suggestion": "(AI Analysis) LangChain adds overhead. For production, consider direct SDK calls. Switch to gpt-4o-mini for most LangChain chains unless complex reasoning is needed."
     },
     {
       "file": "test-codebase/src/utils/inference_patterns.py",
@@ -188,7 +196,7 @@
       "model": "gpt-4o",
       "estimatedMonthlyLow": 0.75,
       "estimatedMonthlyHigh": 32.5,
-      "suggestion": "(AI Analysis) Using retry with exponential backoff is good practice. For high-availability, also implement circuit breakers and multi-provider fallback to reduce retry costs."
+      "suggestion": "(AI Analysis) Retry pattern is well-implemented with exponential backoff. Consider cheaper models like gpt-4o-mini or Claude Haiku unless complex reasoning is required."
     },
     {
       "file": "test-codebase/src/utils/inference_patterns.py",
@@ -196,7 +204,7 @@
       "model": "gpt-4o",
       "estimatedMonthlyLow": 0.75,
       "estimatedMonthlyHigh": 32.5,
-      "suggestion": "(AI Analysis) Excellent: caching with deterministic output (temp=0). For high cache hit rates, this can reduce costs by 90%+. Monitor cache hit ratio and TTL to optimize."
+      "suggestion": "(AI Analysis) Excellent caching pattern with Redis! Temperature=0 ensures deterministic outputs. For simple cached tasks, switch to gpt-4o-mini or self-hosted models for 10-50x cost savings."
     },
     {
       "file": "test-codebase/src/utils/inference_patterns.py",
@@ -204,7 +212,23 @@
       "model": "gpt-4o",
       "estimatedMonthlyLow": 0.75,
       "estimatedMonthlyHigh": 32.5,
-      "suggestion": "(AI Analysis) Excellent fallback pattern! Consider expanding fallback chain to include cheaper models as final fallback (e.g., gpt-4o-mini or Gemini Flash) for graceful degradation."
+      "suggestion": "(AI Analysis) Excellent fallback pattern for reliability! Consider using cheaper primary models (gpt-4o-mini) with fallback to Claude Haiku to minimize costs while maintaining reliability."
+    },
+    {
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 288,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) Good rate limiting implementation. For rate-limited workloads, switch to gpt-4o-mini or self-hosted solutions to reduce per-token costs."
+    },
+    {
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 339,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) Excellent circuit breaker pattern for reliability. Consider cheaper models to reduce costs during normal operation."
     },
     {
       "file": "test-codebase/src/services/anthropic_service.py",
@@ -212,7 +236,7 @@
       "model": "claude-3-5-haiku-20241022",
       "estimatedMonthlyLow": 0.28,
       "estimatedMonthlyHigh": 12,
-      "suggestion": "(AI Analysis) Perfect choice! Haiku is ideal for classification. For even lower costs on simple classification, consider fine-tuning Llama-3.1-8B or using Gemini Flash ($0.10/1M)."
+      "suggestion": "(AI Analysis) Excellent model choice for classification! Claude Haiku is perfect for simple tasks. For even higher throughput, consider self-hosted Llama-3-8B or distilled models."
     },
     {
       "file": "test-codebase/src/services/anthropic_service.py",
@@ -220,7 +244,15 @@
       "model": "claude-3-5-haiku-20241022",
       "estimatedMonthlyLow": 0.28,
       "estimatedMonthlyHigh": 12,
-      "suggestion": "(AI Analysis) Good use of async batching with Haiku. Ensure proper error handling and consider rate limiting to avoid API throttling."
+      "suggestion": "(AI Analysis) Good async batching with cost-effective model. For massive batch workloads, consider self-hosted vLLM with continuous batching for 50-100x cost reduction."
+    },
+    {
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 124,
+      "model": "claude-3-5-haiku-20241022",
+      "estimatedMonthlyLow": 0.28,
+      "estimatedMonthlyHigh": 12,
+      "suggestion": "(AI Analysis) Excellent task-based routing! Claude Haiku is perfect for summarization. Consider Gemini Flash or self-hosted Llama-3-8B for even lower costs on simple tasks."
     },
     {
       "file": "test-codebase/src/services/openai_service.py",
@@ -228,7 +260,7 @@
       "model": "gpt-4o-mini",
       "estimatedMonthlyLow": 0.045,
       "estimatedMonthlyHigh": 1.95,
-      "suggestion": "(AI Analysis) Good choice using gpt-4o-mini. For streaming simple responses, consider Gemini Flash 2.0 ($0.10/1M tokens) or self-hosted Llama-3.1-8B with vLLM for even lower costs at scale."
+      "suggestion": "(AI Analysis) Good model choice for streaming. Consider Gemini Flash 1.5 or Claude Haiku as cheaper alternatives with similar quality for simple tasks."
     },
     {
       "file": "test-codebase/src/services/openai_service.py",
@@ -236,7 +268,7 @@
       "model": "gpt-4o-mini",
       "estimatedMonthlyLow": 0.045,
       "estimatedMonthlyHigh": 1.95,
-      "suggestion": "(AI Analysis) Good use of async batching with gpt-4o-mini. Ensure you're using asyncio.gather for parallel requests. Consider batch API if processing large volumes offline."
+      "suggestion": "(AI Analysis) Good async batching pattern. For high-throughput batch workloads, consider self-hosted vLLM with Llama-3-8B or Mistral-7B for 50-100x cost reduction."
     },
     {
       "file": "test-codebase/src/agents/langchain_agent.py",
@@ -244,7 +276,31 @@
       "model": "gpt-4o-mini",
       "estimatedMonthlyLow": 0.045,
       "estimatedMonthlyHigh": 1.95,
-      "suggestion": "(AI Analysis) Good routing strategy using cheaper model for simple queries. Consider adding more sophisticated routing logic based on query complexity scoring."
+      "suggestion": "(AI Analysis) Good routing pattern! gpt-4o-mini for simple queries is cost-effective. Consider Gemini Flash or self-hosted Llama-3-8B for even lower costs."
+    },
+    {
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 56,
+      "model": "gpt-4o-mini",
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "(AI Analysis) Good model choice with manual retry. Well-implemented exponential backoff pattern."
+    },
+    {
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 105,
+      "model": "gpt-4o-mini",
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "(AI Analysis) Good in-memory caching with LRU. gpt-4o-mini is cost-effective. For production, use distributed cache (Redis) instead of local LRU for better cache hit rates."
+    },
+    {
+      "file": "test-codebase/src/utils/inference_patterns.py",
+      "line": 142,
+      "model": "gpt-4o-mini",
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "(AI Analysis) Smart complexity-based routing. For simple tasks routed to mini, consider Gemini Flash as an alternative. Routing logic reduces costs effectively."
     },
     {
       "file": "test-codebase/src/services/openai_service.py",
@@ -252,7 +308,7 @@
       "model": "text-embedding-3-large",
       "estimatedMonthlyLow": 0.013000000000000001,
       "estimatedMonthlyHigh": 0.6500000000000001,
-      "suggestion": "(AI Analysis) Unless you need the highest quality embeddings, switch to text-embedding-3-small (10x cheaper) or open-source alternatives. Consider A/B testing to validate if quality difference matters for your use case."
+      "suggestion": "(AI Analysis) Using reduced dimensions is good. For most RAG applications, text-embedding-3-small or open-source models like BGE-large provide similar retrieval quality at much lower cost."
     },
     {
       "file": "test-codebase/src/serving/vllm_server.py",
@@ -260,7 +316,15 @@
       "model": "meta-llama/Llama-3.1-8B-Instruct",
       "estimatedMonthlyLow": 0.0045000000000000005,
       "estimatedMonthlyHigh": 0.21,
-      "suggestion": "(AI Analysis) Excellent: 8B model with prefix caching. This is highly cost-effective. Consider AWQ/GPTQ quantization to reduce to 1 GPU and cut costs in half while maintaining quality."
+      "suggestion": "(AI Analysis) Excellent setup with prefix caching! Llama-3.1-8B is cost-effective. For even lower latency, consider single-GPU deployment (tensor_parallel_size=1) if throughput allows."
+    },
+    {
+      "file": "test-codebase/src/serving/vllm_server.py",
+      "line": 84,
+      "model": "meta-llama/Llama-3.1-8B-Instruct",
+      "estimatedMonthlyLow": 0.0045000000000000005,
+      "estimatedMonthlyHigh": 0.21,
+      "suggestion": "(AI Analysis) Optimal configuration for batch workloads! High memory utilization and chunked prefill maximize throughput. Consider Mistral-7B or Phi-3 for even faster batch processing on simpler tasks."
     },
     {
       "file": "test-codebase/src/services/openai_service.py",
@@ -268,7 +332,7 @@
       "model": "text-embedding-3-small",
       "estimatedMonthlyLow": 0.002,
       "estimatedMonthlyHigh": 0.1,
-      "suggestion": "(AI Analysis) text-embedding-3-small is cost-effective. For even lower costs, consider open-source models like all-MiniLM-L6-v2 via sentence-transformers (free, self-hosted) or Cohere embed-v3 ($0.10/1M tokens)."
+      "suggestion": "(AI Analysis) Excellent choice for embeddings - text-embedding-3-small is already cost-effective. For even lower cost at scale, consider open-source alternatives like all-MiniLM-L6-v2 with vLLM or self-hosted sentence-transformers."
     },
     {
       "file": "test-codebase/src/agents/langchain_agent.py",
@@ -276,7 +340,7 @@
       "model": "text-embedding-3-small",
       "estimatedMonthlyLow": 0.002,
       "estimatedMonthlyHigh": 0.1,
-      "suggestion": "(AI Analysis) Good choice for RAG embeddings. For high-volume RAG, consider self-hosting sentence-transformers models (free) or using Cohere embed-v3."
+      "suggestion": "(AI Analysis) Good embedding choice. For high-volume RAG, self-host sentence-transformers or BGE models with vLLM for 10-50x cost savings."
     },
     {
       "file": "test-codebase/src/serving/vllm_server.py",
@@ -305,6 +369,13 @@
     {
       "file": "test-codebase/src/serving/sglang_server.py",
       "line": 16,
+      "model": "unknown",
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0
+    },
+    {
+      "file": "test-codebase/src/serving/sglang_server.py",
+      "line": 24,
       "model": "unknown",
       "estimatedMonthlyLow": 0,
       "estimatedMonthlyHigh": 0

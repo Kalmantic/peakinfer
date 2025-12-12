@@ -504,6 +504,467 @@ export class AnimatedMessage {
 }
 
 // =============================================================================
+// ETA TRACKER
+// =============================================================================
+
+/**
+ * Options for ETA tracker configuration.
+ */
+export interface ETATrackerOptions {
+  /** Smoothing factor for EMA (0.0-1.0, higher = more responsive) */
+  smoothingFactor?: number;
+  /** Initial estimate in milliseconds */
+  initialEstimateMs?: number;
+}
+
+/**
+ * ETA (Estimated Time of Arrival) tracker for long-running operations.
+ * Uses exponential moving average for adaptive time estimates.
+ * 
+ * Inspired by Uber/Ola-style progress indicators.
+ */
+export class ETATracker {
+  private startTime: number = 0;
+  private totalSteps: number = 0;
+  private completedSteps: number = 0;
+  private stepDurations: number[] = [];
+  private lastStepTime: number = 0;
+  private smoothingFactor: number;
+  private emaStepDuration: number = 0;
+  private initialEstimateMs: number;
+
+  constructor(options: ETATrackerOptions = {}) {
+    this.smoothingFactor = options.smoothingFactor ?? 0.3;
+    this.initialEstimateMs = options.initialEstimateMs ?? 60000; // 1 minute default
+  }
+
+  /**
+   * Start tracking with a known number of total steps.
+   */
+  start(totalSteps: number): void {
+    this.startTime = Date.now();
+    this.totalSteps = totalSteps;
+    this.completedSteps = 0;
+    this.stepDurations = [];
+    this.lastStepTime = this.startTime;
+    this.emaStepDuration = this.initialEstimateMs / totalSteps;
+  }
+
+  /**
+   * Mark a step as complete.
+   */
+  completeStep(): void {
+    const now = Date.now();
+    const stepDuration = now - this.lastStepTime;
+    this.lastStepTime = now;
+
+    this.stepDurations.push(stepDuration);
+    this.completedSteps++;
+
+    // Update EMA (Exponential Moving Average)
+    if (this.completedSteps === 1) {
+      this.emaStepDuration = stepDuration;
+    } else {
+      this.emaStepDuration = this.smoothingFactor * stepDuration + 
+                             (1 - this.smoothingFactor) * this.emaStepDuration;
+    }
+  }
+
+  /**
+   * Update progress without completing (for partial step updates).
+   */
+  update(currentStep: number): void {
+    // If we jumped ahead, mark intermediate steps as complete
+    while (this.completedSteps < currentStep) {
+      this.completeStep();
+    }
+  }
+
+  /**
+   * Get current ETA information.
+   */
+  getETA(): { remainingMs: number; formattedETA: string; progress: number; elapsed: number } {
+    const elapsed = Date.now() - this.startTime;
+    const remainingSteps = this.totalSteps - this.completedSteps;
+    const progress = this.totalSteps > 0 ? (this.completedSteps / this.totalSteps) * 100 : 0;
+
+    // Estimate remaining time
+    let remainingMs: number;
+    if (this.completedSteps === 0) {
+      remainingMs = this.initialEstimateMs;
+    } else {
+      remainingMs = Math.round(this.emaStepDuration * remainingSteps);
+    }
+
+    // Cap at reasonable maximum (10 minutes)
+    remainingMs = Math.min(remainingMs, 600000);
+
+    return {
+      remainingMs,
+      formattedETA: this.formatETA(remainingMs, progress),
+      progress,
+      elapsed,
+    };
+  }
+
+  /**
+   * Format ETA as human-readable string.
+   */
+  private formatETA(remainingMs: number, progress: number): string {
+    // If almost done, show "finishing up..."
+    if (progress > 95) {
+      return 'finishing up...';
+    }
+
+    // If just started, show "estimating..."
+    if (progress < 5 && this.completedSteps < 2) {
+      return 'estimating...';
+    }
+
+    // Format time remaining
+    if (remainingMs < 10000) {
+      return 'a few seconds remaining';
+    } else if (remainingMs < 60000) {
+      const seconds = Math.ceil(remainingMs / 1000);
+      return `~${seconds}s remaining`;
+    } else if (remainingMs < 3600000) {
+      const minutes = Math.floor(remainingMs / 60000);
+      const seconds = Math.ceil((remainingMs % 60000) / 1000);
+      if (seconds > 0) {
+        return `~${minutes}m ${seconds}s remaining`;
+      }
+      return `~${minutes}m remaining`;
+    } else {
+      const hours = Math.floor(remainingMs / 3600000);
+      const minutes = Math.ceil((remainingMs % 3600000) / 60000);
+      return `~${hours}h ${minutes}m remaining`;
+    }
+  }
+}
+
+// =============================================================================
+// ANALYSIS PROGRESS (Uber/Ola Style)
+// =============================================================================
+
+/**
+ * Analysis phase configuration.
+ */
+interface AnalysisPhase {
+  name: string;
+  icon: string;
+  messages: string[];
+}
+
+/**
+ * Options for analysis progress display.
+ */
+export interface AnalysisProgressOptions {
+  /** Maximum turns expected */
+  maxTurns: number;
+  /** Number of files in codebase (for context) */
+  fileCount?: number;
+  /** Disable output (for testing) */
+  silent?: boolean;
+}
+
+/**
+ * Uber/Ola-style progress display for analysis operations.
+ * Shows multi-line progress with ETA, phase indicators, and contextual messages.
+ */
+export class AnalysisProgress {
+  private spinner: Ora | null = null;
+  private eta: ETATracker;
+  private maxTurns: number = 30;
+  private currentTurn: number = 0;
+  private currentActivity: string = '';
+  private currentToolUse: string = '';
+  private messageIndex: number = 0;
+  private tipIndex: number = 0;
+  private lastTipTime: number = 0;
+  private updateInterval: NodeJS.Timeout | null = null;
+  private silent: boolean = false;
+  private fileCount: number = 0;
+
+  /** Phase definitions with rotating messages */
+  private readonly phases: AnalysisPhase[] = [
+    {
+      name: 'Initialization',
+      icon: '[1/4]',
+      messages: [
+        'Warming up the AI engines...',
+        'Loading pattern recognition...',
+        'Preparing analysis pipeline...',
+      ],
+    },
+    {
+      name: 'Pattern Detection',
+      icon: '[2/4]',
+      messages: [
+        'Scanning for LLM SDK imports...',
+        'Detecting inference patterns...',
+        'Mapping API call locations...',
+        'Identifying cost optimization opportunities...',
+        'Analyzing provider configurations...',
+        'Tracing model usage patterns...',
+      ],
+    },
+    {
+      name: 'Stack Mapping',
+      icon: '[3/4]',
+      messages: [
+        'Building the stack map...',
+        'Connecting callsites to providers...',
+        'Calculating cost distribution...',
+        'Analyzing tech stack layers...',
+      ],
+    },
+    {
+      name: 'Insights',
+      icon: '[4/4]',
+      messages: [
+        'Generating insights...',
+        'Preparing your report...',
+        'Almost there...',
+      ],
+    },
+  ];
+
+  /** Fun tips to show during analysis */
+  private readonly tips: string[] = [
+    'PeakInfer can detect 15+ LLM SDKs and frameworks.',
+    'Use --html for a beautiful interactive report.',
+    'Runtime telemetry provides even more accurate cost data.',
+    'Larger codebases = more comprehensive analysis.',
+    'Results are cached for faster subsequent runs.',
+    'Found an issue? Report it at github.com/kalmantic/peakinfer',
+  ];
+
+  constructor() {
+    this.eta = new ETATracker({
+      smoothingFactor: 0.3,
+      initialEstimateMs: 45000, // 45 seconds initial estimate
+    });
+  }
+
+  /**
+   * Start the analysis progress display.
+   */
+  start(options: AnalysisProgressOptions): void {
+    this.maxTurns = options.maxTurns || 30;
+    this.fileCount = options.fileCount || 0;
+    this.silent = options.silent || false;
+    this.currentTurn = 0;
+    this.messageIndex = 0;
+    this.tipIndex = 0;
+    this.lastTipTime = Date.now();
+
+    this.eta.start(this.maxTurns);
+
+    if (this.silent || !process.stdout.isTTY) {
+      console.log('Analyzing codebase...');
+      return;
+    }
+
+    this.spinner = ora({
+      spinner: 'dots',
+      color: 'cyan',
+      hideCursor: true,
+    }).start();
+
+    this.render();
+
+    // Start update interval for smooth animations
+    this.updateInterval = setInterval(() => {
+      this.render();
+    }, 500);
+  }
+
+  /**
+   * Update turn progress.
+   */
+  updateTurn(turn: number, activity?: string): void {
+    this.currentTurn = turn;
+    this.eta.update(turn);
+    if (activity) {
+      this.currentActivity = activity;
+    }
+    this.render();
+  }
+
+  /**
+   * Show current tool usage.
+   */
+  setToolUse(toolName: string, target?: string): void {
+    if (target) {
+      // Truncate long targets
+      const maxLen = 40;
+      const displayTarget = target.length > maxLen 
+        ? target.substring(0, maxLen - 3) + '...' 
+        : target;
+      this.currentToolUse = `Using ${toolName}: ${displayTarget}`;
+    } else {
+      this.currentToolUse = `Using ${toolName}...`;
+    }
+    this.render();
+  }
+
+  /**
+   * Complete progress with success.
+   */
+  complete(message?: string): void {
+    this.stopInterval();
+
+    // Set maxTurns to current to show 100% completion
+    this.maxTurns = this.currentTurn;
+    this.render(); // Final render at 100%
+
+    if (this.silent) {
+      console.log(message || 'Analysis complete');
+      return;
+    }
+
+    if (this.spinner) {
+      this.spinner.succeed(message || 'Analysis complete');
+      this.spinner = null;
+    }
+  }
+
+  /**
+   * Complete progress with failure.
+   */
+  fail(message?: string): void {
+    this.stopInterval();
+
+    if (this.silent) {
+      console.log(message || '✖ Analysis failed');
+      return;
+    }
+
+    if (this.spinner) {
+      this.spinner.fail(message || 'Analysis failed');
+      this.spinner = null;
+    }
+  }
+
+  /**
+   * Stop the progress display.
+   */
+  stop(): void {
+    this.stopInterval();
+    if (this.spinner) {
+      this.spinner.stop();
+      this.spinner = null;
+    }
+  }
+
+  /**
+   * Render the progress display.
+   */
+  private render(): void {
+    if (this.silent || !this.spinner) return;
+
+    const phase = this.getCurrentPhase();
+    const etaInfo = this.eta.getETA();
+    const progressBar = this.renderProgressBar(etaInfo.progress);
+    const currentMessage = this.getCurrentMessage(phase);
+
+    // Rotate tips every 15 seconds
+    const now = Date.now();
+    if (now - this.lastTipTime > 15000) {
+      this.tipIndex = (this.tipIndex + 1) % this.tips.length;
+      this.lastTipTime = now;
+    }
+
+    // Build multi-line display
+    const lines: string[] = [
+      '',
+      `   ${chalk.bold(`${phase.icon} ${phase.name}`)}`,
+      `   |  Turn ${this.currentTurn}/${this.maxTurns} ${progressBar} ${Math.round(etaInfo.progress)}%`,
+    ];
+
+    // Show tool use if active, otherwise show rotating message
+    if (this.currentToolUse) {
+      lines.push(`   |  ${chalk.cyan(this.currentToolUse)}`);
+    } else {
+      lines.push(`   |  ${chalk.dim(currentMessage)}`);
+    }
+
+    // Show ETA
+    lines.push(`   |  ${chalk.yellow(etaInfo.formattedETA)}`);
+
+    // Show tip occasionally (without emoji)
+    if (etaInfo.progress > 20 && etaInfo.progress < 80) {
+      lines.push('');
+      lines.push(`   ${chalk.dim('Tip: ' + this.tips[this.tipIndex])}`);
+    }
+
+    this.spinner.text = lines.join('\n');
+  }
+
+  /**
+   * Get the current phase based on progress.
+   */
+  private getCurrentPhase(): AnalysisPhase {
+    const progress = this.totalProgress();
+    if (progress < 10) return this.phases[0];      // Initialization
+    if (progress < 80) return this.phases[1];      // Pattern Detection
+    if (progress < 95) return this.phases[2];      // Stack Mapping
+    return this.phases[3];                         // Insights
+  }
+
+  /**
+   * Get phase number (1-4).
+   */
+  private getPhaseNumber(): number {
+    const progress = this.totalProgress();
+    if (progress < 10) return 1;
+    if (progress < 80) return 2;
+    if (progress < 95) return 3;
+    return 4;
+  }
+
+  /**
+   * Get progress percentage.
+   */
+  private totalProgress(): number {
+    return this.maxTurns > 0 ? (this.currentTurn / this.maxTurns) * 100 : 0;
+  }
+
+  /**
+   * Get current rotating message for phase.
+   */
+  private getCurrentMessage(phase: AnalysisPhase): string {
+    // Rotate messages every 3 seconds
+    const index = Math.floor(Date.now() / 3000) % phase.messages.length;
+    return phase.messages[index];
+  }
+
+  /**
+   * Render a visual progress bar.
+   */
+  private renderProgressBar(progress: number): string {
+    const width = 16;
+    const filled = Math.floor((progress / 100) * width);
+    const empty = width - filled;
+
+    const filledChar = chalk.cyan('█');
+    const emptyChar = chalk.dim('░');
+
+    return filledChar.repeat(filled) + emptyChar.repeat(empty);
+  }
+
+  /**
+   * Stop the update interval.
+   */
+  private stopInterval(): void {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
+    }
+  }
+}
+
+// =============================================================================
 // FACTORY FUNCTIONS
 // =============================================================================
 

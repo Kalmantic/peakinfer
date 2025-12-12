@@ -172,7 +172,7 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
   }
 
   // Import progress utilities
-  const { ProgressManager, createAnimatedMessage } = await import('./progress.js');
+  const { ProgressManager, AnalysisProgress } = await import('./progress.js');
 
   // Initialize progress manager (outside try block so it can be accessed in catch)
   const progress = new ProgressManager({
@@ -181,37 +181,10 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
   });
 
   try {
-
-    // Phase 1: Scanning codebase
-    progress.start('Scanning codebase...');
-
-    // Import ProgressBar for visual progress
-    const { ProgressBar } = await import('./progress.js');
-
-    // Create progress bar for file scanning (we'll update it as we scan)
-    let progressBar: InstanceType<typeof ProgressBar> | null = null;
-
-    const scanResult = await scan(root, {
-      onProgress: (current, total, currentFile) => {
-        // Initialize progress bar on first update
-        if (!progressBar && total > 0) {
-          progress.stop(); // Stop the spinner
-          progressBar = new ProgressBar(total, {
-            width: 40,
-            label: 'Scanning codebase'
-          });
-        }
-
-        // Update progress bar with current file info
-        if (progressBar) {
-          const fileName = currentFile ? currentFile.split('/').pop() || currentFile : '';
-          progressBar.update(current, fileName);
-        }
-      }
-    });
+    // Phase 1: Quick scan to count files (no separate progress bar)
+    const scanResult = await scan(root);
 
     if (scanResult.totalFiles === 0) {
-      progress.stop();
       renderErrorState({
         code: 'NO_FILES',
         message: 'No supported source files found',
@@ -220,61 +193,62 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
       process.exit(1);
     }
 
-    // Resume with regular progress indicator
-    if (!progressBar) {
-      // If we didn't use progress bar (small codebase), just update the spinner
-      progress.update(`Found ${scanResult.totalFiles} files to analyze`);
-    } else {
-      // Restart progress after progress bar
-      progress.start(`Found ${scanResult.totalFiles} files to analyze`);
-    }
-
-    // Phase 2: Pattern Detection
-    progress.startStep('detect-patterns', 'Detecting LLM usage patterns');
-
-    // Animated messages during analysis
-    const analysisMessages = [
-      'Scanning for OpenAI API calls...',
-      'Detecting Anthropic SDK usage...',
-      'Identifying LangChain patterns...',
-      'Mapping inference callsites...',
-      'Analyzing cost distribution...',
-    ];
-    const animatedMsg = createAnimatedMessage(analysisMessages);
-    animatedMsg.start(2000);
-
     // Scale maxTurns based on file count (more files = more exploration needed)
     const baseTurns = 30;
     const extraTurns = Math.ceil(scanResult.totalFiles / 25) * 5;
     const maxTurns = Math.min(baseTurns + extraTurns, 100); // Cap at 100 turns
 
+    // Start unified analysis progress display (no separate scanning bar)
+    const analysisProgress = new AnalysisProgress();
+    analysisProgress.start({
+      maxTurns,
+      fileCount: scanResult.totalFiles,
+    });
+
     const result = await analyzeWithAgent(root, {
       maxTurns,
-      onProgress: (msg) => {
-        // Update progress with agent messages
-        if (msg.includes('Searching')) {
-          progress.update(msg, ['semantic analysis']);
-        } else if (msg.includes('Found')) {
-          progress.update(msg, ['validation']);
-        } else {
-          progress.update(msg);
+      onProgress: (event) => {
+        // Handle both string and rich event formats
+        if (typeof event === 'string') {
+          // Legacy string format - ignore, we're using the new format
+          return;
+        }
+
+        // Handle rich progress events
+        switch (event.type) {
+          case 'start':
+            // Already started, nothing to do
+            break;
+          case 'turn':
+            analysisProgress.updateTurn(event.turn || 0, event.message);
+            break;
+          case 'tool_use':
+            analysisProgress.setToolUse(event.toolName || 'Tool', event.toolTarget);
+            break;
+          case 'complete':
+            // Don't complete yet - we still have post-processing
+            break;
+          case 'error':
+            analysisProgress.fail(event.message);
+            break;
         }
       },
     });
 
-    // Stop animated messages
-    animatedMsg.stop();
-
-    // Complete pattern detection step
-    progress.completeStep('detect-patterns', 'success', `Found ${result.callsites.length} callsites`);
-
+    // Complete the analysis progress display (shows 100%)
+    analysisProgress.complete(`Analysis complete`);
+    
     const { callsites, stackMap, pricing, techStack, patterns, totalCostUsd, durationMs } = result;
 
-    // Phase 3: Risk Assessment
+    // Post-processing with step indicators (reset timer for accurate step durations)
+    progress.start('Post-processing...');
+    progress.startStep('detect-patterns', 'Finalizing pattern detection');
+    progress.completeStep('detect-patterns', 'success', `Found ${callsites.length} callsites`);
+
+    // Risk Assessment
     if (callsites.length > 0 && patterns) {
       progress.startStep('risk-assessment', 'Assessing optimization risks');
 
-      // Import risk detection
       const { detectRisks } = await import('./recommender.js');
       const riskAssessment = detectRisks(patterns, callsites);
 
@@ -287,18 +261,16 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
         `${riskCount} potential risks identified (${riskLevel} overall risk)`);
     }
 
-    // Phase 4: Generating Reports
+    // Generate output files
     let outputFiles: string[] = [];
     if (callsites.length > 0) {
       progress.startStep('generate-reports', 'Generating reports');
 
-      // Write output files
       outputFiles = writeOutputFiles(root, stackMap, pricing, options.html);
 
       // Write HTML report if requested
-      let htmlPath: string | null = null;
       if (options.html) {
-        htmlPath = writeHTMLReport(root, scanResult, stackMap, pricing, techStack);
+        const htmlPath = writeHTMLReport(root, scanResult, stackMap, pricing, techStack);
         if (htmlPath) {
           outputFiles.push(htmlPath);
         }
@@ -307,7 +279,7 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
       progress.completeStep('generate-reports', 'success', `Generated ${outputFiles.length} output files`);
     }
 
-    // Complete the progress
+    // Final success message
     progress.succeed(`Analysis complete in ${(durationMs / 1000).toFixed(1)}s`);
 
     // Render results with PRD-aligned output format

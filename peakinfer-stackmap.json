@@ -44,6 +44,12 @@
                       "pattern": "langchain.openai.chat",
                       "provider": "openai",
                       "model": "gpt-4o-mini"
+                    },
+                    {
+                      "line": 189,
+                      "pattern": "langchain.anthropic.chat",
+                      "provider": "anthropic",
+                      "model": "claude-sonnet-4-20250514"
                     }
                   ]
                 }
@@ -178,7 +184,13 @@
                   "callsites": [
                     {
                       "line": 16,
-                      "pattern": "other.chat",
+                      "pattern": "other.completion",
+                      "provider": "other",
+                      "model": null
+                    },
+                    {
+                      "line": 24,
+                      "pattern": "other.completion",
                       "provider": "other",
                       "model": null
                     }
@@ -191,25 +203,31 @@
                   "callsites": [
                     {
                       "line": 29,
-                      "pattern": "vllm.chat",
+                      "pattern": "vllm.completion",
                       "provider": "vllm",
                       "model": "meta-llama/Llama-3.1-70B-Instruct"
                     },
                     {
                       "line": 59,
-                      "pattern": "vllm.chat",
+                      "pattern": "vllm.completion",
+                      "provider": "vllm",
+                      "model": "meta-llama/Llama-3.1-8B-Instruct"
+                    },
+                    {
+                      "line": 84,
+                      "pattern": "vllm.completion",
                       "provider": "vllm",
                       "model": "meta-llama/Llama-3.1-8B-Instruct"
                     },
                     {
                       "line": 109,
-                      "pattern": "vllm.chat",
+                      "pattern": "vllm.completion",
                       "provider": "vllm",
                       "model": "meta-llama/Llama-3.1-70B-Instruct"
                     },
                     {
                       "line": 128,
-                      "pattern": "vllm.chat",
+                      "pattern": "vllm.completion",
                       "provider": "vllm",
                       "model": "TheBloke/Llama-2-70B-Chat-AWQ"
                     }
@@ -234,19 +252,55 @@
                       "model": "gpt-4o"
                     },
                     {
+                      "line": 56,
+                      "pattern": "openai.chat",
+                      "provider": "openai",
+                      "model": "gpt-4o-mini"
+                    },
+                    {
                       "line": 85,
                       "pattern": "openai.chat",
                       "provider": "openai",
                       "model": "gpt-4o"
                     },
                     {
-                      "line": 134,
+                      "line": 105,
+                      "pattern": "openai.chat",
+                      "provider": "openai",
+                      "model": "gpt-4o-mini"
+                    },
+                    {
+                      "line": 124,
+                      "pattern": "anthropic.chat",
+                      "provider": "anthropic",
+                      "model": "claude-3-5-haiku-20241022"
+                    },
+                    {
+                      "line": 142,
+                      "pattern": "openai.chat",
+                      "provider": "openai",
+                      "model": "gpt-4o-mini"
+                    },
+                    {
+                      "line": 188,
+                      "pattern": "openai.chat",
+                      "provider": "openai",
+                      "model": "gpt-4o"
+                    },
+                    {
+                      "line": 200,
                       "pattern": "anthropic.chat",
                       "provider": "anthropic",
                       "model": "claude-sonnet-4-20250514"
                     },
                     {
-                      "line": 188,
+                      "line": 288,
+                      "pattern": "openai.chat",
+                      "provider": "openai",
+                      "model": "gpt-4o"
+                    },
+                    {
+                      "line": 339,
                       "pattern": "openai.chat",
                       "provider": "openai",
                       "model": "gpt-4o"
@@ -261,7 +315,7 @@
     }
   ],
   "summary": {
-    "totalCallsites": 29,
+    "totalCallsites": 38,
     "providers": [
       "anthropic",
       "openai",
