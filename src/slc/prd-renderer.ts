@@ -508,11 +508,8 @@ function renderStackMapBox(
     console.log(boxEmpty());
   }
 
-  // PATTERNS DETECTED section
+  // PATTERNS DETECTED section - only show if any patterns found
   if (patterns) {
-    console.log(boxRow('PATTERNS DETECTED'));
-    console.log(boxRow('   │'));
-
     const patternList = [
       { name: 'Retry logic', detected: patterns.retry?.detected, instance: patterns.retry?.instances?.[0] },
       { name: 'Batching', detected: patterns.batching?.detected, instance: patterns.batching?.instances?.[0] },
@@ -522,15 +519,22 @@ function renderStackMapBox(
       { name: 'Fallback chain', detected: patterns.fallback?.detected, instance: patterns.fallback?.instances?.[0] },
     ];
 
-    for (let i = 0; i < patternList.length; i++) {
-      const p = patternList[i];
-      const prefix = i === patternList.length - 1 ? '└' : '├';
-      const check = p.detected ? '✓' : '✗';
-      const location = p.detected && p.instance ? `  ${p.instance.file}:${p.instance.line}` : '  not detected';
-      console.log(boxRow(`   ${prefix}──► ${p.name.padEnd(22)} ${check}${location}`));
-    }
+    const detectedPatterns = patternList.filter(p => p.detected);
 
-    console.log(boxEmpty());
+    // Only show if at least one pattern detected
+    if (detectedPatterns.length > 0) {
+      console.log(boxRow('PATTERNS DETECTED'));
+      console.log(boxRow('   │'));
+
+      for (let i = 0; i < detectedPatterns.length; i++) {
+        const p = detectedPatterns[i];
+        const prefix = i === detectedPatterns.length - 1 ? '└' : '├';
+        const location = p.instance ? `  ${p.instance.file}:${p.instance.line}` : '';
+        console.log(boxRow(`   ${prefix}──► ${p.name.padEnd(22)} ✓${location}`));
+      }
+
+      console.log(boxEmpty());
+    }
   }
 
   console.log(boxBottom());
@@ -542,6 +546,15 @@ function renderStackMapBox(
 // =============================================================================
 
 function renderPricingBox(pricing: PricingSummary): void {
+  // Julie Zhou: "Content determines structure" - skip empty pricing
+  const hasMeaningfulData = pricing.estimatedRange.high > 0 ||
+    pricing.byProvider.length > 0 ||
+    pricing.byModel.length > 0;
+
+  if (!hasMeaningfulData) {
+    return; // Nothing to show - don't add noise
+  }
+
   console.log(boxTop());
   console.log(boxRow(center('PRICING SUMMARY', BOX_WIDTH - 2)));
   console.log(boxSep());
@@ -571,21 +584,6 @@ function renderPricingBox(pricing: PricingSummary): void {
     }
     console.log(boxEmpty());
   }
-
-  // Pricing deltas (placeholder - would need historical data)
-  console.log(boxRow('Pricing deltas (since last sync):'));
-  console.log(boxRow('   └──► Prices current as of this analysis'));
-  console.log(boxEmpty());
-
-  console.log(boxSep());
-  console.log(boxEmpty());
-
-  // ALTERNATIVE PRICING section
-  console.log(boxRow('ALTERNATIVE PRICING'));
-  console.log(boxRow('   │'));
-  console.log(boxRow('   ├──► Run `peakinfer prices` for provider pricing comparison'));
-  console.log(boxRow('   └──► Run `peakinfer templates list` for optimization strategies'));
-  console.log(boxEmpty());
 
   console.log(boxBottom());
   console.log('');

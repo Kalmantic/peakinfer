@@ -12,6 +12,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { analyzeWithAgent } from './agent-analyzer.js';
+import { runAgent, type AgentCallbacks, type Task } from './agent.js';
 import { scan } from './scanner.js';
 import {
   renderZeroState,
@@ -118,6 +119,93 @@ interface AnalyzeOptions {
   cached?: boolean;  // View cached results without API call (offline mode)
   events?: string;   // Path to runtime telemetry file (JSONL/JSON/CSV)
   mode?: 'static' | 'runtime';  // Explicit analysis mode override
+  verbose?: boolean;  // Show detailed task progress (agent architecture)
+}
+
+/**
+ * Analyze with agent architecture (verbose mode).
+ * Shows detailed task progress using callbacks.
+ */
+async function analyzeWithAgentArchitecture(root: string, options: AnalyzeOptions): Promise<void> {
+  const callbacks: AgentCallbacks = {
+    onStart: (queryId, targetPath) => {
+      console.log(`\nStarting analysis [${queryId}]`);
+      console.log(`Target: ${targetPath}\n`);
+    },
+    onPlanCreated: (plan) => {
+      console.log('Execution Plan:');
+      plan.tasks.forEach((t, i) => console.log(`  ${i + 1}. ${t.description}`));
+      console.log('');
+    },
+    onTaskStart: (task) => {
+      process.stdout.write(`  → ${task.description}...`);
+    },
+    onTaskProgress: (task, msg) => {
+      if (process.stdout.isTTY) {
+        process.stdout.write(`\r  → ${task.description}... ${msg.slice(0, 40)}`);
+      }
+    },
+    onTaskComplete: (task) => {
+      const duration = task.durationMs ? ` (${(task.durationMs / 1000).toFixed(1)}s)` : '';
+      console.log(`\r  ✓ ${task.description}${duration}`);
+    },
+    onComplete: (queryId, success, durationMs) => {
+      console.log(`\nAnalysis ${success ? 'completed' : 'failed'} in ${(durationMs / 1000).toFixed(1)}s`);
+    },
+    onError: (error, phase) => {
+      console.error(`\n  ✗ Error in ${phase}: ${error.message}`);
+    },
+  };
+
+  try {
+    const result = await runAgent(root, callbacks);
+
+    // Generate output files
+    const outputFiles = writeOutputFiles(root, result.stackMap, result.pricing, options.html);
+
+    if (options.html) {
+      const htmlPath = writeHTMLReport(root, result.scan, result.stackMap, result.pricing, result.techStack);
+      if (htmlPath) outputFiles.push(htmlPath);
+
+      if (options.open) {
+        const { exec } = await import('child_process');
+        exec(`open "${htmlPath}"`, () => {});
+      }
+    }
+
+    // Output results - verbose mode shows minimal summary
+    if (options.output === 'json') {
+      console.log(JSON.stringify({
+        success: true,
+        queryId: result.queryId,
+        callsites: result.callsites.length,
+        stackMap: result.stackMap,
+        pricing: result.pricing,
+        durationMs: result.durationMs,
+      }, null, 2));
+    } else {
+      // Minimal summary for verbose mode (agent architecture)
+      console.log(`\nScanned: ${result.scan.totalFiles} files (${result.scan.totalLines.toLocaleString()} LOC)`);
+      console.log(`Found: ${result.callsites.length} LLM callsites`);
+      if (result.callsites.length > 0) {
+        console.log(`\nCallsites:`);
+        result.callsites.slice(0, 10).forEach(cs => {
+          console.log(`  ${cs.file}:${cs.line} → ${cs.provider || 'unknown'}/${cs.model || 'unknown'}`);
+        });
+        if (result.callsites.length > 10) {
+          console.log(`  ... and ${result.callsites.length - 10} more`);
+        }
+      }
+      console.log(`\nOutput saved to: peakinfer-stackmap.json, peakinfer-pricing.json`);
+    }
+  } catch (error) {
+    renderErrorState({
+      code: 'ANALYSIS_ERROR',
+      message: error instanceof Error ? error.message : String(error),
+      suggestion: 'Try running without --verbose flag',
+    });
+    process.exit(1);
+  }
 }
 
 /**
@@ -200,6 +288,12 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
   // Check API key for fresh analysis
   if (!checkApiKey()) {
     process.exit(1);
+  }
+
+  // Verbose mode: Use agent architecture with detailed task progress
+  if (options.verbose) {
+    await analyzeWithAgentArchitecture(root, options);
+    return;
   }
 
   // Import progress utilities
@@ -2141,6 +2235,7 @@ analyze options:
   --open                open html report in browser
   --output <format>     output format: text (default) or json
   --cached              view previous analysis (offline, no API key needed)
+  --verbose             show detailed task progress
 
 event schema (JSONL):
   {"id":"evt_001","ts":"2025-12-09T08:15:23Z","provider":"openai","model":"gpt-4o",
@@ -2177,6 +2272,7 @@ environment:
     cached: args.includes('--cached'),
     events: eventsArg,
     mode: modeArg,
+    verbose: args.includes('--verbose'),
   };
 
   // Filter out options and their values to get positional args
