@@ -1,7 +1,12 @@
 /**
  * PRD Renderer Tests
  *
- * Verifies CLI output matches PRD v0.95 Section 9.1 specifications.
+ * Verifies CLI output matches Design Document v1.0 Section 6 specifications.
+ *
+ * Design principles:
+ * - Developer-friendly copy (talk like a helpful colleague)
+ * - Content-Driven Layout (hierarchy via spacing, not boxes)
+ * - Invisible UI (insight stays, interface disappears)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -48,33 +53,35 @@ describe('PRD Zero State', () => {
   it('should show version header', () => {
     renderPRDZeroState(mockScan, DEFAULT_SDK_CHECKS);
     const output = consoleOutput.join('\n');
-    expect(output).toContain('PeakInfer v0.95');
+    expect(output).toContain('PeakInfer v1.0');
   });
 
-  it('should show scan summary', () => {
+  it('should show what we scanned in plain English', () => {
     renderPRDZeroState(mockScan, DEFAULT_SDK_CHECKS);
     const output = consoleOutput.join('\n');
-    expect(output).toContain('Scanned: 847 files');
-    expect(output).toContain('12,340 LOC');
+    // Developer-friendly: "Scanned X files (~Y lines)"
+    expect(output).toContain('Scanned 847 files');
+    expect(output).toContain('12,340');
     expect(output).toContain('Languages: python, typescript');
   });
 
-  it('should show "Checked for:" list', () => {
+  it('should show "Looked for:" list', () => {
     renderPRDZeroState(mockScan, DEFAULT_SDK_CHECKS);
     const output = consoleOutput.join('\n');
-    expect(output).toContain('Checked for:');
+    expect(output).toContain('Looked for:');
     expect(output).toContain('OpenAI SDK');
     expect(output).toContain('Anthropic SDK');
     expect(output).toContain('LangChain');
     expect(output).toContain('not found');
   });
 
-  it('should show troubleshooting tips', () => {
+  it('should show helpful troubleshooting tips', () => {
     renderPRDZeroState(mockScan, DEFAULT_SDK_CHECKS);
     const output = consoleOutput.join('\n');
-    expect(output).toContain('If you expected LLM usage');
-    expect(output).toContain('Dynamic imports');
-    expect(output).toContain('Environment-gated code paths');
+    // Developer-friendly tips
+    expect(output).toContain('If you expected to see LLM calls');
+    expect(output).toContain('custom wrappers');
+    expect(output).toContain('dynamic imports');
   });
 });
 
@@ -150,85 +157,75 @@ describe('PRD Success State', () => {
     ],
   };
 
-  it('should show STACKMAP box', () => {
+  it('should show "Found X LLM calls" in plain English', () => {
     renderPRDSuccessState(mockScan, mockCallsites, mockStackMap, mockPricing);
     const output = consoleOutput.join('\n');
-    expect(output).toContain('STACKMAP');
-    expect(output).toContain('┌');
-    expect(output).toContain('└');
+    expect(output).toContain('Found 2 LLM calls');
   });
 
-  it('should show CALLSITES section', () => {
+  it('should show where LLM calls are with file:line format', () => {
     renderPRDSuccessState(mockScan, mockCallsites, mockStackMap, mockPricing);
     const output = consoleOutput.join('\n');
-    expect(output).toContain('CALLSITES');
-    expect(output).toContain('src/agents/summarizer.py:47');
+    expect(output).toContain('Where your LLM calls are');
+    expect(output).toContain('src/agents/summarizer.py');
+    expect(output).toContain('L47');
   });
 
-  it('should show MODELS section', () => {
+  it('should show models and providers', () => {
     renderPRDSuccessState(mockScan, mockCallsites, mockStackMap, mockPricing);
     const output = consoleOutput.join('\n');
-    expect(output).toContain('MODELS');
     expect(output).toContain('gpt-4o');
     expect(output).toContain('claude-3-5-sonnet');
-  });
-
-  it('should show VENDORS / PROVIDERS section', () => {
-    renderPRDSuccessState(mockScan, mockCallsites, mockStackMap, mockPricing);
-    const output = consoleOutput.join('\n');
-    expect(output).toContain('VENDORS / PROVIDERS');
     expect(output).toContain('OpenAI');
     expect(output).toContain('Anthropic');
   });
 
-  it('should show PRICING SUMMARY box', () => {
+  it('should show estimated monthly cost', () => {
     renderPRDSuccessState(mockScan, mockCallsites, mockStackMap, mockPricing);
     const output = consoleOutput.join('\n');
-    expect(output).toContain('PRICING SUMMARY');
     expect(output).toContain('Estimated monthly cost');
     expect(output).toContain('$1,240');
+    expect(output).toContain('/month');
   });
 
-  it('should show HOTSPOTS box', () => {
+  it('should show Quick wins with actionable suggestions', () => {
     renderPRDSuccessState(mockScan, mockCallsites, mockStackMap, mockPricing);
     const output = consoleOutput.join('\n');
-    expect(output).toContain('HOTSPOTS');
-    expect(output).toContain('⚠');
+    expect(output).toContain('Quick wins');
     expect(output).toContain('src/agents/summarizer.py:47');
-    // SLC: Suggestions are now rendered directly (with optional [AI Suggestion] prefix from pricing.ts)
     expect(output).toContain('evaluate gpt-4o-mini');
   });
 
-  it('should show next commands', () => {
+  it('should show next steps', () => {
     renderPRDSuccessState(mockScan, mockCallsites, mockStackMap, mockPricing);
     const output = consoleOutput.join('\n');
-    // SLC: Only suggest commands that actually exist and are complete
-    expect(output).toContain('peakinfer prices');
-    expect(output).toContain('peakinfer templates list');
+    expect(output).toContain('Next');
+    expect(output).toContain('peakinfer models');
+    expect(output).toContain('peakinfer analyze . --html');
   });
 });
 
 describe('PRD Error State', () => {
-  it('should show API connection error', () => {
+  it('should show API connection error in plain English', () => {
     renderPRDErrorState({ type: 'api_connection' });
     const output = consoleOutput.join('\n');
-    expect(output).toContain('Unable to reach Anthropic API');
+    expect(output).toContain('Can\'t reach Anthropic API');
     expect(output).toContain('Possible causes');
     expect(output).toContain('No internet connection');
   });
 
-  it('should show API key error with setup instructions', () => {
+  it('should show API key error with fix instructions', () => {
     renderPRDErrorState({ type: 'api_key' });
     const output = consoleOutput.join('\n');
-    expect(output).toContain('ANTHROPIC_API_KEY');
+    expect(output).toContain('API key missing or invalid');
+    expect(output).toContain('To fix this');
     expect(output).toContain('export ANTHROPIC_API_KEY=sk-ant');
   });
 
-  it('should show cached StackMaps available', () => {
+  it('should show how to view cached analysis', () => {
     renderPRDErrorState({ type: 'api_connection' });
     const output = consoleOutput.join('\n');
-    expect(output).toContain('Cached StackMaps remain available');
-    expect(output).toContain('peakinfer stackmap --cached');
+    expect(output).toContain('view your last analysis');
+    expect(output).toContain('peakinfer analyze . --cached');
   });
 });
-

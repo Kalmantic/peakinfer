@@ -1,16 +1,19 @@
 /**
- * PRD-Aligned CLI Renderer — PeakInfer v0.95
+ * PRD-Aligned CLI Renderer — PeakInfer v1.0
  *
- * This renderer implements the EXACT output format specified in
- * PRD v0.95 Section 9.1 "First-Run Experience & State Handling"
+ * Design Document v1.0 Section 6 "CLI Interaction Design"
  *
- * Design Principles (Julie Zhuo):
- * - Invisible UI
- * - Content-first
- * - Fast, clear, minimal
- * - All states: empty, loading, success, error, partial
- * - High contrast
- * - Logical keyboard flow
+ * Core insight (DD Section 1):
+ *   "The user's goal is not to run PeakInfer.
+ *    The user's goal is to stop guessing."
+ *
+ * Design Principles (Julie Zhou):
+ * - Behavior First: Help developers understand their LLM usage
+ * - Clarity Over Cleverness: Human language, not jargon
+ * - Content-Driven Layout: Hierarchy via spacing (not decoration)
+ * - Invisible UI: The insight stays, the interface disappears
+ *
+ * Copy philosophy: Talk like a helpful colleague, not a database report.
  */
 
 import type {
@@ -28,61 +31,13 @@ import type {
 // =============================================================================
 
 const VERSION = 'v1.0';
-const BOX_WIDTH = 69;
 
-// Box drawing characters
-const BOX = {
-  TL: '┌', TR: '┐', BL: '└', BR: '┘',
-  H: '─', V: '│',
-  LT: '├', RT: '┤',
-};
+// Indentation helper (DD: hierarchy via spacing)
+const indent = (level: number): string => '  '.repeat(level);
 
 // =============================================================================
 // FORMATTING HELPERS
 // =============================================================================
-
-/** Create a horizontal line */
-function hLine(width: number = BOX_WIDTH): string {
-  return BOX.H.repeat(width);
-}
-
-/** Create a box top line */
-function boxTop(width: number = BOX_WIDTH): string {
-  return BOX.TL + hLine(width) + BOX.TR;
-}
-
-/** Create a box bottom line */
-function boxBottom(width: number = BOX_WIDTH): string {
-  return BOX.BL + hLine(width) + BOX.BR;
-}
-
-/** Create a box separator line */
-function boxSep(width: number = BOX_WIDTH): string {
-  return BOX.LT + hLine(width) + BOX.RT;
-}
-
-/** Pad string to width, centered */
-function center(str: string, width: number = BOX_WIDTH): string {
-  const padding = Math.max(0, width - str.length);
-  const left = Math.floor(padding / 2);
-  const right = padding - left;
-  return ' '.repeat(left) + str + ' '.repeat(right);
-}
-
-/** Pad string to width, left-aligned */
-function padRight(str: string, width: number = BOX_WIDTH): string {
-  return str + ' '.repeat(Math.max(0, width - str.length));
-}
-
-/** Create a box row with content */
-function boxRow(content: string, width: number = BOX_WIDTH): string {
-  return BOX.V + padRight(' ' + content, width) + BOX.V;
-}
-
-/** Create an empty box row */
-function boxEmpty(width: number = BOX_WIDTH): string {
-  return BOX.V + ' '.repeat(width) + BOX.V;
-}
 
 /** Format currency */
 function formatCurrency(amount: number): string {
@@ -94,58 +49,52 @@ function formatCurrency(amount: number): string {
 
 /** Format currency with range */
 function formatCurrencyRange(low: number, high: number): string {
-  return `${formatCurrency(low)} - ${formatCurrency(high)}`;
+  if (low === high) return formatCurrency(low);
+  return `${formatCurrency(low)} – ${formatCurrency(high)}`;
 }
 
-/** Format percentage */
-function formatPercent(value: number): string {
-  return Math.round(value) + '%';
-}
-
-/** Format throughput (tokens per second) */
-function formatThroughput(tps: number): string {
-  return tps.toLocaleString('en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }) + ' tps';
+/** Format number with commas */
+function formatNumber(n: number): string {
+  return n.toLocaleString('en-US');
 }
 
 // =============================================================================
-// ZERO STATE — No LLM calls detected
+// ZERO STATE — No LLM calls found (DD Section 7.1)
 // =============================================================================
 
 /**
- * Render the empty state per PRD Section 9.1
+ * Render the empty state per DD Section 7.1
  *
- * Shows what was scanned, what was checked for, and troubleshooting tips.
+ * "Must feel helpful, not empty."
  */
 export function renderPRDZeroState(scan: ScanResult, checkedSDKs: SDKCheckResult[]): void {
-  console.log(`
-$ peakinfer analyze .
+  console.log('');
+  console.log(`PeakInfer ${VERSION}`);
+  console.log('');
 
-PeakInfer ${VERSION}
+  // What we looked at
+  console.log(`Scanned ${formatNumber(scan.totalFiles)} files (~${formatNumber(scan.totalLines)} lines)`);
+  console.log(`Languages: ${Object.keys(scan.languages).join(', ') || 'unknown'}`);
+  console.log('');
 
-Scanned: ${scan.totalFiles} files (${scan.totalLines.toLocaleString()} LOC)
-Languages: ${Object.keys(scan.languages).join(', ') || 'unknown'}
+  // The finding
+  console.log('No LLM calls found.');
+  console.log('');
 
-No LLM inference calls detected.
-
-Checked for:`);
-
+  // What we checked for
+  console.log('Looked for:');
   for (const sdk of checkedSDKs) {
     const status = sdk.found ? 'found' : 'not found';
-    const padding = Math.max(0, 22 - sdk.name.length);
-    console.log(`  • ${sdk.name}${' '.repeat(padding)}${status}`);
+    console.log(indent(1) + `${sdk.name.padEnd(30)} ${status}`);
   }
+  console.log('');
 
-  console.log(`
-If you expected LLM usage, check:
-  → Dynamic imports or runtime-loaded modules
-  → Environment-gated code paths
-  → Vendored or renamed SDKs
-
-Nothing to map. Exiting.
-`);
+  // Helpful next steps
+  console.log('If you expected to see LLM calls:');
+  console.log(indent(1) + '→ Check if they\'re behind custom wrappers or clients');
+  console.log(indent(1) + '→ Check for dynamic imports or conditional code paths');
+  console.log(indent(1) + '→ Run with --verbose to see what we\'re scanning');
+  console.log('');
 }
 
 /** SDK check result for zero state */
@@ -165,28 +114,23 @@ export const DEFAULT_SDK_CHECKS: SDKCheckResult[] = [
 ];
 
 // =============================================================================
-// LOADING STATE — Analysis in progress
+// LOADING STATE (DD Section 6.4)
 // =============================================================================
 
 /**
- * Render the loading state per PRD Section 9.1
+ * Render the loading state per DD Section 6.4
+ *
+ * "Progress should be phase-based (not noisy per-file spam)"
  */
 export function renderPRDLoadingState(
   stage: 'connecting' | 'scanning' | 'analyzing',
   progress?: { current: number; total: number; currentFile?: string }
 ): void {
   if (stage === 'connecting') {
-    process.stdout.write('\rConnecting to Claude Code SDK...    ');
+    process.stdout.write('\rConnecting...');
   } else if (stage === 'scanning' && progress) {
     const pct = Math.round((progress.current / progress.total) * 100);
-    const filled = Math.round(pct / 10);
-    const empty = 10 - filled;
-    const bar = '█'.repeat(filled) + '░'.repeat(empty);
-    const file = progress.currentFile ? progress.currentFile.split('/').pop() : '';
-    process.stdout.write(`\rScanning codebase...                ${bar}  ${pct}%`);
-    if (file) {
-      console.log(`\n  └─ ${file}                    analyzing`);
-    }
+    process.stdout.write(`\rScanning... ${pct}%`);
   }
 }
 
@@ -201,11 +145,13 @@ export function renderPRDLoadingFailed(stage: string): void {
 }
 
 // =============================================================================
-// ERROR STATE — API failure
+// ERROR STATE (DD Section 7.3)
 // =============================================================================
 
 /**
- * Render the error state per PRD Section 9.1
+ * Render the error state per DD Section 7.3
+ *
+ * "What's wrong, where, and what to do"
  */
 export function renderPRDErrorState(
   error: {
@@ -213,44 +159,40 @@ export function renderPRDErrorState(
     message?: string;
   }
 ): void {
-  console.log(`
-$ peakinfer analyze .
+  console.log('');
+  console.log(`PeakInfer ${VERSION}`);
+  console.log('');
+  console.log(`Error: ${getErrorMessage(error.type)}`);
+  console.log('');
 
-PeakInfer ${VERSION}
-
-Connecting to Claude Code SDK...    ✗
-
-Error: ${getErrorMessage(error.type)}
-
-Possible causes:`);
-
+  console.log('Possible causes:');
   const causes = getErrorCauses(error.type);
   for (const cause of causes) {
-    console.log(`  → ${cause}`);
+    console.log(indent(1) + `→ ${cause}`);
   }
 
   if (error.type === 'api_key') {
-    console.log(`
-Set your API key:
-  export ANTHROPIC_API_KEY=sk-ant-...`);
+    console.log('');
+    console.log('To fix this:');
+    console.log(indent(1) + 'export ANTHROPIC_API_KEY=sk-ant-...');
   }
 
-  console.log(`
-Cached StackMaps remain available:
-  → peakinfer stackmap --cached
-`);
+  console.log('');
+  console.log('You can still view your last analysis:');
+  console.log(indent(1) + '→ peakinfer analyze . --cached');
+  console.log('');
 }
 
 function getErrorMessage(type: string): string {
   switch (type) {
     case 'api_connection':
-      return 'Unable to reach Anthropic API.';
+      return 'Can\'t reach Anthropic API';
     case 'api_key':
-      return 'ANTHROPIC_API_KEY not set or invalid.';
+      return 'API key missing or invalid';
     case 'rate_limit':
-      return 'API rate limit exceeded.';
+      return 'Rate limit exceeded (try again in a few minutes)';
     default:
-      return 'An unexpected error occurred.';
+      return 'Something went wrong';
   }
 }
 
@@ -259,67 +201,77 @@ function getErrorCauses(type: string): string[] {
     case 'api_connection':
       return [
         'No internet connection',
-        'ANTHROPIC_API_KEY not set or invalid',
-        'API rate limit exceeded',
+        'API key not set',
+        'Anthropic API is down',
       ];
     case 'api_key':
       return [
-        'Environment variable not set',
-        'API key is expired or invalid',
-        'Wrong key format',
+        'ANTHROPIC_API_KEY environment variable not set',
+        'Key is expired or revoked',
+        'Key format is wrong (should start with sk-ant-)',
       ];
     case 'rate_limit':
       return [
-        'Too many requests in short time',
-        'Daily quota exceeded',
-        'Try again in a few minutes',
+        'Too many requests too fast',
+        'Daily quota used up',
       ];
     default:
-      return ['Unknown error - check logs for details'];
+      return ['Check the error message above'];
   }
 }
 
 // =============================================================================
-// PARTIAL STATE — Some files unparseable
+// PARTIAL STATE (DD Section 7.2)
 // =============================================================================
 
 /**
- * Render the partial state per PRD Section 9.1
+ * Render the partial state per DD Section 7.2
+ *
+ * "Partial is common in real repos. Treat it as normal."
  */
 export function renderPRDPartialState(
   scan: ScanResult,
   skippedFiles: Array<{ file: string; reason: string }>
 ): void {
-  console.log(`
-PeakInfer ${VERSION}
+  console.log('');
+  console.log(`PeakInfer ${VERSION}`);
+  console.log('');
+  console.log('Partial results (some files couldn\'t be parsed)');
+  console.log(indent(1) + `Scanned: ${scan.totalFiles - skippedFiles.length} of ${scan.totalFiles} files`);
+  console.log(indent(1) + `Skipped: ${skippedFiles.length} files`);
+  console.log('');
 
-Scanned: ${scan.totalFiles} files (${scan.totalLines.toLocaleString()} LOC)
-Skipped: ${skippedFiles.length} files (parse errors)`);
-
-  for (const skipped of skippedFiles.slice(0, 3)) {
-    console.log(`  └─ ${skipped.file}        ${skipped.reason}`);
+  if (skippedFiles.length > 0) {
+    console.log('Skipped files:');
+    for (const skipped of skippedFiles.slice(0, 3)) {
+      console.log(indent(1) + skipped.file);
+      console.log(indent(2) + `(${skipped.reason})`);
+    }
+    if (skippedFiles.length > 3) {
+      console.log(indent(1) + `... and ${skippedFiles.length - 3} more`);
+    }
+    console.log('');
   }
 
-  console.log(`
-Warning: Skipped files may contain undetected LLM calls.
-`);
+  console.log('Results are still valid for the files we could parse.');
+  console.log('');
 }
 
 // =============================================================================
-// SUCCESS STATE — Full StackMap
+// SUCCESS STATE (DD Section 6 - Full CLI Spec)
 // =============================================================================
 
 /**
- * Render the full success state per PRD Section 9.1
+ * Render the full success state per DD Section 6
  *
- * This is the main output format showing:
- * - Scan summary
- * - Detection summary
- * - STACKMAP box
- * - PRICING SUMMARY box
- * - HOTSPOTS box
- * - Output files
- * - Next commands
+ * Fixed output order:
+ * 1. Header
+ * 2. What we scanned
+ * 3. What we found (summary)
+ * 4. Where your LLM calls are (InferenceMap)
+ * 5. What it costs
+ * 6. How to optimize
+ * 7. What's next
  */
 export function renderPRDSuccessState(
   scan: ScanResult,
@@ -330,308 +282,155 @@ export function renderPRDSuccessState(
   patterns?: InferencePatterns,
   outputFiles: string[] = []
 ): void {
-  // Header
-  console.log(`
-$ peakinfer analyze .
+  // 1. HEADER
+  console.log('');
+  console.log(`PeakInfer ${VERSION}`);
+  console.log('');
 
-PeakInfer ${VERSION}
+  // 2. WHAT WE SCANNED (Scope)
+  console.log(`Scanned ${formatNumber(scan.totalFiles)} files (~${formatNumber(scan.totalLines)} lines)`);
+  console.log(`Languages: ${Object.keys(scan.languages).join(', ') || 'unknown'}`);
+  console.log('');
 
-Scanned: ${scan.totalFiles} files (${scan.totalLines.toLocaleString()} LOC)
-Languages: ${Object.keys(scan.languages).join(', ') || 'unknown'}
-
-Found ${callsites.length} inference callsites across ${countUniqueFiles(callsites)} files.
-`);
-
-  // STACKMAP box
-  renderStackMapBox(callsites, stackMap, techStack, patterns);
-
-  // PRICING SUMMARY box
-  renderPricingBox(pricing);
-
-  // HOTSPOTS box
-  renderHotspotsBox(pricing.hotspots);
-
-  // Output files
-  console.log(`Output saved:`);
-  for (const file of outputFiles) {
-    console.log(`  → ${file}`);
-  }
-
-  // Next commands
-  console.log(`
-Run \`peakinfer prices\` for model pricing data.
-Run \`peakinfer templates list\` to browse optimization strategies.
-`);
-}
-
-// =============================================================================
-// STACKMAP BOX
-// =============================================================================
-
-function renderStackMapBox(
-  callsites: ClassifiedCallsite[],
-  stackMap: StackMap,
-  techStack?: TechStack,
-  patterns?: InferencePatterns
-): void {
-  console.log(boxTop());
-  console.log(boxRow(center('STACKMAP', BOX_WIDTH - 2)));
-  console.log(boxSep());
-  console.log(boxEmpty());
-
-  // CALLSITES section
-  console.log(boxRow(`CALLSITES (${callsites.length})`));
-  console.log(boxRow('   │'));
-
-  // Show top 5 callsites
-  const topCallsites = callsites.slice(0, 5);
-  for (let i = 0; i < topCallsites.length; i++) {
-    const cs = topCallsites[i];
-    const prefix = i === topCallsites.length - 1 && callsites.length <= 5 ? '└' : '├';
-    const model = cs.model || 'unknown';
-    const streaming = cs.isStreaming ? ', streaming' : '';
-    console.log(boxRow(`   ${prefix}──► ${cs.file}:${cs.line}         ${model}${streaming}`));
-  }
-
-  if (callsites.length > 5) {
-    console.log(boxRow(`   └──► ... ${callsites.length - 5} more (see stackmap.json)`));
-  }
-
-  console.log(boxEmpty());
-  console.log(boxSep());
-  console.log(boxEmpty());
-
-  // MODELS section
-  const modelCounts = countByField(callsites, 'model');
-  console.log(boxRow(`MODELS (${Object.keys(modelCounts).length})`));
-  console.log(boxRow('   │'));
-
-  const models = Object.entries(modelCounts).sort((a, b) => b[1] - a[1]);
-  for (let i = 0; i < models.length; i++) {
-    const [model, count] = models[i];
-    const prefix = i === models.length - 1 ? '└' : '├';
-    const estTokens = estimateMonthlyTokens(count);
-    console.log(boxRow(`   ${prefix}──► ${model || 'unknown'}                    ${count} calls   ~${estTokens}`));
-  }
-
-  console.log(boxEmpty());
-  console.log(boxSep());
-  console.log(boxEmpty());
-
-  // VENDORS / PROVIDERS section
+  // 3. WHAT WE FOUND (Summary)
   const providerCounts = countByField(callsites, 'provider');
-  console.log(boxRow(`VENDORS / PROVIDERS (${Object.keys(providerCounts).length})`));
-  console.log(boxRow('   │'));
+  const modelCounts = countByField(callsites, 'model');
+  const patternList = formatPatterns(patterns);
 
-  const providers = Object.entries(providerCounts).sort((a, b) => b[1] - a[1]);
-  for (let i = 0; i < providers.length; i++) {
-    const [provider, count] = providers[i];
-    const prefix = i === providers.length - 1 ? '└' : '├';
-    const via = detectProviderVia(callsites, provider);
-    console.log(boxRow(`   ${prefix}──► ${provider || 'unknown'} API              ${count} calls   ${via}`));
+  console.log(`Found ${callsites.length} LLM call${callsites.length === 1 ? '' : 's'}`);
+  console.log(indent(1) + `Providers: ${formatCounts(providerCounts)}`);
+  console.log(indent(1) + `Models: ${formatCounts(modelCounts)}`);
+  if (patternList) {
+    console.log(indent(1) + `Patterns: ${patternList}`);
+  }
+  console.log('');
+
+  // 4. WHERE YOUR LLM CALLS ARE (InferenceMap preview)
+  renderInferenceMap(callsites);
+
+  // 5. WHAT IT COSTS
+  renderCostEstimate(pricing);
+
+  // 6. HOW TO OPTIMIZE (Recommendations)
+  renderOptimizations(pricing.hotspots);
+
+  // 7. WHAT'S NEXT
+  if (outputFiles.length > 0) {
+    console.log('Saved');
+    for (const file of outputFiles) {
+      console.log(indent(1) + file);
+    }
+    console.log('');
   }
 
-  console.log(boxEmpty());
-  console.log(boxSep());
-  console.log(boxEmpty());
-
-  // RUNTIMES section
-  if (techStack) {
-    const runtimeCount = techStack.serving.runtimes.length +
-      techStack.serving.platforms.length;
-    const inferredCount = techStack.serving.platforms.length > 0 ? 1 : 0;
-
-    console.log(boxRow(`RUNTIMES (${runtimeCount} detected, ${inferredCount} inferred)`));
-    console.log(boxRow('   │'));
-
-    if (techStack.serving.runtimes.length > 0) {
-      for (const runtime of techStack.serving.runtimes) {
-        console.log(boxRow(`   ├──► ${runtime}               detected`));
-      }
-    }
-
-    if (techStack.serving.platforms.length > 0) {
-      for (const platform of techStack.serving.platforms) {
-        console.log(boxRow(`   ├──► ${platform}             inferred from SDK`));
-      }
-    }
-
-    // Unknown for proprietary
-    const unknownProviders = providers.filter(([p]) =>
-      p?.toLowerCase() === 'openai');
-    if (unknownProviders.length > 0) {
-      console.log(boxRow('   └──► unknown                  OpenAI (proprietary)'));
-    }
-
-    console.log(boxEmpty());
-    console.log(boxSep());
-    console.log(boxEmpty());
-
-    // HARDWARE section
-    console.log(boxRow('HARDWARE (inferred from providers + runtime config)'));
-    console.log(boxRow('   │'));
-
-    if (techStack.hardware.gpus.length > 0) {
-      for (const gpu of techStack.hardware.gpus) {
-        console.log(boxRow(`   ├──► ${gpu}              inferred`));
-      }
-    } else {
-      // Infer from providers
-      if (providers.some(([p]) => p?.toLowerCase().includes('anthropic'))) {
-        console.log(boxRow('   ├──► NVIDIA H100 / A100       Anthropic (inferred)'));
-      }
-      if (providers.some(([p]) => p?.toLowerCase().includes('together'))) {
-        console.log(boxRow('   ├──► NVIDIA H100              Together (inferred)'));
-      }
-      if (providers.some(([p]) => p?.toLowerCase() === 'openai')) {
-        console.log(boxRow('   ├──► unknown                  OpenAI (proprietary)'));
-      }
-    }
-
-    console.log(boxRow('   │'));
-    console.log(boxRow('   ├──► Self-hosted detection:'));
-
-    if (techStack.serving.runtimes.some(r =>
-      ['vllm', 'sglang', 'llama.cpp', 'tgi'].includes(r.toLowerCase()))) {
-      console.log(boxRow('   │      └─ Local runtime configs detected'));
-    } else {
-      console.log(boxRow('   │      └─ None found (no local vLLM/SGLang/llama.cpp configs)'));
-    }
-
-    console.log(boxRow('   │'));
-    console.log(boxRow('   └──► GPU env vars:'));
-    console.log(boxRow('          └─ CUDA_VISIBLE_DEVICES not set'));
-    console.log(boxRow('          └─ No terraform GPU resources detected'));
-
-    console.log(boxEmpty());
-    console.log(boxSep());
-    console.log(boxEmpty());
-  }
-
-  // PATTERNS DETECTED section - only show if any patterns found
-  if (patterns) {
-    const patternList = [
-      { name: 'Retry logic', detected: patterns.retry?.detected, instance: patterns.retry?.instances?.[0] },
-      { name: 'Batching', detected: patterns.batching?.detected, instance: patterns.batching?.instances?.[0] },
-      { name: 'Streaming', detected: patterns.streaming?.detected, instance: patterns.streaming?.instances?.[0] },
-      { name: 'Caching', detected: patterns.caching?.detected, instance: patterns.caching?.instances?.[0] },
-      { name: 'Router / model switching', detected: patterns.routing?.detected, instance: patterns.routing?.instances?.[0] },
-      { name: 'Fallback chain', detected: patterns.fallback?.detected, instance: patterns.fallback?.instances?.[0] },
-    ];
-
-    const detectedPatterns = patternList.filter(p => p.detected);
-
-    // Only show if at least one pattern detected
-    if (detectedPatterns.length > 0) {
-      console.log(boxRow('PATTERNS DETECTED'));
-      console.log(boxRow('   │'));
-
-      for (let i = 0; i < detectedPatterns.length; i++) {
-        const p = detectedPatterns[i];
-        const prefix = i === detectedPatterns.length - 1 ? '└' : '├';
-        const location = p.instance ? `  ${p.instance.file}:${p.instance.line}` : '';
-        console.log(boxRow(`   ${prefix}──► ${p.name.padEnd(22)} ✓${location}`));
-      }
-
-      console.log(boxEmpty());
-    }
-  }
-
-  console.log(boxBottom());
+  console.log('Next');
+  console.log(indent(1) + '→ peakinfer models              see model performance benchmarks');
+  console.log(indent(1) + '→ peakinfer analyze . --html    generate shareable report');
   console.log('');
 }
 
 // =============================================================================
-// PRICING BOX
+// WHERE YOUR LLM CALLS ARE (InferenceMap)
 // =============================================================================
 
-function renderPricingBox(pricing: PricingSummary): void {
-  // Julie Zhou: "Content determines structure" - skip empty pricing
-  const hasMeaningfulData = pricing.estimatedRange.high > 0 ||
-    pricing.byProvider.length > 0 ||
-    pricing.byModel.length > 0;
+/**
+ * Show where LLM calls live in the codebase.
+ * Developer-friendly: file paths and line numbers they can click.
+ */
+function renderInferenceMap(callsites: ClassifiedCallsite[]): void {
+  if (callsites.length === 0) return;
 
-  if (!hasMeaningfulData) {
-    return; // Nothing to show - don't add noise
+  console.log('Where your LLM calls are');
+
+  // Group by file for cleaner display
+  const byFile = new Map<string, ClassifiedCallsite[]>();
+  for (const cs of callsites) {
+    if (!byFile.has(cs.file)) {
+      byFile.set(cs.file, []);
+    }
+    byFile.get(cs.file)!.push(cs);
   }
 
-  console.log(boxTop());
-  console.log(boxRow(center('PRICING SUMMARY', BOX_WIDTH - 2)));
-  console.log(boxSep());
-  console.log(boxEmpty());
+  // Show up to 5 files
+  const files = [...byFile.entries()].slice(0, 5);
+  for (const [file, fileCallsites] of files) {
+    console.log(indent(1) + file);
+    for (const cs of fileCallsites.slice(0, 3)) {
+      const model = cs.model || 'unknown model';
+      const streaming = cs.isStreaming ? ', streaming' : '';
+      console.log(indent(2) + `L${cs.line}: ${cs.provider || 'unknown'} → ${model}${streaming}`);
+    }
+    if (fileCallsites.length > 3) {
+      console.log(indent(2) + `+ ${fileCallsites.length - 3} more`);
+    }
+  }
 
-  // Estimated monthly cost
-  console.log(boxRow(`Estimated monthly cost: ${formatCurrencyRange(pricing.estimatedRange.low, pricing.estimatedRange.high)}`));
-  console.log(boxEmpty());
+  if (byFile.size > 5) {
+    console.log(indent(1) + `+ ${byFile.size - 5} more files (see peakinfer-stackmap.json)`);
+  }
 
-  // By vendor
-  if (pricing.byProvider.length > 0) {
-    console.log(boxRow('By vendor:'));
+  console.log('');
+}
+
+// =============================================================================
+// WHAT IT COSTS
+// =============================================================================
+
+/**
+ * Show estimated costs in plain English.
+ */
+function renderCostEstimate(pricing: PricingSummary): void {
+  // Skip if no meaningful pricing data
+  if (pricing.estimatedRange.high <= 0) return;
+
+  console.log('Estimated monthly cost');
+  console.log(indent(1) + formatCurrencyRange(pricing.estimatedRange.low, pricing.estimatedRange.high) + '/month');
+
+  // Show breakdown by provider if multiple
+  if (pricing.byProvider.length > 1) {
+    console.log('');
     for (const p of pricing.byProvider) {
-      const throughputStr = formatThroughput(p.throughput).padStart(10);
-      const pctStr = `(${formatPercent(p.percentage)})`.padStart(6);
-      console.log(boxRow(`   ├──► ${p.provider.padEnd(15)} ${throughputStr}    ${pctStr}`));
+      const pct = Math.round(p.percentage);
+      console.log(indent(1) + `${p.provider}: ${pct}% of usage`);
     }
-    console.log(boxEmpty());
   }
 
-  // By model
-  if (pricing.byModel.length > 0) {
-    console.log(boxRow('By model:'));
-    for (const m of pricing.byModel.slice(0, 4)) {
-      const throughputStr = formatThroughput(m.throughput).padStart(10);
-      console.log(boxRow(`   ├──► ${(m.model || 'unknown').padEnd(15)} ${throughputStr}`));
-    }
-    console.log(boxEmpty());
+  // Flag the expensive one
+  if (pricing.mostExpensiveModel) {
+    console.log('');
+    console.log(indent(1) + `Highest cost: ${pricing.mostExpensiveModel}`);
   }
 
-  console.log(boxBottom());
   console.log('');
 }
 
 // =============================================================================
-// HOTSPOTS BOX
+// HOW TO OPTIMIZE
 // =============================================================================
 
-function renderHotspotsBox(hotspots: CallsiteCost[]): void {
-  if (hotspots.length === 0) return;
+/**
+ * Show actionable optimization suggestions.
+ * Developer-friendly: specific files, specific suggestions.
+ */
+function renderOptimizations(hotspots: CallsiteCost[]): void {
+  // Filter to hotspots with actual suggestions
+  const withSuggestions = hotspots.filter(h => h.suggestion);
+  if (withSuggestions.length === 0) return;
 
-  console.log(boxTop());
-  console.log(boxRow(center('HOTSPOTS', BOX_WIDTH - 2)));
-  console.log(boxSep());
-  console.log(boxEmpty());
+  console.log('Quick wins');
 
-  // SLC: Add disclaimer for AI-generated suggestions
-  const hasAISuggestions = hotspots.some(h => h.suggestion?.includes('[AI Suggestion'));
-  if (hasAISuggestions) {
-    console.log(boxRow('NOTE: AI suggestions below are based on code analysis only.'));
-    console.log(boxRow('Actual usage patterns may differ. Verify with your metrics.'));
-    console.log(boxEmpty());
+  for (const h of withSuggestions.slice(0, 3)) {
+    const cost = formatCurrencyRange(h.estimatedMonthlyLow, h.estimatedMonthlyHigh);
+    console.log(indent(1) + `${h.file}:${h.line}`);
+    console.log(indent(2) + `Currently: ${h.model || 'unknown'} (${cost}/mo)`);
+    console.log(indent(2) + `→ ${h.suggestion}`);
+    console.log('');
   }
-
-  for (const h of hotspots.slice(0, 3)) {
-    const costRange = formatCurrencyRange(h.estimatedMonthlyLow, h.estimatedMonthlyHigh);
-    console.log(boxRow(`⚠  ${h.file}:${h.line}`));
-    console.log(boxRow(`   └─ ${h.model || 'unknown'}, ${costRange}/mo`));
-
-    if (h.suggestion) {
-      console.log(boxRow(`   └─ ${h.suggestion}`));
-    }
-
-    console.log(boxEmpty());
-  }
-
-  console.log(boxBottom());
-  console.log('');
 }
 
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
-
-function countUniqueFiles(callsites: ClassifiedCallsite[]): number {
-  return new Set(callsites.map(c => c.file)).size;
-}
 
 function countByField(
   callsites: ClassifiedCallsite[],
@@ -645,27 +444,23 @@ function countByField(
   return counts;
 }
 
-function estimateMonthlyTokens(callCount: number): string {
-  // Rough estimate: each call ~1K-10K tokens
-  const estimate = callCount * 5000 * 30; // calls per day * 30 days
-  if (estimate >= 1000000) {
-    return `${(estimate / 1000000).toFixed(1)}M tok/mo`;
-  } else if (estimate >= 1000) {
-    return `${(estimate / 1000).toFixed(0)}K tok/mo`;
-  }
-  return `${estimate} tok/mo`;
+function formatCounts(counts: Record<string, number>): string {
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) return 'none';
+  return entries.map(([name, count]) => `${name} (${count})`).join(', ');
 }
 
-function detectProviderVia(
-  callsites: ClassifiedCallsite[],
-  provider: string
-): string {
-  const providerCallsites = callsites.filter(c => c.provider === provider);
-  const frameworks = new Set(providerCallsites.map(c => c.framework).filter(Boolean));
+function formatPatterns(patterns?: InferencePatterns): string | null {
+  if (!patterns) return null;
 
-  if (frameworks.size > 0) {
-    return `via ${[...frameworks].join(', ')}`;
-  }
-  return 'direct SDK';
+  const detected: string[] = [];
+
+  if (patterns.streaming?.detected) detected.push('streaming');
+  if (patterns.retry?.detected) detected.push('retries');
+  if (patterns.batching?.detected) detected.push('batching');
+  if (patterns.caching?.detected) detected.push('caching');
+  if (patterns.routing?.detected) detected.push('routing');
+  if (patterns.fallback?.detected) detected.push('fallbacks');
+
+  return detected.length > 0 ? detected.join(', ') : null;
 }
-

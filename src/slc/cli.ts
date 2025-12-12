@@ -1160,143 +1160,226 @@ function aggregateEvents(events: any[]): any {
  * Show pricing data source and model prices.
  * Julie Zhuo aligned: transparency about data being used.
  */
-async function prices(filterProvider?: string, refresh?: boolean): Promise<void> {
+async function prices(filterTier?: string, refresh?: boolean): Promise<void> {
   try {
-    // Import pricing fetcher
+    // Import performance benchmarks (PRIMARY) and pricing (secondary context)
+    const {
+      initializePerformanceData,
+      getPerformanceTiers,
+      getPerformanceEnvelopes,
+      findAlternatives,
+      getBenchmarkInfo,
+    } = await import('./inferencemax.js');
     const {
       getPricingInfo,
       refreshPricingCache,
-      getGPUPricing,
-      initializeGPUPricing,
-      getGPUPricingInfo,
-      refreshGPUPricingCache,
     } = await import('./pricing-fetcher.js');
     const { initPricingEngine } = await import('./pricing.js');
+    const fs = await import('fs');
+    const path = await import('path');
 
-    // Optionally refresh cache
-    if (refresh) {
-      console.log('  refreshing pricing caches...');
-      const [apiSuccess, gpuSuccess] = await Promise.all([
-        refreshPricingCache(),
-        refreshGPUPricingCache(),
-      ]);
-      if (apiSuccess) {
-        console.log('  ✓ api pricing refreshed from LiteLLM');
-      } else {
-        console.log('  ✗ api pricing refresh failed, using cached');
-      }
-      if (gpuSuccess) {
-        console.log('  ✓ gpu pricing refreshed from remote');
-      } else {
-        console.log('  ✗ gpu pricing refresh failed, using cached/static');
-      }
-      console.log('');
-    }
-
-    // Initialize pricing (both API and GPU)
+    // Initialize data sources
+    await initializePerformanceData();
     await initPricingEngine();
-    await initializeGPUPricing();
 
-    // Get pricing info
-    const info = await getPricingInfo(filterProvider);
-
-    console.log(`
-peakinfer prices
-─────────────────────────────────────────────────────────────────
-
-  source: ${info.source}
-  data:   ${info.sourceUrl}
-  cache:  ${info.cacheFile}
-  last updated: ${info.lastUpdated}
-  total models: ${info.totalModels}
-  providers: ${info.providers.join(', ')}
-`);
-
-    if (filterProvider) {
-      console.log(`  filtered by: ${filterProvider}\n`);
-    }
-
-    // Show top models by provider (grouped)
-    const byProvider = new Map<string, typeof info.models>();
-    for (const m of info.models) {
-      if (!byProvider.has(m.provider)) {
-        byProvider.set(m.provider, []);
-      }
-      byProvider.get(m.provider)!.push(m);
-    }
-
-    console.log('  model prices ($ per 1M tokens):');
-    console.log('  ─────────────────────────────────────────────────────────────');
-    console.log('  provider          model                    input    output');
-    console.log('  ─────────────────────────────────────────────────────────────');
-
-    // Show limited models per provider (to keep output manageable)
-    const maxPerProvider = filterProvider ? 50 : 5;
-
-    for (const [provider, models] of byProvider) {
-      // Sort by throughput rate (highest first)
-      models.sort((a, b) => (b.inputPer1M + b.outputPer1M) - (a.inputPer1M + a.outputPer1M));
-
-      for (const m of models.slice(0, maxPerProvider)) {
-        const providerPad = provider.padEnd(16);
-        const modelPad = m.model.padEnd(24);
-        const inputPrice = m.inputPer1M.toFixed(2).padStart(7);
-        const outputPrice = m.outputPer1M.toFixed(2).padStart(8);
-        console.log(`  ${providerPad}  ${modelPad} ${inputPrice}  ${outputPrice}`);
-      }
-
-      if (models.length > maxPerProvider) {
-        console.log(`  ${provider.padEnd(16)}  ... and ${models.length - maxPerProvider} more`);
+    // Optionally refresh pricing cache
+    if (refresh) {
+      console.log('Refreshing pricing data...');
+      const success = await refreshPricingCache();
+      if (success) {
+        console.log('Done.\n');
+      } else {
+        console.log('Failed to refresh. Using cached data.\n');
       }
     }
 
-    // GPU-Hour pricing section (neoclouds)
-    const gpuInfo = getGPUPricingInfo();
-    console.log('');
-    console.log('  ─────────────────────────────────────────────────────────────');
-    console.log('  gpu-hour pricing (converted to per-token equivalent):');
-    console.log('  ─────────────────────────────────────────────────────────────');
-    console.log(`  source: ${gpuInfo.source}`);
-    console.log(`  data:   ${gpuInfo.sourceUrl}`);
-    console.log(`  cache:  ${gpuInfo.cacheFile}`);
-    console.log(`  last updated: ${gpuInfo.lastUpdated}`);
-    console.log('');
-    console.log('  provider          gpu               $/hr    input/1M  output/1M  model');
-    console.log('  ─────────────────────────────────────────────────────────────');
+    // Get benchmark info
+    const benchmarkInfo = getBenchmarkInfo();
 
-    const gpuPricing = getGPUPricing(filterProvider);
-    for (const gpu of gpuPricing) {
-      const providerPad = gpu.provider.padEnd(16);
-      const gpuPad = gpu.gpu.padEnd(16);
-      const hourlyPad = gpu.hourlyRate > 0 ? `$${gpu.hourlyRate.toFixed(2)}`.padStart(6) : '   n/a';
-      const inputPad = `$${gpu.inputPer1M.toFixed(2)}`.padStart(8);
-      const outputPad = `$${gpu.outputPer1M.toFixed(2)}`.padStart(9);
-      console.log(`  ${providerPad}  ${gpuPad} ${hourlyPad}  ${inputPad} ${outputPad}  ${gpu.model}`);
+    // Get pricing data for secondary context
+    const pricingInfo = await getPricingInfo();
+    const pricingMap = new Map<string, { input: number; output: number }>();
+    for (const m of pricingInfo.models) {
+      const key = m.model.toLowerCase();
+      pricingMap.set(key, { input: m.inputPer1M, output: m.outputPer1M });
     }
 
-    console.log('');
-    console.log('  note: gpu-hour → token conversions assume ~50% utilization');
+    // Helper: format throughput
+    const formatThroughput = (tps: number): string => {
+      return `${tps.toLocaleString()} tok/s`.padEnd(12);
+    };
 
-    // Staleness warning
-    if (gpuInfo.staleProviders && gpuInfo.staleProviders.length > 0) {
+    // Helper: format latency
+    const formatLatency = (ms: number): string => {
+      return `${ms}ms TTFT`.padEnd(10);
+    };
+
+    // Helper: format price
+    const formatPrice = (model: string): string => {
+      const normalizedModel = model.toLowerCase();
+      const pricing = pricingMap.get(normalizedModel);
+      if (pricing) {
+        return `$${pricing.input.toFixed(2)}/$${pricing.output.toFixed(2)}`;
+      }
+      return '';
+    };
+
+    // Helper: render a model line
+    const renderModelLine = (envelope: { model: string; throughputTokensPerSec: number; latencyTTFT: number; framework: string; source: string; note?: string }, prefix: string = '    ') => {
+      const modelName = envelope.model.padEnd(22);
+      const throughput = formatThroughput(envelope.throughputTokensPerSec);
+      const latency = formatLatency(envelope.latencyTTFT);
+      const price = formatPrice(envelope.model);
+      const context = envelope.framework !== envelope.source ? envelope.framework : envelope.note || '';
+      if (price) {
+        console.log(`${prefix}${modelName} ${throughput} ${latency} ${price}`);
+      } else {
+        console.log(`${prefix}${modelName} ${throughput} ${latency} ${context}`);
+      }
+    };
+
+    // =========================================================================
+    // CHECK FOR CACHED ANALYSIS - Show contextual comparison
+    // =========================================================================
+    const stackmapPath = path.default.join(process.cwd(), 'peakinfer-stackmap.json');
+    let detectedModels: string[] = [];
+
+    if (fs.default.existsSync(stackmapPath)) {
+      try {
+        const stackmap = JSON.parse(fs.default.readFileSync(stackmapPath, 'utf-8'));
+        if (stackmap.summary?.models) {
+          detectedModels = stackmap.summary.models;
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+
+    console.log('PeakInfer v1.0');
+    console.log('');
+
+    // =========================================================================
+    // CONTEXTUAL VIEW: Show YOUR models with alternatives
+    // (Skip if --all flag is passed or a specific tier is requested)
+    // =========================================================================
+    const showAllTiers = filterTier === '--all';
+    if (detectedModels.length > 0 && !filterTier && !showAllTiers) {
+      console.log('Your models vs. performance benchmarks');
       console.log('');
-      console.log('  ⚠️  STALE PRICING WARNING');
-      console.log(`  The following providers have not been verified in >4 weeks:`);
-      console.log(`  ${gpuInfo.staleProviders.join(', ')}`);
-      console.log('  Prices may be outdated. Please verify at provider websites.');
-    }
 
-    console.log('');
-    console.log('  usage:');
-    console.log('    peakinfer prices                      # show all providers (top 5 each)');
-    console.log('    peakinfer prices openai               # filter by provider');
-    console.log('    peakinfer prices modal                # show modal gpu pricing');
-    console.log('    peakinfer prices --refresh            # refresh API pricing from LiteLLM');
-    console.log('');
+      // Normalize model names for matching
+      const normalizeModelName = (name: string): string => {
+        // Strip version suffixes and provider prefixes
+        return name
+          .replace(/anthropic\./gi, '')
+          .replace(/meta\./gi, '')
+          .replace(/-\d{8}(-v\d+:\d+)?$/i, '')  // Remove date versions like -20241022-v2:0
+          .replace(/-\d{8}$/i, '')              // Remove date versions like -20241022
+          .toLowerCase();
+      };
+
+      const processedModels = new Set<string>();
+
+      for (const detectedModel of detectedModels) {
+        const normalized = normalizeModelName(detectedModel);
+
+        // Skip embeddings and duplicates
+        if (normalized.includes('embedding') || processedModels.has(normalized)) {
+          continue;
+        }
+        processedModels.add(normalized);
+
+        // Find performance data
+        const alternatives = findAlternatives(detectedModel);
+
+        if (alternatives.current) {
+          // We have benchmark data for this model
+          console.log(`${detectedModel}`);
+          renderModelLine(alternatives.current, '  ');
+
+          if (alternatives.faster.length > 0) {
+            console.log('  Faster alternatives:');
+            for (const alt of alternatives.faster.slice(0, 2)) {
+              renderModelLine(alt, '    → ');
+            }
+          }
+          console.log('');
+        } else {
+          // No benchmark data - show the model name and suggest analysis
+          console.log(`${detectedModel}`);
+          console.log('  No benchmark data available');
+          console.log('');
+        }
+      }
+
+      // Benchmark source note
+      console.log(`${benchmarkInfo.disclaimer}`);
+      console.log(`Source: ${benchmarkInfo.source}`);
+      console.log('');
+
+      // Usage hints
+      console.log('What to do next');
+      console.log('  peakinfer models --all            show all benchmark tiers');
+      console.log('  peakinfer models fast             show fast tier only');
+      console.log('');
+
+    } else {
+      // =========================================================================
+      // GENERIC VIEW: Show all tiers (no cached analysis or tier filter)
+      // =========================================================================
+      if (detectedModels.length === 0) {
+        console.log('Models by inference performance');
+        console.log('');
+        console.log('  Run `peakinfer analyze .` first to see YOUR models compared.');
+        console.log('');
+      } else {
+        console.log('Models by inference performance');
+        console.log('');
+      }
+
+      const tiers = getPerformanceTiers();
+
+      // Render each tier
+      for (const tier of tiers) {
+        // Filter by tier if specified
+        if (filterTier && filterTier !== '--all' && tier.name.toLowerCase() !== filterTier.toLowerCase()) {
+          continue;
+        }
+
+        console.log(`${tier.name}`);
+        console.log(`  ${tier.description}`);
+        console.log('');
+
+        // Group models by unique model name (avoid duplicates)
+        const uniqueModels = new Map<string, typeof tier.models[0]>();
+        for (const model of tier.models) {
+          if (!uniqueModels.has(model.model)) {
+            uniqueModels.set(model.model, model);
+          }
+        }
+
+        for (const [, envelope] of uniqueModels) {
+          renderModelLine(envelope);
+        }
+        console.log('');
+      }
+
+      // Benchmark source note
+      console.log(`${benchmarkInfo.disclaimer}`);
+      console.log(`Source: ${benchmarkInfo.source}`);
+      console.log('');
+
+      // Usage hints
+      console.log('What to do next');
+      console.log('  peakinfer models frontier         show frontier tier only');
+      console.log('  peakinfer models fast             show fast tier only');
+      console.log('  peakinfer models --refresh        refresh pricing data');
+      console.log('');
+    }
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`  error loading pricing data: ${errorMessage}`);
+    console.error(`Error loading performance data: ${errorMessage}`);
     process.exit(1);
   }
 }
@@ -1370,7 +1453,7 @@ peakinfer — llm inference performance optimization
 
 usage:
   peakinfer analyze <path>       analyze codebase or runtime events
-  peakinfer prices [provider]    show model pricing data
+  peakinfer models [tier]        show models by inference performance
   peakinfer --help               show this help
 
 analyze modes:
@@ -1387,6 +1470,12 @@ analyze options:
   --cached              view previous analysis (offline, no API key needed)
   --verbose             show detailed task progress
 
+models options:
+  peakinfer models                 # show all performance tiers
+  peakinfer models frontier        # show frontier tier (best reasoning)
+  peakinfer models fast            # show fast tier (optimized throughput)
+  peakinfer models --refresh       # refresh pricing data
+
 event schema (JSONL):
   {"id":"evt_001","ts":"2025-12-09T08:15:23Z","provider":"openai","model":"gpt-4o",
    "input_tokens":4250,"output_tokens":380,"latency_ms":2340,"intent":"summarize"}
@@ -1396,7 +1485,7 @@ examples:
   peakinfer analyze events.jsonl         # analyze runtime telemetry
   peakinfer analyze . --events prod.jsonl  # combined static + runtime
   peakinfer analyze . --cached           # view last analysis (offline)
-  peakinfer prices openai                # show openai pricing
+  peakinfer models fast                  # show fast inference models
 
 environment:
   ANTHROPIC_API_KEY     required for static analysis (not runtime or --cached)
@@ -1477,14 +1566,16 @@ environment:
     peakinfer analyze events.jsonl    # runtime telemetry analysis
     peakinfer analyze . --events events.jsonl  # combined analysis
 
-  For pricing info:
-    peakinfer prices           # model pricing data
+  For model performance info:
+    peakinfer models           # models by inference performance
 `);
     process.exit(0);
-  } else if (command === 'prices') {
-    const filterProvider = positionalArgs[1];
+  } else if (command === 'prices' || command === 'models') {
+    // Both "prices" and "models" work - "models" shows performance-first view
+    const showAll = args.includes('--all');
+    const filterTier = showAll ? '--all' : positionalArgs[1];
     const refresh = args.includes('--refresh');
-    prices(filterProvider, refresh);
+    prices(filterTier, refresh);
   } else if (!command) {
     // Default: analyze current directory
     analyze('.', options);

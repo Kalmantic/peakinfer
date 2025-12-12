@@ -235,9 +235,9 @@ describe('SLC Cleanup Sprint', () => {
     });
 
     it('should list only core commands in help', () => {
-      // Should show core commands (simplified: only analyze and prices remain)
+      // Should show core commands (simplified: only analyze and models remain)
       expect(helpOutput).toContain('analyze');
-      expect(helpOutput).toContain('prices');
+      expect(helpOutput).toContain('models');
 
       // Should show --cached option
       expect(helpOutput).toContain('--cached');
