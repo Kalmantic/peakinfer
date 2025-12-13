@@ -15,7 +15,7 @@ export const Provider = z.enum([
 export const Severity = z.enum(['critical', 'warning', 'info']);
 
 export const Category = z.enum([
-  'cost', 'latency', 'drift', 'reliability', 'waste', 'throughput'
+  'cost', 'latency', 'drift', 'reliability', 'waste', 'throughput', 'security', 'best-practice'
 ]);
 
 // =============================================================================
@@ -70,6 +70,15 @@ export const InferenceMap = z.object({
   version: z.string(),
   root: z.string(),
   generatedAt: z.string(),
+  // Report metadata
+  metadata: z.object({
+    absolutePath: z.string(), // Full absolute path analyzed
+    promptId: z.string().optional(), // Which analysis prompt was used
+    promptVersion: z.string().optional(), // Analysis prompt version
+    templatesVersion: z.string().optional(), // peakinfer-templates version
+    llmProvider: z.string().optional(), // LLM provider used (anthropic, none)
+    llmModel: z.string().optional(), // LLM model used for analysis
+  }).optional(),
   summary: z.object({
     totalCallsites: z.number(),
     providers: z.array(z.string()),
@@ -177,13 +186,45 @@ export const InsightTemplate = z.object({
   defaults: z.record(z.number()).optional(),
 });
 
+// Stack layers for impact analysis
+export const StackLayer = z.enum([
+  'application',    // Code patterns: caching, batching, streaming, error handling
+  'model',          // Model selection: GPT-4 vs GPT-3.5, Claude Opus vs Haiku
+  'runtime',        // Inference engines: vLLM, sglang, TGI optimizations
+  'infrastructure', // Hosting: serverless vs dedicated, provider selection
+]);
+
+// Impact metrics
+export const ImpactType = z.enum(['cost', 'latency', 'throughput']);
+
+// Effort level for implementing the change
+export const EffortLevel = z.enum(['low', 'medium', 'high']);
+
+// Impact estimation for each insight
+export const ImpactEstimate = z.object({
+  layer: StackLayer,
+  impactType: ImpactType,
+  estimatedImpactPercent: z.number().min(0).max(100), // 0-100% improvement
+  effort: EffortLevel,
+  annualSavingsUSD: z.number().optional(), // Estimated annual savings in USD
+  latencyReductionMs: z.number().optional(), // Estimated latency improvement
+  throughputGainPercent: z.number().optional(), // Estimated throughput improvement
+  confidence: z.number().min(0).max(1).optional(), // Confidence in estimate (0-1)
+  assumptions: z.string().optional(), // Key assumptions for this estimate
+});
+
 export const Insight = z.object({
+  id: z.string().optional(), // Unique insight ID
   severity: Severity,
   category: Category,
-  templateId: z.string(),
+  templateId: z.string().optional(), // Optional for LLM-generated insights
   headline: z.string(),
   evidence: z.string(),
   location: z.string().optional(),
+  recommendation: z.string().optional(), // Actionable suggestion
+  source: z.enum(['template', 'llm']).optional(), // 'template' = pattern-based, 'llm' = semantic analysis
+  // Impact estimation fields
+  impact: ImpactEstimate.optional(), // Estimated impact of implementing this recommendation
 });
 
 // =============================================================================
@@ -203,7 +244,7 @@ export const PerformanceEnvelope = z.object({
 
 export const TaskType = z.enum([
   'scan', 'analyze', 'parse_events', 'join',
-  'load_templates', 'generate_insights', 'render', 'generate_html', 'save_artifacts'
+  'load_templates', 'generate_insights', 'render', 'generate_html', 'generate_pdf', 'save_artifacts'
 ]);
 
 export const PlannedTask = z.object({
@@ -248,6 +289,10 @@ export type EnrichedCallsite = z.infer<typeof EnrichedCallsite>;
 export type JoinedOutput = z.infer<typeof JoinedOutput>;
 export type TemplateCondition = z.infer<typeof TemplateCondition>;
 export type InsightTemplate = z.infer<typeof InsightTemplate>;
+export type StackLayer = z.infer<typeof StackLayer>;
+export type ImpactType = z.infer<typeof ImpactType>;
+export type EffortLevel = z.infer<typeof EffortLevel>;
+export type ImpactEstimate = z.infer<typeof ImpactEstimate>;
 export type Insight = z.infer<typeof Insight>;
 export type PerformanceEnvelope = z.infer<typeof PerformanceEnvelope>;
 export type TaskType = z.infer<typeof TaskType>;

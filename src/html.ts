@@ -1,4 +1,5 @@
 import type { InferenceMap, Insight, JoinedOutput, RuntimeSummary } from './types.js';
+import { generateImpactSummary, type ImpactSummary } from './impact.js';
 
 // =============================================================================
 // TYPES
@@ -9,6 +10,7 @@ export interface HTMLData {
   insights: Insight[];
   joined?: JoinedOutput;
   runtime?: RuntimeSummary;
+  impactSummary?: ImpactSummary;
 }
 
 // =============================================================================
@@ -49,6 +51,10 @@ h2 { font-size: 1.25rem; font-weight: 600; margin: 1.5rem 0 1rem; }
 h3 { font-size: 1rem; font-weight: 600; margin: 1rem 0 0.5rem; }
 
 .meta { color: var(--muted); font-size: 0.875rem; margin-top: 0.5rem; }
+.meta-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem; margin-top: 0.75rem; }
+.meta-label { color: var(--muted); font-size: 0.8rem; }
+.meta-value { font-family: ui-monospace, monospace; font-size: 0.8rem; word-break: break-all; }
+.project-name { font-size: 1.1rem; font-weight: 500; margin-top: 0.5rem; color: var(--text); }
 
 section { margin-bottom: 2rem; }
 
@@ -135,6 +141,52 @@ footer a:hover { text-decoration: underline; }
 .badge.retries { background: #fef3c7; color: #b45309; }
 .badge.caching { background: #f3e8ff; color: #7e22ce; }
 .badge.fallback { background: #fee2e2; color: #dc2626; }
+
+.summary-line { font-size: 1.25rem; margin: 0.5rem 0; }
+.potential { font-size: 1.5rem; margin: 1rem 0; }
+.potential strong { color: #15803d; }
+
+.layer-table { max-width: 500px; margin: 1rem 0; }
+.layer-table td:first-child { width: 40px; }
+
+.quick-wins { margin: 1rem 0; padding-left: 1.5rem; }
+.quick-wins li { margin: 0.5rem 0; }
+
+.impact-tag {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: normal;
+}
+
+.location-list {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+  font-size: 0.8rem;
+}
+
+.location-list li {
+  margin: 0.25rem 0;
+}
+
+.location-list code {
+  display: inline;
+  margin: 0;
+  color: var(--text);
+}
+
+.finding details {
+  margin-top: 0.5rem;
+}
+
+.finding details summary {
+  font-size: 0.875rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.finding p {
+  font-size: 0.875rem;
+}
 `;
 
 // =============================================================================
@@ -166,6 +218,60 @@ function renderPatterns(patterns: Record<string, boolean | undefined>): string {
 // SECTIONS
 // =============================================================================
 
+function renderSummary(insights: Insight[], callsiteCount: number): string {
+  const summary = generateImpactSummary(insights);
+  const { costReductionPercent, latencyReductionPercent, throughputGainPercent } = summary.totalPotentialImpact;
+
+  const potentialParts: string[] = [];
+  if (costReductionPercent > 0) potentialParts.push(`<strong>-${costReductionPercent}%</strong> cost`);
+  if (latencyReductionPercent > 0) potentialParts.push(`<strong>-${latencyReductionPercent}%</strong> latency`);
+  if (throughputGainPercent > 0) potentialParts.push(`<strong>+${throughputGainPercent}%</strong> throughput`);
+
+  const layerRows = summary.stackRanking.map((rank, i) => {
+    const avgImpact = Math.round(rank.totalImpactPercent / rank.insightCount);
+    return `<tr><td>${i + 1}</td><td>${rank.layer}</td><td>~${avgImpact}%</td><td>${rank.insightCount}</td></tr>`;
+  }).join('');
+
+  // Deduplicate quick wins by templateId+model combination, show unique recommendations
+  const seen = new Set<string>();
+  const uniqueQuickWins = summary.quickWins.filter(insight => {
+    const key = `${insight.templateId || ''}:${insight.headline}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 3);
+
+  const quickWins = uniqueQuickWins.map(insight => {
+    const pct = insight.impact?.estimatedImpactPercent || 0;
+    const type = insight.impact?.impactType || '';
+    const typeLabel = type === 'cost' ? 'cost reduction' : type === 'latency' ? 'latency reduction' : type;
+    // Use assumptions if available (more actionable), otherwise headline
+    const recommendation = insight.impact?.assumptions || insight.headline;
+    return `<li><strong>${escapeHtml(recommendation)}</strong> <span class="impact-tag">(${pct}% ${typeLabel})</span></li>`;
+  }).join('');
+
+  return `
+    <section id="summary">
+      <h2>Potential Performance Improvement</h2>
+      <p class="summary-line">${insights.length} findings across ${callsiteCount} inference points</p>
+      ${potentialParts.length > 0 ? `<p class="potential">${potentialParts.join(' &nbsp;|&nbsp; ')}</p>` : ''}
+
+      ${summary.stackRanking.length > 0 ? `
+        <h3>By Layer</h3>
+        <table class="layer-table">
+          <thead><tr><th>#</th><th>Layer</th><th>Avg Impact</th><th>Items</th></tr></thead>
+          <tbody>${layerRows}</tbody>
+        </table>
+      ` : ''}
+
+      ${summary.quickWins.length > 0 ? `
+        <h3>Quick Wins</h3>
+        <ul class="quick-wins">${quickWins}</ul>
+      ` : ''}
+    </section>
+  `;
+}
+
 function renderFindings(insights: Insight[]): string {
   if (insights.length === 0) {
     return `
@@ -176,13 +282,64 @@ function renderFindings(insights: Insight[]): string {
     `;
   }
 
-  const items = insights.map(insight => `
-    <div class="finding ${insight.severity}">
-      <h3>${escapeHtml(insight.headline)}</h3>
-      <p>${escapeHtml(insight.evidence)}</p>
-      ${insight.location ? `<code>${escapeHtml(insight.location)}</code>` : ''}
+  // Group insights by recommendation (assumptions or headline)
+  // Julie Zhou: "Progress should be phase-based (not noisy per-file spam)"
+  const grouped = new Map<string, {
+    recommendation: string;
+    severity: string;
+    layer: string;
+    impactType: string;
+    impactPercent: number;
+    locations: string[];
+    evidence: string;
+  }>();
+
+  for (const insight of insights) {
+    const recommendation = insight.impact?.assumptions || insight.headline;
+    const key = recommendation;
+
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        recommendation,
+        severity: insight.severity,
+        layer: insight.impact?.layer || '',
+        impactType: insight.impact?.impactType || 'improvement',
+        impactPercent: insight.impact?.estimatedImpactPercent || 0,
+        locations: [],
+        evidence: insight.evidence,
+      });
+    }
+    if (insight.location) {
+      grouped.get(key)!.locations.push(insight.location);
+    }
+  }
+
+  // Sort by impact (highest first)
+  const sortedGroups = Array.from(grouped.values()).sort((a, b) => b.impactPercent - a.impactPercent);
+
+  const items = sortedGroups.map(group => {
+    const typeLabel = group.impactType === 'cost' ? 'cost reduction'
+      : group.impactType === 'latency' ? 'latency reduction'
+      : group.impactType;
+    const impactTag = group.layer
+      ? `<span class="impact-tag">[${group.layer}] ${group.impactPercent}% ${typeLabel}</span>`
+      : '';
+    const locationCount = group.locations.length;
+    const locationList = group.locations.map(loc => `<li><code>${escapeHtml(loc)}</code></li>`).join('');
+
+    return `
+    <div class="finding ${group.severity}">
+      <h3>${escapeHtml(group.recommendation)} ${impactTag}</h3>
+      <p>${locationCount} inference point${locationCount !== 1 ? 's' : ''}</p>
+      ${locationCount > 0 ? `
+        <details>
+          <summary>Show locations</summary>
+          <ul class="location-list">${locationList}</ul>
+        </details>
+      ` : ''}
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   return `
     <section id="findings">
@@ -207,7 +364,7 @@ function renderInferenceMap(map: InferenceMap): string {
     <section id="inferencemap">
       <h2>InferenceMap</h2>
       <details>
-        <summary>${map.summary.totalCallsites} callsites</summary>
+        <summary>${map.summary.totalCallsites} inference points</summary>
         <table>
           <thead>
             <tr>
@@ -291,22 +448,56 @@ function renderDrift(joined: JoinedOutput): string {
 
 export function generateHTML(data: HTMLData): string {
   const { inferenceMap, insights, joined, runtime } = data;
-  const timestamp = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const timestamp = now.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+  const callsiteCount = inferenceMap.summary.totalCallsites;
+
+  // Use absolute path if available, otherwise fall back to root
+  const absolutePath = inferenceMap.metadata?.absolutePath || inferenceMap.root;
+  const projectName = absolutePath.split('/').filter(Boolean).pop() || 'Unknown Project';
+
+  // Build project overview
+  const providers = inferenceMap.summary.providers;
+  const models = inferenceMap.summary.models;
+  const patterns = Object.entries(inferenceMap.summary.patterns)
+    .filter(([_, count]) => count > 0)
+    .map(([name, count]) => `${name} (${count})`)
+    .join(', ') || 'none detected';
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PeakInfer Report</title>
+  <title>PeakInfer Report — ${escapeHtml(projectName)}</title>
   <style>${STYLES}</style>
 </head>
 <body>
   <header>
     <h1>PeakInfer Report</h1>
-    <p class="meta">Generated: ${timestamp} | Root: ${escapeHtml(inferenceMap.root)}</p>
+    <p class="project-name">${escapeHtml(projectName)}</p>
+    <div class="meta-grid">
+      <span class="meta-label">Path</span>
+      <span class="meta-value">${escapeHtml(absolutePath)}</span>
+      <span class="meta-label">Generated</span>
+      <span class="meta-value">${timestamp}</span>
+    </div>
   </header>
 
+  <section id="overview">
+    <h2>Project Overview</h2>
+    <p><strong>${callsiteCount}</strong> inference points found across <strong>${providers.length}</strong> providers and <strong>${models.length}</strong> models.</p>
+    <div class="meta-grid" style="margin-top: 1rem;">
+      <span class="meta-label">Providers</span>
+      <span class="meta-value">${escapeHtml(providers.join(', '))}</span>
+      <span class="meta-label">Models</span>
+      <span class="meta-value">${escapeHtml(models.slice(0, 5).join(', '))}${models.length > 5 ? ` +${models.length - 5} more` : ''}</span>
+      <span class="meta-label">Patterns</span>
+      <span class="meta-value">${escapeHtml(patterns)}</span>
+    </div>
+  </section>
+
+  ${renderSummary(insights, callsiteCount)}
   ${renderFindings(insights)}
   ${renderInferenceMap(inferenceMap)}
   ${runtime ? renderRuntime(runtime) : ''}

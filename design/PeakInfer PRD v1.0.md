@@ -137,7 +137,7 @@ peakinfer analyze .
 
 * Scans supported languages  
 * Performs semantic (not regex-based) analysis  
-* Detects LLM inference callsites  
+* Detects LLM inference points  
 * Identifies providers, models, patterns, and runtime signals  
 * Produces a canonical inference topology artifact
 
@@ -336,7 +336,7 @@ PeakInfer explicitly does **not**:
 
 PeakInfer must satisfy:
 
-* ≥90% callsite detection in supported languages  
+* ≥90% inference point detection in supported languages  
 * near-zero false positives for providers/models  
 * strict schema validation  
 * \<60s analysis for 10k LOC  

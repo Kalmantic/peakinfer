@@ -42,7 +42,7 @@ When working with these documents, understand the specification hierarchy:
 - An IDE assistant
 
 ### Core Capabilities
-1. **Static analysis** (`peakinfer analyze .`) - semantic callsite detection
+1. **Static analysis** (`peakinfer analyze .`) - semantic inference point detection
 2. **Runtime analysis** (`peakinfer analyze events.jsonl`) - fully offline
 3. **Combined analysis** - drift detection between code intent and runtime behavior
 4. **Tradeoff analysis** - performance headroom reasoning
@@ -61,7 +61,7 @@ The Design Document follows Julie Zhou's behavior-first philosophy. When editing
 
 ## Quality Bars (from PRD)
 
-- ≥90% callsite detection in supported languages
+- ≥90% inference point detection in supported languages
 - Near-zero false positives for providers/models
 - <60s analysis for 10k LOC
 - Deterministic outputs
@@ -70,7 +70,7 @@ The Design Document follows Julie Zhou's behavior-first philosophy. When editing
 ## Schema References
 
 Key schemas defined in TDD:
-- `Callsite` - static inference callsite with provider, model, patterns, confidence
+- `Callsite` - static inference point with provider, model, patterns, confidence
 - `InferenceEvent` - runtime event schema (id, ts, provider, model, tokens, latency_ms)
 - `InferenceMap` - canonical inference topology (tree structure with file+line anchors)
 - `JoinedInference` - combined static + runtime with drift signals

@@ -219,6 +219,7 @@ export function evaluate(
               headline: interpolate(output.headline, vars),
               evidence: interpolate(output.evidence, vars),
               location: `${callsite.file}:${callsite.line}`,
+              source: 'template',
             });
           }
         }
@@ -253,6 +254,7 @@ export function evaluate(
             templateId: id,
             headline: interpolate(output.headline, vars),
             evidence: interpolate(output.evidence, vars),
+            source: 'template',
           });
         }
         break;
@@ -276,6 +278,7 @@ export function evaluate(
             headline: interpolate(output.headline, vars),
             evidence: interpolate(output.evidence, vars),
             location: globalStats.top_callsite_location,
+            source: 'template',
           });
         }
         break;
@@ -321,6 +324,7 @@ export function evaluate(
               headline: interpolate(output.headline, vars),
               evidence: interpolate(output.evidence, vars),
               location: `${callsite.file}:${callsite.line}`,
+              source: 'template',
             });
           }
         }

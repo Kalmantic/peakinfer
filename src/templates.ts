@@ -17,6 +17,7 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const BUNDLED_DIR = join(__dirname, '..', 'templates');
+const PROMPTS_DIR = join(__dirname, '..', 'prompts');
 
 // =============================================================================
 // TYPES
@@ -31,6 +32,25 @@ interface Manifest {
 interface CacheMeta {
   fetchedAt: number;
   version: string;
+}
+
+/**
+ * Analysis prompt configuration loaded from YAML
+ * Used for LLM-based code analysis with configurable focus areas
+ */
+export interface AnalysisPrompt {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  prompt: string;
+  categories: string[];
+  defaults?: {
+    expensive_models?: string[];
+    cheap_models?: string[];
+    latency_critical_threshold_ms?: number;
+    batch_opportunity_threshold?: number;
+  };
 }
 
 // =============================================================================
@@ -242,4 +262,85 @@ export function clearCache(): void {
       }
     }
   }
+}
+
+// =============================================================================
+// ANALYSIS PROMPTS API
+// =============================================================================
+
+/**
+ * Load an analysis prompt by ID from the prompts directory
+ * @param id - Prompt ID (e.g., 'peak-performance')
+ * @returns AnalysisPrompt or null if not found
+ */
+export function loadPrompt(id: string): AnalysisPrompt | null {
+  const promptPath = join(PROMPTS_DIR, `${id}.yaml`);
+
+  if (!existsSync(promptPath)) {
+    return null;
+  }
+
+  try {
+    const content = readFileSync(promptPath, 'utf-8');
+    const parsed = parseYAML(content) as AnalysisPrompt;
+
+    // Validate required fields
+    if (!parsed.id || !parsed.prompt) {
+      console.warn(`[prompts] Invalid prompt file: ${promptPath} (missing id or prompt)`);
+      return null;
+    }
+
+    return parsed;
+  } catch (err) {
+    console.warn(`[prompts] Failed to load prompt ${id}:`, err);
+    return null;
+  }
+}
+
+/**
+ * List all available analysis prompts
+ * @returns Array of prompt IDs
+ */
+export function listPrompts(): string[] {
+  if (!existsSync(PROMPTS_DIR)) {
+    return [];
+  }
+
+  try {
+    const files = readdirSync(PROMPTS_DIR).filter(f => f.endsWith('.yaml'));
+    return files.map(f => f.replace('.yaml', ''));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Load all available analysis prompts
+ * @returns Map of prompt ID to AnalysisPrompt
+ */
+export function loadAllPrompts(): Map<string, AnalysisPrompt> {
+  const prompts = new Map<string, AnalysisPrompt>();
+  const ids = listPrompts();
+
+  for (const id of ids) {
+    const prompt = loadPrompt(id);
+    if (prompt) {
+      prompts.set(id, prompt);
+    }
+  }
+
+  return prompts;
+}
+
+/**
+ * Get the default analysis prompt (peak-performance)
+ * @returns AnalysisPrompt
+ * @throws Error if default prompt not found
+ */
+export function getDefaultPrompt(): AnalysisPrompt {
+  const prompt = loadPrompt('peak-performance');
+  if (!prompt) {
+    throw new Error('[prompts] Default prompt "peak-performance" not found. Ensure prompts/peak-performance.yaml exists.');
+  }
+  return prompt;
 }

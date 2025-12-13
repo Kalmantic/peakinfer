@@ -4,6 +4,9 @@
  * @packageDocumentation
  */
 
+// Version
+export { VERSION, VERSION_DISPLAY } from './version.js';
+
 // Core types
 export type {
   Provider,
@@ -24,7 +27,7 @@ export type {
 
 // Agent
 export { Agent, plan } from './agent.js';
-export type { AgentOptions, AgentCallbacks, AgentResults } from './agent.js';
+export type { AgentOptions, AgentCallbacks, AgentResults, PlanResult, ProgressPhase, ProgressData } from './agent.js';
 
 // Scanner
 export { scan } from './scanner.js';
@@ -59,5 +62,22 @@ export { generateHTML } from './html.js';
 export type { HTMLData } from './html.js';
 
 // Artifacts
-export { saveArtifacts, getOutputDir, artifactsExist } from './artifacts.js';
-export type { ArtifactData } from './artifacts.js';
+export {
+  saveArtifacts,
+  getOutputDir,
+  artifactsExist,
+  checkResumable,
+  loadArtifacts,
+  generateRunId,
+} from './artifacts.js';
+export type { ArtifactData, SaveOptions } from './artifacts.js';
+
+// Run Identity
+export {
+  getRunDir,
+  createManifest,
+  canResume,
+  loadManifest,
+  loadCachedArtifacts,
+} from './runid.js';
+export type { RunInputs, RunManifest, CachedArtifacts } from './runid.js';

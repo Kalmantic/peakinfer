@@ -1,15 +1,16 @@
 #!/usr/bin/env node
+import 'dotenv/config';
 import { Command } from 'commander';
 import { existsSync } from 'fs';
 import { exec } from 'child_process';
 import { Agent } from './agent.js';
 import { createRenderer } from './renderer.js';
+import { VERSION } from './version.js';
 
 // =============================================================================
 // CONSTANTS
 // =============================================================================
 
-const VERSION = '1.0.0';
 const DESCRIPTION = 'LLM inference performance analysis - reveal the truth about your AI calls';
 
 // =============================================================================
@@ -26,14 +27,18 @@ program
   .argument('[path]', 'path to repository or events file', '.')
   .option('-e, --events <file>', 'runtime events file (JSONL/CSV)')
   .option('--html', 'generate HTML report')
-  .option('--open', 'open HTML report in browser')
+  .option('--pdf', 'generate PDF report')
+  .option('--open', 'open report in browser/viewer')
   .option('--offline', 'use bundled templates only')
+  .option('--no-cache', 'ignore cached results, force fresh analysis')
   .option('-v, --verbose', 'show detailed progress')
   .action(async (path: string, options: {
     events?: string;
     html?: boolean;
+    pdf?: boolean;
     open?: boolean;
     offline?: boolean;
+    cache?: boolean;
     verbose?: boolean;
   }) => {
     try {
@@ -53,15 +58,22 @@ program
       renderer.renderHeader();
 
       const agent = new Agent({
+        onResumed: (runId) => renderer.renderResumed(runId),
         onPlanReady: (plan) => renderer.renderPlan(plan),
         onTaskStart: (task) => renderer.renderTaskStart(task),
         onTaskComplete: (task, result) => renderer.renderTaskComplete(task, result),
+        onProgress: (data) => renderer.renderProgress(data),
+        onPartial: (warnings) => renderer.renderPartial(warnings),
         onComplete: (results) => {
           renderer.renderResults(results);
 
-          // Open HTML report if requested
-          if (options.open && results.htmlPath) {
-            openInBrowser(results.htmlPath);
+          // Open report if requested (prefer PDF if generated, else HTML)
+          if (options.open) {
+            if (results.pdfPath) {
+              openInBrowser(results.pdfPath);
+            } else if (results.htmlPath) {
+              openInBrowser(results.htmlPath);
+            }
           }
         },
         onError: (error) => renderer.renderError(error),
@@ -70,9 +82,11 @@ program
       await agent.run({
         path,
         events: options.events,
-        html: options.html,
+        html: options.html || options.pdf, // Generate HTML if PDF requested (needed for conversion)
+        pdf: options.pdf,
         open: options.open,
         offline: options.offline,
+        noCache: options.cache === false, // --no-cache sets cache to false
         verbose: options.verbose,
       });
     } catch (error) {

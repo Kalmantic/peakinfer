@@ -161,7 +161,7 @@ Is that good? Bad? Depends on the model, provider, and what's achievable.
 **Pass 1: Plan**
 ```
 [1/7] Scan repository
-[2/7] Analyze callsites
+[2/7] Analyze inference points
 [3/7] Parse runtime events
 [4/7] Correlate static + runtime
 [5/7] Load insight templates
@@ -1125,7 +1125,7 @@ PeakInfer v1.0
 
 Planning
   [1/7] Scan repository
-  [2/7] Analyze callsites
+  [2/7] Analyze inference points
   [3/7] Parse runtime events
   [4/7] Correlate static + runtime
   [5/7] Load insight templates
@@ -1187,7 +1187,7 @@ Findings
       src/chat/handler.py:88
 
 Scope
-  Callsites: 23
+  Inference Points: 23
   Matched: 19
   Drift signals: 4
 
@@ -1255,7 +1255,7 @@ Saved
   <section id="inferencemap">
     <h2>InferenceMap</h2>
     <details>
-      <summary>{{summary.totalCallsites}} callsites</summary>
+      <summary>{{summary.totalCallsites}} inference points</summary>
       <table>
         <thead><tr><th>File</th><th>Line</th><th>Provider</th><th>Model</th><th>Patterns</th></tr></thead>
         <tbody>
@@ -1500,7 +1500,7 @@ match:
       value: 0
 
 output:
-  headline: "{{count}} callsites in code with no runtime events"
+  headline: "{{count}} inference points in code with no runtime events"
   evidence: "{{locations}}"
 ```
 
@@ -1866,7 +1866,7 @@ PeakInfer v1.0
 
 Planning
   [1/8] Scan repository
-  [2/8] Analyze callsites
+  [2/8] Analyze inference points
   [3/8] Parse runtime events
   [4/8] Correlate static + runtime
   [5/8] Load insight templates
@@ -1896,7 +1896,7 @@ Findings
       src/classify/intent.py:12
 
 Scope
-  Callsites: 23
+  Inference Points: 23
   Providers: openai (12), anthropic (8), together (3)
   Models: gpt-4o (9), claude-3-opus (2), claude-3-sonnet (6), llama-3-70b (3)
 
@@ -1906,7 +1906,7 @@ Runtime
   Tokens: 78.2M in, 6.4M out
 
 Drift
-  Code-only: 4 callsites
+  Code-only: 4 inference points
   Runtime-only: 1 (openai/gpt-4o-mini)
 
 Saved

@@ -133,7 +133,7 @@ peakinfer analyze .
 
 Success moment:
 
-* User sees a **structured map** of inference callsites with file+line anchors  
+* User sees a **structured map** of inference points with file+line anchors  
 * User understands “what exists” without spelunking the repo
 
 ### **5.2 Journey B — Runtime Events (Runtime Truth, Offline)**
@@ -247,7 +247,7 @@ Progress should be phase-based (not noisy per-file spam):
 ```
 Progress
   1/4 Scanning files…
-  2/4 Detecting callsites…
+  2/4 Detecting inference points…
   3/4 Classifying providers/models/patterns…
   4/4 Building InferenceMap + summaries…
 ```
@@ -265,7 +265,7 @@ Example:
 
 ```
 Summary
-  Callsites detected: 23
+  Inference Points: 23
   Providers: openai (12), anthropic (7), together (4)
   Models: gpt-4o (9), claude-3.5-sonnet (7), llama-3-70b (4)
   Patterns detected: streaming (6), retries (11), batching (2)
@@ -331,7 +331,7 @@ Example:
 ```
 Drift
   In code, not in events:
-    - anthropic / claude-3.5-sonnet (2 callsites)
+    - anthropic / claude-3.5-sonnet (2 inference points)
   In events, not in code:
     - openai / gpt-4.1-mini (observed 1,204 calls)
   Pattern mismatch:
@@ -360,7 +360,7 @@ Trade-offs
       Constraint: latency-bound → provider swap alone unlikely to help without batching/streaming discipline
 
   Headroom candidates:
-    - 6 callsites with streaming enabled but high p95: likely upstream queueing or retry storms
+    - 6 inference points with streaming enabled but high p95: likely upstream queueing or retry storms
 ```
 
 Rules:
