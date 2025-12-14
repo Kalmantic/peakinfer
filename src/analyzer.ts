@@ -9,7 +9,7 @@ import { loadPrompt, getDefaultPrompt, type AnalysisPrompt } from './templates.j
 // CONSTANTS
 // =============================================================================
 
-const LLM_BATCH_SIZE = 5; // Process files in batches for efficiency
+const LLM_BATCH_SIZE = 2; // Process files in small batches for smoother progress
 const MAX_CONTEXT_CHARS = 4000; // Max chars per file to send to LLM
 
 // Fallback regex patterns (used when LLM unavailable)
@@ -92,6 +92,7 @@ interface AnalyzeOptions {
   useLLM?: boolean;
   verbose?: boolean;
   promptId?: string; // ID of the analysis prompt to use (defaults to 'peak-performance')
+  onProgress?: (data: { percent: number; currentFile?: string }) => void; // Progress callback
 }
 
 // =============================================================================
@@ -214,14 +215,22 @@ function normalizeInsight(insight: LLMInsight): LLMInsight {
 async function analyzewithLLM(
   files: Array<{ path: string; content: string; candidateLines: number[] }>,
   client: Anthropic,
-  analysisPrompt: string
+  analysisPrompt: string,
+  onProgress?: (data: { percent: number; currentFile?: string }) => void
 ): Promise<LLMAnalysisOutput> {
   const callsitesByFile = new Map<string, LLMCallsite[]>();
   const allInsights: LLMInsight[] = [];
+  const totalFiles = files.length;
+  let llmErrorLogged = false; // Only log LLM errors once to avoid noise
 
   // Process in batches
   for (let i = 0; i < files.length; i += LLM_BATCH_SIZE) {
     const batch = files.slice(i, i + LLM_BATCH_SIZE);
+    const currentFile = batch[0]?.path;
+
+    // Show progress bar BEFORE processing (visible during LLM call)
+    const percentBefore = Math.floor((i / totalFiles) * 100);
+    onProgress?.({ percent: percentBefore, currentFile });
 
     const fileContents = batch.map(f => {
       const truncated = truncateContent(f.content);
@@ -266,9 +275,22 @@ async function analyzewithLLM(
       }
     } catch (error) {
       // Continue with regex fallback for this batch
-      const errMsg = error instanceof Error ? error.message : String(error);
-      console.warn(`[analyzer] LLM analysis failed for batch, using fallback: ${errMsg}`);
+      // Only log once to avoid noisy output (Julie Zhou: calm, not alarming)
+      if (!llmErrorLogged) {
+        llmErrorLogged = true;
+        const errMsg = error instanceof Error ? error.message : String(error);
+        // Extract just the error type for cleaner output
+        const shortErr = errMsg.includes('authentication_error') ? 'invalid API key'
+          : errMsg.includes('rate_limit') ? 'rate limited'
+          : 'API error';
+        console.warn(`[analyzer] LLM unavailable (${shortErr}), using pattern matching`);
+      }
     }
+
+    // Report progress AFTER batch completes
+    const processedFiles = Math.min(i + LLM_BATCH_SIZE, totalFiles);
+    const percentAfter = Math.floor((processedFiles / totalFiles) * 100);
+    onProgress?.({ percent: percentAfter, currentFile });
   }
 
   return { callsitesByFile, insights: allInsights };
@@ -350,7 +372,7 @@ export async function analyze(
   scanResult: ScanResult,
   options: AnalyzeOptions = {}
 ): Promise<AnalyzeResult> {
-  const { useLLM = true, promptId } = options;
+  const { useLLM = true, promptId, onProgress } = options;
   const callsites: Callsite[] = [];
   const llmInsights: LLMInsight[] = [];
   const fileContents = new Map<string, string>();
@@ -407,7 +429,7 @@ export async function analyze(
         }));
 
       if (filesToAnalyze.length > 0) {
-        llmOutput = await analyzewithLLM(filesToAnalyze, client, analysisPromptText);
+        llmOutput = await analyzewithLLM(filesToAnalyze, client, analysisPromptText, onProgress);
         // Collect LLM-generated insights (phase 1)
         llmInsights.push(...llmOutput.insights);
       }

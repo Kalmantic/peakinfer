@@ -1921,3 +1921,340 @@ View report: open .peakinfer/report.html
 ---
 
 This is the complete design. Ready to implement.
+
+---
+
+# PeakInfer Design Document
+
+**Version:** 2.0
+**Status:** Implementation Ready
+**Philosophy:** Simple, Lovable, Complete
+
+---
+
+## 1. What PeakInfer Is
+
+A CLI that reveals LLM inference performance truth.
+
+**One sentence:** "It tells you whether your inference is near peak — and why it isn't."
+
+### PeakInfer Is
+- A flashlight, not a lever
+- Deterministic and auditable
+- Artifact-producing
+- Usable offline (for runtime analysis)
+
+### PeakInfer Is Not
+- An IDE assistant
+- An observability platform
+- A real-time monitoring system
+- An auto-optimization engine
+
+**Humans decide. PeakInfer clarifies.**
+
+---
+
+## 2. Architecture
+
+### 2.1 Claude Agent SDK Multi-Agent Orchestration
+
+Use `@anthropic-ai/claude-agent-sdk` for multi-agent coordination:
+
+- **DiscoveryAgent:** Scan and discover inference points
+- **AnalyzerAgent:** Semantic classification with tool-limited analysis
+- **JoinerAgent:** Correlate static + runtime truth
+- **InsightAgent:** Generate findings from templates
+
+### 2.2 Two-Pass Execution Model
+
+```
+Pass 1: PLAN (WHAT to do)
+  Input -> Generate task descriptions -> Execution Plan
+
+Pass 2: EXECUTE (HOW to do it)
+  For each task:
+    Description -> Resolve to tool call -> Execute -> Save result
+```
+
+**Benefits:**
+- Predictable progress phases
+- Clear failure isolation
+- Resumability and caching
+- Debuggable (know exactly where failure occurred)
+
+### 2.3 Callbacks for UI Decoupling
+
+```typescript
+interface AgentCallbacks {
+  onPlanStart?: () => void;
+  onPlanComplete?: (plan: ExecutionPlan) => void;
+  onTaskStart?: (task: PlannedTask) => void;
+  onTaskComplete?: (task: PlannedTask, result: TaskResult) => void;
+  onProgress?: (message: string) => void;
+  onError?: (error: Error) => void;
+}
+```
+
+Same behavioral experience across CLI, HTML report, and future surfaces.
+
+### 2.4 Tool-Limited Semantic Analysis
+
+Agent-driven analysis constrained to: `Glob -> Grep -> Read`
+- Returns structured JSON (validated)
+- Provides confidence + evidence
+- No unbounded tool access
+
+### 2.5 Filesystem-Based Persistence
+
+```
+.peakinfer/
+  runs/
+    <runId>/
+      plan.json
+      scan.json
+      static.json
+      runtime.json
+      joined.json
+      insights.json
+      stackmap.json
+      report.html
+  cache/
+    templates/
+    pricing.json
+```
+
+**Rules:**
+- Every task produces an artifact
+- Tasks are idempotent
+- If artifact exists and inputs unchanged -> reuse
+- If inputs changed -> invalidate downstream
+
+---
+
+## 3. LOC Budget (~1,100 lines)
+
+| Module | Lines | Purpose |
+|--------|-------|---------|
+| types.ts | 90 | All Zod schemas |
+| costs.ts | 60 | Pricing with 24hr cache |
+| envelopes.ts | 60 | Reference performance data |
+| scanner.ts | 50 | File discovery |
+| analyzer.ts | 80 | LLM semantic analysis |
+| runtime.ts | 80 | Events parser + aggregator |
+| joiner.ts | 70 | Static + runtime correlation |
+| templates.ts | 90 | Template loader |
+| insights.ts | 120 | Template evaluator |
+| agent.ts | 80 | Two-pass orchestration |
+| renderer.ts | 100 | Terminal output |
+| html.ts | 120 | HTML report generator |
+| artifacts.ts | 50 | Persistence |
+| cli.ts | 70 | Entry point |
+
+**Discipline:** If a module exceeds its budget, refactor or split.
+
+---
+
+## 4. Mental Model Order
+
+Users form understanding in this sequence. Never violate it:
+
+```
+1. Scope     — What did you look at?
+2. Structure — Where is inference happening?
+3. Reality   — What happened at runtime?
+4. Meaning   — What does this imply?
+5. Next step — What should I do next?
+```
+
+---
+
+## 5. Fixed Output Order
+
+```
+1. Header
+2. Planning (what will happen)
+3. Progress (as it happens)
+4. Findings (insights - the value)
+5. Scope (what was analyzed)
+6. Runtime (if events provided)
+7. Drift (if combined analysis)
+8. Saved (artifacts + next steps)
+```
+
+**This order is not negotiable. It is the product's cognitive ramp.**
+
+---
+
+## 6. State Completeness
+
+Every state is a first-class experience:
+
+| State | Behavior |
+|-------|----------|
+| **Zero** | Explains what was checked, suggests alternatives |
+| **Loading** | Numbered task list with progress |
+| **Partial** | Shows what worked, what didn't, continues |
+| **Error** | Actionable: what, where, how to fix |
+| **Success** | Insights first, scope second, artifacts last |
+
+### Zero State
+```
+No inference usage detected.
+
+Checked for:
+  • common providers (openai, anthropic, ...)
+  • known frameworks (langchain, llamaindex, ...)
+  • self-hosted runtimes (vllm, sglang, ...)
+
+If you expected results:
+  → check wrapper modules (custom clients)
+  → check dynamic imports
+```
+
+### Partial State
+```
+Partial results
+  Files scanned: 843 / 847
+  Skipped: 4 (syntax errors)
+
+Your output is still valid.
+```
+
+### Error State
+```
+Error: events file missing required field "latency_ms"
+File: production.jsonl
+Required schema:
+  id, ts, provider, model, input_tokens, output_tokens, latency_ms
+```
+
+### Loading State
+```
+[1/4] Scanning files...
+[2/4] Detecting inference points...
+[3/4] Classifying providers/models...
+[4/4] Building InferenceMap...
+```
+
+---
+
+## 7. Copy Rules
+
+### Do
+- Keep it calm and factual
+- Use concrete labels
+- Be actionable in errors
+- End with closure + next steps
+
+### Don't
+- No playful language
+- No anthropomorphic phrasing ("I found...", "I think...")
+- No jargon without explanation
+- No ASCII banners or decoration
+
+### Header Format
+```
+PeakInfer v2.0  •  Inference Analysis
+Repo: ./  •  Mode: static
+```
+
+### Insight Copy Formula
+
+**Good:**
+```
+Your streaming is fake
+Your fallback has never fired
+You're at 34% of achievable throughput
+6 inference points with high p95 latency
+```
+
+**Bad:**
+```
+I found some issues with your code
+There might be a problem here
+Consider optimizing this
+```
+
+### Closure Format
+```
+Saved
+  .peakinfer/inferencemap.json
+  .peakinfer/insights.json
+  .peakinfer/report.html
+
+Next
+  → peakinfer analyze . --events prod.jsonl
+  → peakinfer tradeoffs
+```
+
+---
+
+## 8. Artifacts
+
+| File | Purpose |
+|------|---------|
+| inferenc3map.json | Inference topology |
+| insights.json | Findings |
+| joined.json | Static + runtime correlation |
+| runtime.json | Event summary |
+| report.html | Shareable report |
+
+**Why JSON:**
+- Zero dependencies
+- Easy to inspect
+- Git-diffable
+- Portable
+
+---
+
+## 9. Design QA Checklist
+
+Before shipping any change:
+
+1. Does this enable a specific user behavior?
+2. Does output follow: Scope → Structure → Reality → Meaning → Next step?
+3. Are all states complete (zero/loading/partial/error/success)?
+4. Can a user trust this without reading docs?
+5. Is the result forwardable without narration?
+6. Is there any cleverness that should be deleted?
+7. Does this preserve "invisible UI"?
+
+**If any answer is "no," it doesn't ship.**
+
+---
+
+## 10. What PeakInfer Must Never Become
+
+- A dashboard of charts with no decisions
+- A stream of recommendations with no constraints
+- A prompt wrapper that can't be rerun deterministically
+- A tool that forces users to interpret uncertainty without labeling it
+
+---
+
+## 11. Summary
+
+```
+Simple:
+  - Focused on one problem
+  - ~1,100 lines of code
+  - Clear module boundaries
+
+Lovable:
+  - Insights that reveal hidden truth
+  - State completeness at every edge
+  - Calm, factual, forwardable output
+
+Complete:
+  - Two-pass execution with resumability
+  - Multi-agent orchestration
+  - Artifacts for context engineering
+  - All five states handled
+
+Philosophy:
+  - Flashlight, not lever
+  - Clarifies, doesn't decide
+  - Ship fast, enhance later
+```
+
+**PeakInfer is a flashlight. Our job is to keep the glass clean.**

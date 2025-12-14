@@ -11,7 +11,7 @@ import { VERSION } from './version.js';
 // CONSTANTS
 // =============================================================================
 
-const DESCRIPTION = 'LLM inference performance analysis - reveal the truth about your AI calls';
+const DESCRIPTION = 'llm inference performance optimization';
 
 // =============================================================================
 // MAIN
@@ -22,23 +22,25 @@ const program = new Command()
   .description(DESCRIPTION)
   .version(VERSION);
 
-// Default command: analyze
+// Analyze command: peakinfer analyze <path>
 program
+  .command('analyze')
+  .description('analyze codebase or runtime events')
   .argument('[path]', 'path to repository or events file', '.')
-  .option('-e, --events <file>', 'runtime events file (JSONL/CSV)')
-  .option('--html', 'generate HTML report')
-  .option('--pdf', 'generate PDF report')
+  .option('--events <file>', 'add runtime telemetry to static analysis')
+  .option('--html', 'generate html report')
+  .option('--pdf', 'generate pdf report')
   .option('--open', 'open report in browser/viewer')
-  .option('--offline', 'use bundled templates only')
-  .option('--no-cache', 'ignore cached results, force fresh analysis')
-  .option('-v, --verbose', 'show detailed progress')
+  .option('--output <format>', 'output format: text (default) or json')
+  .option('--cached', 'view previous analysis (offline, no API key needed)')
+  .option('--verbose', 'show detailed task progress')
   .action(async (path: string, options: {
     events?: string;
     html?: boolean;
     pdf?: boolean;
     open?: boolean;
-    offline?: boolean;
-    cache?: boolean;
+    output?: string;
+    cached?: boolean;
     verbose?: boolean;
   }) => {
     try {
@@ -82,11 +84,11 @@ program
       await agent.run({
         path,
         events: options.events,
-        html: options.html || options.pdf, // Generate HTML if PDF requested (needed for conversion)
+        html: options.html || options.pdf || options.open, // Generate HTML if PDF or open requested
         pdf: options.pdf,
         open: options.open,
-        offline: options.offline,
-        noCache: options.cache === false, // --no-cache sets cache to false
+        offline: false,
+        noCache: !options.cached, // --cached means use cache
         verbose: options.verbose,
       });
     } catch (error) {
@@ -102,38 +104,16 @@ program
     }
   });
 
-// Tradeoff command: compare configurations
-program
-  .command('tradeoff')
-  .description('Compare inference configurations (cost vs latency vs throughput)')
-  .argument('<baseline>', 'baseline events file')
-  .argument('<variant>', 'variant events file')
-  .option('--html', 'generate HTML comparison report')
-  .action(async (baseline: string, variant: string, options: { html?: boolean }) => {
-    // Validate files exist
-    if (!existsSync(baseline)) {
-      console.error(`Error: Baseline file not found: ${baseline}`);
-      process.exit(1);
-    }
-    if (!existsSync(variant)) {
-      console.error(`Error: Variant file not found: ${variant}`);
-      process.exit(1);
-    }
+// Custom help text (PRD-aligned, Julie Zhou style)
+program.addHelpText('after', `
+analyze modes:
+  peakinfer analyze .                  # static: scan codebase for LLM calls
+  peakinfer analyze events.jsonl       # runtime: analyze inference telemetry
+  peakinfer analyze . --events prod.jsonl  # combined: static + runtime
 
-    console.log('PeakInfer v1.0');
-    console.log('');
-    console.log('Tradeoff Analysis');
-    console.log('');
-
-    // TODO: Implement tradeoff comparison
-    // This will be a v1.1 feature
-    console.log('  Comparing configurations...');
-    console.log(`    Baseline: ${baseline}`);
-    console.log(`    Variant:  ${variant}`);
-    console.log('');
-    console.log('  [Coming in v1.1]');
-    console.log('');
-  });
+quick start:
+  peakinfer analyze .
+`);
 
 // Parse and run
 program.parse();

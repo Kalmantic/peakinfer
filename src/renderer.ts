@@ -2,6 +2,8 @@ import type { ExecutionPlan, PlannedTask, TaskResult, Insight, JoinedOutput, Run
 import type { AgentResults } from './agent.js';
 import { VERSION_DISPLAY } from './version.js';
 import { formatImpactSummary, type ImpactSummary } from './impact.js';
+import ora, { type Ora } from 'ora';
+import chalk from 'chalk';
 
 // =============================================================================
 // CONSTANTS
@@ -29,13 +31,19 @@ const STATE = {
 // Progress phases - Julie Zhou aligned (DD Section 6.4)
 // "Progress should be phase-based (not noisy per-file spam)"
 // "Use stable phase names across runs"
+// Lowercase, calm copy per peakinfer design
 const PHASE = {
-  SCANNING: 'Scanning files',
-  ANALYZING: 'Detecting inference points',
-  PARSING: 'Parsing events',
-  CORRELATING: 'Correlating code + runtime',
-  GENERATING: 'Generating insights',
+  SCANNING: 'scanning files',
+  ANALYZING: 'analyzing codebase',
+  PARSING: 'parsing events',
+  CORRELATING: 'correlating code + runtime',
+  GENERATING: 'generating insights',
 } as const;
+
+// Progress bar characters (intuitive visual feedback)
+const BAR_FILLED = '█';
+const BAR_EMPTY = '░';
+const BAR_WIDTH = 10;
 
 type PhaseKey = keyof typeof PHASE;
 
@@ -63,32 +71,32 @@ function bold(text: string): string {
 
 /**
  * ZERO STATE: No inference usage detected
+ * Julie Zhou: calm, helpful, not alarming
  */
 function renderZeroState(): void {
-  console.log(bold(VERSION));
   console.log('');
-  console.log('No inference usage detected.');
+  console.log('no inference usage detected.');
   console.log('');
-  console.log(dim('Checked for:'));
-  console.log('  Common providers (openai, anthropic, google, together, fireworks...)');
-  console.log('  Frameworks (langchain, llamaindex, dspy...)');
-  console.log('  Self-hosted runtimes (vllm, sglang, ollama, tgi...)');
+  console.log(dim('checked for:'));
+  console.log('  common providers (openai, anthropic, google, together, fireworks...)');
+  console.log('  frameworks (langchain, llamaindex, dspy...)');
+  console.log('  self-hosted runtimes (vllm, sglang, ollama, tgi...)');
   console.log('');
-  console.log(dim('If you expected results:'));
-  console.log('  Check wrapper modules or custom client abstractions');
-  console.log('  Check dynamic imports or runtime configuration');
+  console.log(dim('if you expected results:'));
+  console.log('  check wrapper modules or custom client abstractions');
+  console.log('  check dynamic imports or runtime configuration');
   console.log('');
 }
 
 /**
  * LOADING STATE: Show plan
+ * Julie Zhou: visible only in verbose mode, calm formatting
  */
 function renderPlan(plan: ExecutionPlan): void {
-  console.log(bold(VERSION));
   console.log('');
-  console.log(dim('Planning'));
+  console.log(dim('planning'));
   for (const task of plan.tasks) {
-    console.log(`  [${task.id}/${plan.tasks.length}] ${task.description}`);
+    console.log(`  [${task.id}/${plan.tasks.length}] ${task.description.toLowerCase()}`);
   }
   console.log('');
 }
@@ -113,38 +121,40 @@ function renderTaskComplete(result: TaskResult): void {
 
 /**
  * PARTIAL STATE: Some results with warnings
+ * Julie Zhou: calm, informative
  */
 function renderPartialState(warnings: string[]): void {
-  console.log(dim('Partial results'));
+  console.log(dim('partial results'));
   console.log('');
   for (const warning of warnings) {
-    console.log(`  ${warning}`);
+    console.log(`  ${warning.toLowerCase()}`);
   }
   console.log('');
-  console.log('Results are valid for analyzed files.');
+  console.log('results are valid for analyzed files.');
   console.log('');
 }
 
 /**
  * RESUMED STATE: Using cached results from previous run
+ * Julie Zhou: calm, informative
  */
 function renderResumed(runId: string): void {
-  console.log(dim(`Using cached results (run: ${runId})`));
+  console.log(dim(`loading cached analysis... (run: ${runId})`));
   console.log('');
 }
 
 /**
  * ERROR STATE: Actionable error message
+ * Julie Zhou: clear, helpful, not alarming
  */
 function renderError(error: Error, context?: { file?: string; line?: number; field?: string }): void {
-  console.log(bold(VERSION));
   console.log('');
-  console.log(`Error: ${error.message}`);
+  console.log(`error: ${error.message.toLowerCase()}`);
   console.log('');
   if (context) {
-    if (context.file) console.log(`  File: ${context.file}`);
-    if (context.line) console.log(`  Line: ${context.line}`);
-    if (context.field) console.log(`  Missing: ${context.field}`);
+    if (context.file) console.log(`  file: ${context.file}`);
+    if (context.line) console.log(`  line: ${context.line}`);
+    if (context.field) console.log(`  missing: ${context.field}`);
   }
   console.log('');
 }
@@ -344,6 +354,15 @@ export interface RendererOptions {
 export interface ProgressData {
   phase: 'scanning' | 'analyzing' | 'parsing' | 'correlating' | 'generating';
   detail?: string; // e.g., "847 files" or "23 inference points"
+  percent?: number; // 0-100 for progress bar
+  currentFile?: string; // current file being analyzed
+}
+
+// Render visual progress bar
+function renderProgressBar(percent: number): string {
+  const filled = Math.floor((percent / 100) * BAR_WIDTH);
+  const empty = BAR_WIDTH - filled;
+  return BAR_FILLED.repeat(filled) + BAR_EMPTY.repeat(empty);
 }
 
 /**
@@ -364,8 +383,7 @@ export function createRenderer(opts: RendererOptions = {}) {
   let phaseNumber = 0;
   let totalPhases = 0;
   let currentPhase: string | null = null;
-  let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
-  let heartbeatDots = 0;
+  let spinner: Ora | null = null;
 
   // Calculate user-visible phases (excludes internal tasks)
   function countUserPhases(plan: ExecutionPlan): number {
@@ -395,28 +413,49 @@ export function createRenderer(opts: RendererOptions = {}) {
   // Check if we're in a TTY (interactive terminal)
   const isTTY = process.stdout.isTTY;
 
-  // Start heartbeat for slow phases (calm "still working" indicator)
-  // DD Section 6.4: "If a phase is slow, show a calm 'still working' heartbeat, not a flood"
-  // Only animate in TTY mode to avoid messy output when piped
-  function startHeartbeat(phaseName: string): void {
-    if (!isTTY) return; // No animation in non-TTY mode
+  // Start ora spinner for smooth animation during slow phases
+  // Shows progress bar at 0% immediately so users know progress tracking is active
+  function startSpinner(phaseName: string): void {
+    if (!isTTY) return;
 
-    stopHeartbeat();
-    heartbeatDots = 0;
-    heartbeatInterval = setInterval(() => {
-      heartbeatDots = (heartbeatDots + 1) % 4;
-      const dots = '.'.repeat(heartbeatDots || 3); // cycle: ... . .. ...
-      // Clear line completely before writing
-      process.stdout.write('\r' + ' '.repeat(60) + '\r');
-      process.stdout.write(`${phaseName}${dots}`);
-    }, 500);
+    stopSpinner();
+
+    // Build initial progress bar at 0%
+    const bar = chalk.cyan('') + chalk.gray(BAR_EMPTY.repeat(BAR_WIDTH));
+    const initialText = `${phaseName}... ${bar}   0%`;
+
+    spinner = ora({
+      text: initialText,
+      spinner: 'dots',
+      color: 'cyan',
+    }).start();
   }
 
-  function stopHeartbeat(): void {
-    if (heartbeatInterval) {
-      clearInterval(heartbeatInterval);
-      heartbeatInterval = null;
+  function stopSpinner(): void {
+    if (spinner) {
+      spinner.stop();
+      spinner = null;
     }
+  }
+
+  // Update spinner text with progress bar
+  function updateSpinnerProgress(phaseName: string, percent: number, currentFile?: string): void {
+    if (!spinner || !isTTY) return;
+
+    const filled = Math.floor((percent / 100) * BAR_WIDTH);
+    const empty = BAR_WIDTH - filled;
+    const bar = chalk.cyan(BAR_FILLED.repeat(filled)) + chalk.gray(BAR_EMPTY.repeat(empty));
+    const percentStr = `${percent}%`.padStart(4);
+
+    let text = `${phaseName}... ${bar} ${percentStr}`;
+    if (currentFile) {
+      const fileDisplay = currentFile.length > 30
+        ? '...' + currentFile.slice(-27)
+        : currentFile;
+      text += chalk.dim(` ${fileDisplay}`);
+    }
+
+    spinner.text = text;
   }
 
   return {
@@ -453,30 +492,19 @@ export function createRenderer(opts: RendererOptions = {}) {
 
       // Only show if new phase
       if (phaseName !== currentPhase) {
-        stopHeartbeat();
-
-        // Clear previous line (only in TTY mode)
-        if (currentPhase && isTTY) {
-          process.stdout.write('\r' + ' '.repeat(60) + '\r');
-        }
+        stopSpinner();
 
         phaseNumber++;
         currentPhase = phaseName;
 
         if (opts.verbose && currentPlan) {
           // Verbose: numbered phases like DD Section 6.4
-          // "1/4 Scanning files…"
           process.stdout.write(`  ${phaseNumber}/${totalPhases} ${phaseName}...`);
         } else if (isTTY) {
-          // Non-verbose TTY: calm phase progress (will be overwritten)
-          process.stdout.write(`${phaseName}...`);
+          // Start ora spinner for smooth animation
+          startSpinner(phaseName);
         }
         // Non-TTY: don't show start, only completion
-
-        // Start heartbeat for potentially slow phases (TTY only)
-        if (phaseKey === 'ANALYZING') {
-          startHeartbeat(phaseName);
-        }
       }
     },
 
@@ -486,7 +514,7 @@ export function createRenderer(opts: RendererOptions = {}) {
       const phaseKey = getPhaseForTask(task);
       if (!phaseKey) return;
 
-      stopHeartbeat();
+      // Don't stop spinner here - let renderProgress handle completion
 
       if (opts.verbose) {
         renderTaskComplete(result);
@@ -495,6 +523,7 @@ export function createRenderer(opts: RendererOptions = {}) {
     },
 
     // Julie Zhou: Progress with meaningful completion data
+    // Enhanced with ora spinner and progress bar from peakinfer patterns
     renderProgress(data: ProgressData): void {
       if (isResumed) return;
 
@@ -506,30 +535,36 @@ export function createRenderer(opts: RendererOptions = {}) {
         generating: PHASE.GENERATING,
       }[data.phase];
 
-      stopHeartbeat();
-
-      // Clear current line (only in TTY mode)
-      if (isTTY) {
-        process.stdout.write('\r' + ' '.repeat(60) + '\r');
+      // If percent provided, this is a progress update (not completion)
+      // Update spinner if available, otherwise just skip (can't show progress bar in non-TTY)
+      if (data.percent !== undefined) {
+        if (isTTY && spinner) {
+          updateSpinnerProgress(phaseLabel, data.percent, data.currentFile);
+        }
+        return; // Don't fall through to completion logic for progress updates
       }
 
-      if (opts.verbose) {
+      // Completion display (no percent = phase complete)
+      if (spinner) {
+        // Use ora's succeed for nice checkmark
+        spinner.succeed(`${phaseLabel}... ${chalk.dim(data.detail || 'done')}`);
+        spinner = null;
+      } else if (opts.verbose) {
         // Verbose: show with duration-style detail
         console.log(`  ${phaseNumber}/${totalPhases} ${phaseLabel} ${dim(`(${data.detail || 'done'})`)}`);
       } else {
-        // Non-verbose: clean completion with result
-        // "Scanning files... 847"
-        console.log(`${phaseLabel}... ${dim(data.detail || 'done')}`);
+        // Non-verbose non-TTY: clean completion with checkmark
+        console.log(`${phaseLabel}... ${dim(data.detail || 'done')} ✓`);
       }
     },
 
     renderPartial(warnings: string[]): void {
-      stopHeartbeat();
+      stopSpinner();
       renderPartialState(warnings);
     },
 
     renderResults(results: AgentResults): void {
-      stopHeartbeat();
+      stopSpinner();
 
       // Clear any remaining progress line
       if (currentPhase) {
@@ -549,9 +584,9 @@ export function createRenderer(opts: RendererOptions = {}) {
     },
 
     renderError(error: Error, context?: { file?: string; line?: number; field?: string }): void {
-      stopHeartbeat();
-      if (currentPhase) {
-        process.stdout.write('\r' + ' '.repeat(60) + '\r');
+      if (spinner) {
+        spinner.fail('Error');
+        spinner = null;
       }
       renderError(error, context);
     },

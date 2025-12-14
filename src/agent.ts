@@ -14,6 +14,8 @@ import { generateHTML } from './html.js';
 import { generatePDF } from './pdf.js';
 import { VERSION } from './version.js';
 import { enrichInsightsWithImpact, generateImpactSummary, type ImpactSummary } from './impact.js';
+// Agent SDK pattern (DESIGN.md v2.0 Section 2.1)
+import { DiscoveryAgent, AnalyzerAgent, JoinerAgent, InsightAgent } from './agents/index.js';
 
 // =============================================================================
 // TYPES
@@ -36,6 +38,8 @@ export type ProgressPhase = 'scanning' | 'analyzing' | 'parsing' | 'correlating'
 export interface ProgressData {
   phase: ProgressPhase;
   detail?: string; // e.g., "847 files" or "23 inference points"
+  percent?: number; // 0-100 for progress bar
+  currentFile?: string; // current file being analyzed
 }
 
 export interface AgentCallbacks {
@@ -277,32 +281,38 @@ async function executeTask(
           ctx.insights = cached.insights;
           ctx.joined = cached.joined;
           ctx.runtimeSummary = cached.runtime;
-          // Extract callsites from inferenceMap
           if (cached.inferenceMap) {
             ctx.callsites = cached.inferenceMap.callsites;
           }
-          // Regenerate impact summary from cached insights
           if (cached.insights && cached.insights.length > 0) {
             ctx.impactSummary = generateImpactSummary(cached.insights);
           }
         }
       } else {
-        ctx.scanResult = await scan(ctx.opts.path);
-        // Emit progress with meaningful data
-        onProgress?.({ phase: 'scanning', detail: `${ctx.scanResult.files.length} files` });
+        // Agent SDK pattern: DiscoveryAgent with constrained tools (Glob/Grep/Read)
+        const discoveryResult = await DiscoveryAgent.execute({ root: ctx.opts.path });
+        ctx.scanResult = discoveryResult.result.scanResult;
+        const fileCount = ctx.scanResult?.files.length ?? 0;
+        onProgress?.({ phase: 'scanning', detail: `${fileCount} files` });
       }
       break;
 
     case 'analyze':
       if (!ctx.scanResult) throw new Error('Scan result required');
       try {
-        // Phase 1: LLM analysis generates callsites AND semantic insights
-        const analyzeResult = await analyze(ctx.scanResult);
-        ctx.callsites = analyzeResult.callsites;
-        ctx.llmInsights = analyzeResult.insights; // Store LLM insights for phase 2
+        // Agent SDK pattern: AnalyzerAgent with tool-limited semantic analysis
+        // Pass progress callback for visual progress bar during LLM analysis
+        const analyzerResult = await AnalyzerAgent.execute({
+          scanResult: ctx.scanResult,
+          onProgress: onProgress ? (data) => {
+            onProgress({ phase: 'analyzing', percent: data.percent, currentFile: data.currentFile });
+          } : undefined,
+        });
+        ctx.callsites = analyzerResult.result.callsites;
+        ctx.llmInsights = analyzerResult.result.llmInsights as LLMInsight[];
 
         // Get prompt metadata for report
-        let promptMeta: MapMetadata = { llmUsed: analyzeResult.insights.length > 0 };
+        let promptMeta: MapMetadata = { llmUsed: ctx.llmInsights.length > 0 };
         try {
           const prompt = getDefaultPrompt();
           promptMeta.promptId = prompt.id;
@@ -312,7 +322,6 @@ async function executeTask(
         }
 
         ctx.inferenceMap = buildInferenceMap(ctx.opts.path, ctx.callsites, promptMeta);
-        // Emit progress with inference point count
         onProgress?.({ phase: 'analyzing', detail: `${ctx.callsites.length} inference points` });
       } catch (error) {
         // Partial state: analysis failed but we can continue
@@ -340,8 +349,9 @@ async function executeTask(
 
     case 'join':
       if (!ctx.callsites || !ctx.events) throw new Error('Callsites and events required');
-      ctx.joined = join(ctx.callsites, ctx.events);
-      // Emit progress with correlation details
+      // Agent SDK pattern: JoinerAgent correlates static + runtime
+      const joinerResult = await JoinerAgent.execute({ callsites: ctx.callsites, events: ctx.events });
+      ctx.joined = joinerResult.result.joined;
       onProgress?.({
         phase: 'correlating',
         detail: `${ctx.joined.callsites.filter(c => 'usage' in c && c.usage).length} matched`,
@@ -353,9 +363,10 @@ async function executeTask(
       break;
 
     case 'generate_insights': {
-      // Phase 2: Template evaluation generates pattern-based insights
+      // Agent SDK pattern: InsightAgent evaluates templates
       const data = ctx.joined || { callsites: ctx.callsites || [] };
-      const templateInsights = evaluate(data, templates, ENVELOPES);
+      const insightResult = await InsightAgent.execute({ data, templates });
+      const templateInsights = insightResult.result.insights;
 
       // Convert LLM insights to Insight format, preserving any LLM-provided impact estimates
       const llmFormattedInsights: Insight[] = (ctx.llmInsights || []).map(llmInsight => ({
