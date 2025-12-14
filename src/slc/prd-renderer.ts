@@ -162,11 +162,17 @@ export function renderPRDErrorState(
   console.log('');
   console.log(`PeakInfer ${VERSION}`);
   console.log('');
-  console.log(`Error: ${getErrorMessage(error.type)}`);
+
+  // For 'other' type errors, show the actual error message
+  if (error.type === 'other' && error.message) {
+    console.log(`Error: ${error.message}`);
+  } else {
+    console.log(`Error: ${getErrorMessage(error.type)}`);
+  }
   console.log('');
 
   console.log('Possible causes:');
-  const causes = getErrorCauses(error.type);
+  const causes = getErrorCauses(error.type, error.message);
   for (const cause of causes) {
     console.log(indent(1) + `→ ${cause}`);
   }
@@ -196,7 +202,7 @@ function getErrorMessage(type: string): string {
   }
 }
 
-function getErrorCauses(type: string): string[] {
+function getErrorCauses(type: string, message?: string): string[] {
   switch (type) {
     case 'api_connection':
       return [
@@ -216,7 +222,30 @@ function getErrorCauses(type: string): string[] {
         'Daily quota used up',
       ];
     default:
-      return ['Check the error message above'];
+      // Provide contextual hints based on the error message
+      const causes: string[] = [];
+      if (message) {
+        if (message.includes('parse') || message.includes('JSON') || message.includes('syntax')) {
+          causes.push('Malformed response from the AI agent');
+          causes.push('Try running with --verbose for more details');
+        } else if (message.includes('timeout') || message.includes('ETIMEDOUT')) {
+          causes.push('Request timed out');
+          causes.push('Try again or check network connectivity');
+        } else if (message.includes('ENOENT') || message.includes('not found')) {
+          causes.push('File or directory not found');
+          causes.push('Check the path exists and is accessible');
+        } else if (message.includes('permission') || message.includes('EACCES')) {
+          causes.push('Permission denied');
+          causes.push('Check file/directory permissions');
+        } else {
+          causes.push('See error message above for details');
+          causes.push('Try running with DEBUG=1 for more information');
+        }
+      } else {
+        causes.push('An unexpected error occurred');
+        causes.push('Try running with DEBUG=1 for more details');
+      }
+      return causes;
   }
 }
 

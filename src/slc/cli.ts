@@ -33,6 +33,56 @@ import { generateHTMLReport } from './html-renderer.js';
 import type { ScanResult, StackMap, PricingSummary, TechStack } from './types.js';
 
 // =============================================================================
+// ENVIRONMENT LOADING
+// =============================================================================
+
+/**
+ * Load environment variables from .env file if it exists.
+ * Simple implementation without external dependencies.
+ */
+function loadEnvFile(): void {
+  const envPath = path.resolve(process.cwd(), '.env');
+
+  if (!fs.existsSync(envPath)) {
+    return;
+  }
+
+  try {
+    const content = fs.readFileSync(envPath, 'utf-8');
+    const lines = content.split('\n');
+
+    for (const line of lines) {
+      // Skip empty lines and comments
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+
+      // Parse KEY=value
+      const match = trimmed.match(/^([^=]+)=(.*)$/);
+      if (match) {
+        const key = match[1].trim();
+        let value = match[2].trim();
+
+        // Remove surrounding quotes if present
+        if ((value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
+
+        // Only set if not already set (don't override existing env vars)
+        if (!process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+    }
+  } catch {
+    // Silently ignore errors reading .env file
+  }
+}
+
+// Load .env file at startup
+loadEnvFile();
+
+// =============================================================================
 // CONFIGURATION
 // =============================================================================
 
@@ -557,12 +607,19 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
 
     // Determine error type for PRD-aligned output
     let errorType: 'api_connection' | 'api_key' | 'rate_limit' | 'other' = 'other';
-    if (errorMessage.includes('authentication') || errorMessage.includes('ANTHROPIC_API_KEY')) {
+    if (errorMessage.includes('authentication') || errorMessage.includes('ANTHROPIC_API_KEY') || errorMessage.includes('Invalid API key')) {
       errorType = 'api_key';
     } else if (errorMessage.includes('rate_limit') || errorMessage.includes('429')) {
       errorType = 'rate_limit';
     } else if (errorMessage.includes('connection') || errorMessage.includes('network') || errorMessage.includes('ENOTFOUND')) {
       errorType = 'api_connection';
+    } else if (errorMessage.includes('process exited with code 1')) {
+      // Claude Code process exit with code 1 is often an API key issue
+      // Check if API key is set and looks valid
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey || apiKey.length < 20 || !apiKey.startsWith('sk-ant')) {
+        errorType = 'api_key';
+      }
     }
 
     // JSON output mode - machine-readable error format
