@@ -59,38 +59,236 @@ const CODE_EXTENSIONS = Object.keys(LANGUAGE_MAP);
 
 // Patterns that indicate LLM inference calls
 const INFERENCE_PATTERNS = [
-  // OpenAI
+  // ==========================================================================
+  // OpenAI SDK
+  // ==========================================================================
   /\.chat\.completions\.create\(/,
   /openai\.completions\.create\(/,
   /\.completions\.create\(/,
-  // Anthropic
+  // NOTE: Removed /OpenAI\(\)/ - client initialization, not an inference call
+  // NOTE: Removed /AsyncOpenAI\(\)/ - client initialization, not an inference call
+  /openai\.ChatCompletion\.create\(/,
+  /openai\.Completion\.create\(/,
+  /\.embeddings\.create\(/,  // OpenAI embeddings API
+
+  // ==========================================================================
+  // Anthropic SDK
+  // ==========================================================================
   /\.messages\.create\(/,
   /anthropic\.messages\(/,
   /\.create_message\(/,
-  // Google
+  // NOTE: Removed /Anthropic\(\)/ - client initialization, not an inference call
+  // NOTE: Removed /AsyncAnthropic\(\)/ - client initialization, not an inference call
+  /anthropic\.completions\(/,
+
+  // ==========================================================================
+  // Google AI / Vertex AI
+  // ==========================================================================
   /\.generate_content\(/,
   /genai\.GenerativeModel\(/,
-  // Generic
-  /\.invoke\(/,
-  /\.ainvoke\(/,
-  /\.generate\(/,
-  /\.complete\(/,
-  /\.chat\(/,
-  /llm\./i,
-  /\.llm\(/,
+  /GenerativeModel\(/,
+  /vertexai\.generative_models/,
+  /aiplatform\.gapic/,
+
+  // ==========================================================================
+  // Mistral
+  // ==========================================================================
+  /MistralClient\(/,
+  /mistral\.chat\(/,
+  /mistral\.complete\(/,
+
+  // ==========================================================================
+  // Cohere
+  // ==========================================================================
+  /cohere\.chat\(/,
+  /cohere\.generate\(/,
+  /CohereClient\(/,
+
+  // ==========================================================================
+  // Together AI
+  // ==========================================================================
+  /together\.chat\./,
+  /Together\(\)/,
+  /together\.completions/,
+  /together_ai/,
+
+  // ==========================================================================
+  // Fireworks AI
+  // ==========================================================================
+  /fireworks\.chat\./,
+  /Fireworks\(/,
+  /fireworks\.completions/,
+  /fireworks_ai/,
+
+  // ==========================================================================
+  // Groq
+  // ==========================================================================
+  /groq\.chat\./,
+  /Groq\(\)/,
+  /groq\.completions/,
+
+  // ==========================================================================
+  // Replicate
+  // ==========================================================================
+  /replicate\.run\(/,
+  /replicate\.predictions\.create\(/,
+  /Replicate\(\)/,
+
+  // ==========================================================================
+  // Perplexity
+  // ==========================================================================
+  /perplexity\.chat\./,
+  /PerplexityClient\(/,
+
+  // ==========================================================================
+  // AWS Bedrock
+  // ==========================================================================
+  /bedrock-runtime/,
+  /invoke_model\(/,
+  /InvokeModel/,
+  /BedrockRuntime\(/,
+  /bedrock\.converse\(/,
+
+  // ==========================================================================
+  // Azure OpenAI
+  // ==========================================================================
+  /AzureOpenAI\(/,
+  /azure\.openai/,
+  /openai\.azure/,
+
+  // ==========================================================================
   // LangChain
+  // ==========================================================================
   /ChatOpenAI\(/,
   /ChatAnthropic\(/,
   /ChatGoogleGenerativeAI\(/,
-  // Together/Fireworks/Groq
-  /together\.chat\./,
-  /fireworks\.chat\./,
-  /groq\.chat\./,
-  // Self-hosted
+  /ChatMistralAI\(/,
+  /ChatCohere\(/,
+  /ChatGroq\(/,
+  /ChatFireworks\(/,
+  /ChatTogether\(/,
+  /ChatBedrock\(/,
+  /ChatVertexAI\(/,
+  /ChatOllama\(/,
+  /LLMChain\(/,
+  /ConversationChain\(/,
+
+  // ==========================================================================
+  // LlamaIndex
+  // ==========================================================================
+  /llama_index\.llms/,
+  /OpenAILike\(/,
+  /Ollama\(/,
+  /LlamaCPP\(/,
+
+  // ==========================================================================
+  // DSPy Framework
+  // ==========================================================================
+  /dspy\.Predict\(/,
+  /dspy\.ChainOfThought\(/,
+  /dspy\.ProgramOfThought\(/,
+  /dspy\.ReAct\(/,
+  /dspy\.Retrieve\(/,
+  /dspy\.generate\(/,
+  /dspy\.forward\(/,
+  /\.forward\(.*question/,  // DSPy module forward calls with question param
+
+  // ==========================================================================
+  // vLLM (Self-hosted)
+  // ==========================================================================
   /vllm\.generate/,
+  /vllm\.LLM\(/,
+  /from vllm import/,
+  /vllm\.SamplingParams/,
+  /vllm\.AsyncLLMEngine/,
+  /vllm\.entrypoints/,
+  /\/v1\/completions/,  // OpenAI-compatible endpoint
+
+  // ==========================================================================
+  // SGLang (Self-hosted)
+  // ==========================================================================
   /sglang\.generate/,
+  /sglang\.Engine\(/,
+  /from sglang import/,
+  /sglang\.RuntimeEndpoint/,
+  /sglang\.function/,
+  /sglang\.gen\(/,
+
+  // ==========================================================================
+  // TGI - Text Generation Inference (Self-hosted)
+  // ==========================================================================
+  /text-generation-inference/,
+  /InferenceClient\(/,
+  /huggingface_hub\.inference/,
+  /text_generation\(/,
+  /HuggingFaceEndpoint\(/,
+  /tgi\.generate/,
+
+  // ==========================================================================
+  // Ollama (Local inference)
+  // ==========================================================================
   /ollama\.generate/,
   /ollama\.chat/,
+  /ollama\.create\(/,
+  /ollama\.pull\(/,
+  /from ollama import/,
+  /Ollama\(\)/,
+  /localhost:11434/,  // Default Ollama port
+  /127\.0\.0\.1:11434/,
+
+  // ==========================================================================
+  // llama.cpp / llama-cpp-python (Bare metal)
+  // ==========================================================================
+  /llama_cpp/,
+  /Llama\(/,
+  /llama\.generate/,
+  /llama\.create_completion/,
+  /llama\.create_chat_completion/,
+  /from llama_cpp import/,
+  /LlamaCpp\(/,
+
+  // ==========================================================================
+  // Transformers / HuggingFace (Bare metal)
+  // ==========================================================================
+  /pipeline\("text-generation"/,
+  /pipeline\('text-generation'/,
+  /AutoModelForCausalLM/,
+  /AutoModelForSeq2SeqLM/,
+  /\.generate\(input_ids/,
+  /transformers\.pipeline/,
+  /model\.generate\(/,
+
+  // ==========================================================================
+  // GGUF / GGML models
+  // ==========================================================================
+  /\.gguf/,
+  /\.ggml/,
+  /ctransformers/,
+  /CTransformers\(/,
+
+  // ==========================================================================
+  // ExLlama / ExLlamaV2 (Bare metal, GPU optimized)
+  // ==========================================================================
+  /exllama/,
+  /ExLlama/,
+  /exllamav2/,
+  /ExLlamaV2/,
+
+  // ==========================================================================
+  // Generic patterns (conservative - only match with LLM context)
+  // ==========================================================================
+  // NOTE: Removed overly generic patterns that cause false positives:
+  // - /\.invoke\(/ - too generic, matches any invoke method
+  // - /\.generate\(/ - too generic, matches generators, UUIDs, etc.
+  // - /\.chat\(/ - too generic, matches any chat method
+  // - /llm\./i - case-insensitive, matches "film.", variable names
+  // - /\.llm\(/ - too generic without context
+  // - /LLM\(/ - only keep if clearly a class instantiation
+  /\.ainvoke\(/,  // LangChain async invoke - specific enough
+  /\.complete\(/,  // Usually LLM-specific
+  /ChatModel\(/,   // Usually LLM-specific class
+  /completion_tokens/,  // OpenAI response field
+  /prompt_tokens/,      // OpenAI response field
 ];
 
 // =============================================================================

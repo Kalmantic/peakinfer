@@ -21,6 +21,128 @@ function makeKey(provider: string | null, model: string | null): string {
   return `${provider || 'unknown'}:${model || 'unknown'}`;
 }
 
+/**
+ * Detect pattern drift between code-declared patterns and runtime behavior.
+ *
+ * Pattern types:
+ * - streaming: Code says stream=true but runtime shows non-streaming (or vice versa)
+ * - batching: Code declares batching but runtime shows no batch_id/batch_size
+ * - fallback: Code declares fallback but no fallback_used events seen
+ * - caching: Code declares caching but no cached events seen
+ * - retries: Code declares retries but no retry_count > 0 events seen
+ */
+function detectPatternDrift(
+  callsite: Callsite,
+  events: InferenceEvent[]
+): DriftSignal[] {
+  const driftSignals: DriftSignal[] = [];
+  const patterns = callsite.patterns;
+
+  if (events.length === 0) {
+    return driftSignals;
+  }
+
+  // Count events with each pattern
+  const streamingEvents = events.filter(e => e.streaming === true).length;
+  const nonStreamingEvents = events.filter(e => e.streaming === false).length;
+  const batchedEvents = events.filter(e => e.batch_id || (e.batch_size && e.batch_size > 1)).length;
+  const cachedEvents = events.filter(e => e.cached === true).length;
+  const retriedEvents = events.filter(e => e.retry_count && e.retry_count > 0).length;
+  const fallbackEvents = events.filter(e => e.fallback_used === true).length;
+
+  // Calculate percentages
+  const streamingPercent = (streamingEvents / events.length) * 100;
+  const nonStreamingPercent = (nonStreamingEvents / events.length) * 100;
+
+  // 1. Streaming drift detection
+  if (patterns.streaming === true) {
+    // Code declares streaming, check if runtime confirms
+    if (nonStreamingPercent > 50) {
+      driftSignals.push({
+        type: 'patternDrift',
+        callsiteId: callsite.id,
+        provider: callsite.provider || undefined,
+        model: callsite.model || undefined,
+        message: `Streaming declared in code but ${nonStreamingPercent.toFixed(0)}% of runtime calls are non-streaming`,
+      });
+    } else if (streamingEvents === 0 && nonStreamingEvents === 0) {
+      // No streaming info available - soft warning
+      driftSignals.push({
+        type: 'patternDrift',
+        callsiteId: callsite.id,
+        provider: callsite.provider || undefined,
+        model: callsite.model || undefined,
+        message: `Streaming declared in code but cannot verify from runtime data (no TTFT metrics)`,
+      });
+    }
+  } else if (patterns.streaming === false) {
+    // Code explicitly non-streaming, but runtime shows streaming
+    if (streamingPercent > 50) {
+      driftSignals.push({
+        type: 'patternDrift',
+        callsiteId: callsite.id,
+        provider: callsite.provider || undefined,
+        model: callsite.model || undefined,
+        message: `Non-streaming declared in code but ${streamingPercent.toFixed(0)}% of runtime calls appear to stream`,
+      });
+    }
+  }
+
+  // 2. Batching drift detection
+  if (patterns.batching === true && batchedEvents === 0) {
+    driftSignals.push({
+      type: 'patternDrift',
+      callsiteId: callsite.id,
+      provider: callsite.provider || undefined,
+      model: callsite.model || undefined,
+      message: `Batching declared in code but no batched requests observed at runtime`,
+    });
+  }
+
+  // 3. Caching drift detection
+  if (patterns.caching === true && cachedEvents === 0) {
+    driftSignals.push({
+      type: 'patternDrift',
+      callsiteId: callsite.id,
+      provider: callsite.provider || undefined,
+      model: callsite.model || undefined,
+      message: `Caching declared in code but no cache hits observed at runtime`,
+    });
+  }
+
+  // 4. Retry drift detection
+  if (patterns.retries === true && retriedEvents === 0) {
+    // This could be good (no failures) or indicate retries aren't working
+    // Only flag if there are a significant number of events
+    if (events.length >= 10) {
+      driftSignals.push({
+        type: 'patternDrift',
+        callsiteId: callsite.id,
+        provider: callsite.provider || undefined,
+        model: callsite.model || undefined,
+        message: `Retries declared in code but no retry events observed (${events.length} calls, 0 retries)`,
+      });
+    }
+  }
+
+  // 5. Fallback drift detection
+  if (patterns.fallback === true && fallbackEvents === 0) {
+    // This could be good (primary always works) or indicate fallback isn't working
+    // Only flag if there are a significant number of events
+    if (events.length >= 10) {
+      driftSignals.push({
+        type: 'patternDrift',
+        callsiteId: callsite.id,
+        provider: callsite.provider || undefined,
+        model: callsite.model || undefined,
+        message: `Fallback declared in code but never triggered at runtime (${events.length} calls)`,
+      });
+    }
+  }
+
+  return driftSignals;
+}
+
 // =============================================================================
 // PUBLIC API
 // =============================================================================
@@ -86,6 +208,10 @@ export function join(callsites: Callsite[], events: InferenceEvent[]): JoinedOut
     if (matchedEvents.length > 0) {
       const usage = computeUsageStats(matchedEvents);
       enrichedCallsites.push({ ...callsite, usage });
+
+      // Detect pattern drift for matched callsites
+      const patternDrift = detectPatternDrift(callsite, matchedEvents);
+      drift.push(...patternDrift);
     } else {
       // No matching events - this is code-only
       enrichedCallsites.push(callsite);

@@ -102,6 +102,15 @@ export const InferenceEvent = z.object({
   latency_ms: z.number(),
   intent: z.string().optional(),
   callsite_id: z.string().optional(),
+  // Runtime pattern fields for drift detection
+  streaming: z.boolean().optional(),        // Was this a streaming request?
+  ttft_ms: z.number().optional(),           // Time to first token (streaming only)
+  batch_size: z.number().optional(),        // If part of a batch, how many requests?
+  batch_id: z.string().optional(),          // Group ID for batched requests
+  cached: z.boolean().optional(),           // Was response served from cache?
+  retry_count: z.number().optional(),       // Number of retries before success
+  fallback_used: z.boolean().optional(),    // Was a fallback provider/model used?
+  original_model: z.string().optional(),    // If fallback, what was the original model?
 });
 
 export const ProviderStats = z.object({
@@ -299,3 +308,120 @@ export type TaskType = z.infer<typeof TaskType>;
 export type PlannedTask = z.infer<typeof PlannedTask>;
 export type ExecutionPlan = z.infer<typeof ExecutionPlan>;
 export type TaskResult = z.infer<typeof TaskResult>;
+
+// =============================================================================
+// FORMAT DETECTION & NORMALIZATION (PRD §6.4)
+// =============================================================================
+
+/**
+ * Supported format types for runtime event files.
+ * Direct-parse formats are handled without LLM, agent-normalized formats require semantic analysis.
+ */
+export const FormatType = z.enum([
+  // Direct-parse formats (no LLM needed)
+  'jsonl',           // Newline-delimited JSON with InferenceEvent schema
+  'json_array',      // JSON array of InferenceEvent objects
+  'csv',             // CSV with standard column names
+  'tsv',             // TSV with standard column names
+
+  // Agent-normalized formats (require semantic analysis)
+  'otel',            // OpenTelemetry OTLP traces/spans
+  'jaeger',          // Jaeger distributed tracing format
+  'zipkin',          // Zipkin tracing format
+  'langsmith',       // LangSmith trace exports
+  'helicone',        // Helicone proxy logs
+  'wandb',           // Weights & Biases inference logs
+  'litellm',         // LiteLLM proxy event logs
+  'portkey',         // Portkey gateway logs
+
+  // Inferred formats (heuristic detection)
+  'custom_json',     // Unknown JSON structure requiring field mapping
+  'custom_text',     // Structured text logs
+  'unknown',         // Could not determine format
+]);
+
+/**
+ * Extraction strategy for a field mapping.
+ */
+export const ExtractionType = z.enum([
+  'direct',          // Direct field access (e.g., obj.field)
+  'jsonpath',        // JSONPath expression
+  'column',          // CSV/TSV column name
+  'regex',           // Regular expression extraction
+  'computed',        // Computed from other fields (e.g., latency = end - start)
+  'constant',        // Fixed value for all events
+]);
+
+/**
+ * Transformation to apply after extraction.
+ */
+export const TransformType = z.enum([
+  'none',            // No transformation
+  'unix_ms_to_iso',  // Unix milliseconds to ISO timestamp
+  'unix_s_to_iso',   // Unix seconds to ISO timestamp
+  'unix_nano_to_iso', // Unix nanoseconds to ISO timestamp
+  'duration_to_ms',  // Duration string (e.g., "1.5s") to milliseconds
+  'parse_int',       // String to integer
+  'parse_float',     // String to float
+  'lowercase',       // Lowercase string
+  'provider_normalize', // Normalize provider names (e.g., "OpenAI" -> "openai")
+]);
+
+/**
+ * Field mapping from source format to InferenceEvent schema.
+ */
+export const FieldMapping = z.object({
+  target: z.string(),                    // InferenceEvent field name
+  source_path: z.string(),               // JSONPath, column name, regex, or expression
+  extraction_type: ExtractionType,
+  transform: TransformType.optional().default('none'),
+  confidence: z.number().min(0).max(1),  // Confidence in this mapping (0-1)
+  evidence: z.string().optional(),       // Why this mapping was chosen
+});
+
+/**
+ * Result of format detection.
+ */
+export const FormatDetectionResult = z.object({
+  format_type: FormatType,
+  confidence: z.number().min(0).max(1),  // Overall detection confidence
+  evidence: z.string(),                  // Explanation of detection
+  sample_size: z.number(),               // Number of lines/records sampled
+  requires_agent: z.boolean(),           // Whether agent normalization is needed
+});
+
+/**
+ * Complete normalization result with field mappings.
+ */
+export const NormalizationResult = z.object({
+  detection: FormatDetectionResult,
+  mappings: z.array(FieldMapping),
+  unmapped_fields: z.array(z.string()),  // Source fields not mapped
+  warnings: z.array(z.string()),         // Issues encountered during normalization
+  audit: z.object({
+    normalized_at: z.string(),           // ISO timestamp
+    agent_used: z.boolean(),
+    codebase_context_used: z.boolean(),
+    llm_model: z.string().optional(),
+  }),
+});
+
+/**
+ * Options for format normalization.
+ */
+export const NormalizationOptions = z.object({
+  format_hint: FormatType.optional(),           // User-provided format hint
+  field_hints: z.record(z.string()).optional(), // User-provided field mappings
+  lenient: z.boolean().optional(),              // Accept low-confidence mappings
+  strict: z.boolean().optional(),               // Fail on missing required fields
+  codebase_context: z.any().optional(),         // ScanResult for codebase-aware normalization
+});
+
+// Type exports for format detection
+export type FormatType = z.infer<typeof FormatType>;
+export type ExtractionType = z.infer<typeof ExtractionType>;
+export type TransformType = z.infer<typeof TransformType>;
+export type FieldMapping = z.infer<typeof FieldMapping>;
+export type FormatDetectionResult = z.infer<typeof FormatDetectionResult>;
+export type NormalizationResult = z.infer<typeof NormalizationResult>;
+export type NormalizationOptions = z.infer<typeof NormalizationOptions>;

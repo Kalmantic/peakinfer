@@ -30,6 +30,12 @@ export interface AgentOptions {
   offline?: boolean;
   verbose?: boolean;
   noCache?: boolean; // Force fresh analysis, ignore cached runs
+  // Format detection options (PRD §6.4)
+  formatHint?: string;            // User-specified format type
+  fieldHints?: Record<string, string>; // User-specified field mappings
+  lenient?: boolean;              // Accept low-confidence mappings
+  strict?: boolean;               // Fail on missing fields
+  redact?: boolean;               // Redact code snippets from artifacts
 }
 
 // Progress phases - Julie Zhou aligned (DD Section 6.4)
@@ -97,16 +103,29 @@ interface AgentContext {
 // =============================================================================
 
 function detectMode(opts: AgentOptions): 'static' | 'runtime' | 'combined' {
-  const isEventsFile = opts.path.endsWith('.jsonl') ||
-                       opts.path.endsWith('.json') ||
-                       opts.path.endsWith('.csv');
+  // Check if the main path is an events file (case-insensitive for robustness)
+  const pathLower = opts.path.toLowerCase();
+  const isEventsFile = pathLower.endsWith('.jsonl') ||
+                       pathLower.endsWith('.ndjson') ||
+                       pathLower.endsWith('.json') ||
+                       pathLower.endsWith('.csv');
 
-  if (isEventsFile && !opts.events) {
+  // Also check if it's a file (not directory) - file paths with these extensions are events
+  const pathIsFile = !isDirectory(opts.path);
+
+  // Runtime mode: events file path without separate --events option
+  if (isEventsFile && pathIsFile && !opts.events) {
     return 'runtime';
   }
+  // Combined mode: directory path with --events option
   if (!isEventsFile && opts.events) {
     return 'combined';
   }
+  // Combined mode: events file path with separate --events option (rare but valid)
+  if (isEventsFile && opts.events) {
+    return 'combined';
+  }
+  // Static mode: directory path without --events option
   if (!isEventsFile && !opts.events) {
     return 'static';
   }
@@ -132,6 +151,7 @@ export function plan(opts: AgentOptions): PlanResult {
   const tasks: PlannedTask[] = [];
   let id = 1;
   const mode = detectMode(opts);
+  const pathIsDirectory = isDirectory(opts.path);
 
   // Generate run ID and check resumability
   const inputs = {
@@ -153,7 +173,8 @@ export function plan(opts: AgentOptions): PlanResult {
       description: 'Load pricing data',
     });
 
-    if (mode === 'static' || mode === 'combined') {
+    // Only add static analysis tasks if path is a directory AND mode requires it
+    if ((mode === 'static' || mode === 'combined') && pathIsDirectory) {
       tasks.push({
         id: id++,
         type: 'scan',
@@ -289,6 +310,14 @@ async function executeTask(
           }
         }
       } else {
+        // Validate that path is a directory before attempting to scan
+        if (!isDirectory(ctx.opts.path)) {
+          const ext = ctx.opts.path.toLowerCase();
+          if (ext.endsWith('.jsonl') || ext.endsWith('.ndjson') || ext.endsWith('.json') || ext.endsWith('.csv')) {
+            throw new Error(`Cannot scan file "${ctx.opts.path}" as a codebase. This looks like an events file - try 'peakinfer analyze ${ctx.opts.path}' for runtime analysis.`);
+          }
+          throw new Error(`Expected directory for static analysis, got file: ${ctx.opts.path}`);
+        }
         // Agent SDK pattern: DiscoveryAgent with constrained tools (Glob/Grep/Read)
         const discoveryResult = await DiscoveryAgent.execute({ root: ctx.opts.path });
         ctx.scanResult = discoveryResult.result.scanResult;
@@ -335,7 +364,16 @@ async function executeTask(
     case 'parse_events': {
       const eventsPath = ctx.opts.events || ctx.opts.path;
       try {
-        ctx.events = await parseEvents(eventsPath);
+        // Build normalization options from CLI flags (PRD §6.4)
+        const normalizationOptions = {
+          format_hint: ctx.opts.formatHint as import('./types.js').FormatType | undefined,
+          field_hints: ctx.opts.fieldHints,
+          lenient: ctx.opts.lenient,
+          strict: ctx.opts.strict,
+          codebase_context: ctx.scanResult, // Pass codebase context for smarter normalization
+        };
+
+        ctx.events = await parseEvents(eventsPath, normalizationOptions);
         ctx.runtimeSummary = aggregate(ctx.events);
         // Emit progress with event count
         onProgress?.({ phase: 'parsing', detail: `${ctx.events.length} events` });

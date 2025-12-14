@@ -3,7 +3,8 @@ import { join } from 'path';
 import Anthropic from '@anthropic-ai/sdk';
 import type { ScanResult, Callsite, Patterns, Provider } from './types.js';
 import { createHash } from 'crypto';
-import { loadPrompt, getDefaultPrompt, type AnalysisPrompt } from './templates.js';
+import { loadPrompt, getDefaultPrompt, loadConfig, getConfiguredMode, isCascadeEnabled, type AnalysisPrompt } from './templates.js';
+import { analyzeWithAgent, convertAgentCallsites } from './agent-analyzer.js';
 
 // =============================================================================
 // CONSTANTS
@@ -14,8 +15,8 @@ const MAX_CONTEXT_CHARS = 4000; // Max chars per file to send to LLM
 
 // Fallback regex patterns (used when LLM unavailable)
 const PROVIDER_PATTERNS: Record<string, RegExp[]> = {
-  openai: [/openai/i, /OpenAI\s*\(/, /from\s+['"]openai['"]/],
-  anthropic: [/anthropic/i, /Anthropic\s*\(/, /from\s+['"]@anthropic-ai/],
+  openai: [/openai/i, /\.chat\.completions\.create/, /\.embeddings\.create/, /from\s+['"]openai['"]/],
+  anthropic: [/anthropic/i, /\.messages\.create/, /from\s+['"]@anthropic-ai/],
   google: [/google\.generative/i, /genai\./, /from\s+['"]@google\/generative/],
   together: [/together/i, /Together\s*\(/, /from\s+['"]together/],
   fireworks: [/fireworks/i, /Fireworks\s*\(/],
@@ -25,15 +26,26 @@ const PROVIDER_PATTERNS: Record<string, RegExp[]> = {
   replicate: [/replicate/i, /Replicate\s*\(/],
   aws_bedrock: [/bedrock/i, /BedrockRuntime/],
   azure: [/azure.*openai/i, /AzureOpenAI/],
-  vllm: [/vllm/i, /from\s+vllm/, /LLM\s*\(/],
+  vllm: [/vllm/i, /from\s+vllm/],
   sglang: [/sglang/i, /SGLang/],
   ollama: [/ollama/i, /Ollama\s*\(/],
+};
+
+// Framework detection patterns
+const FRAMEWORK_PATTERNS: Record<string, RegExp[]> = {
+  dspy: [/import\s+dspy/, /from\s+dspy/, /dspy\.Predict/, /dspy\.ChainOfThought/, /dspy\.LM\(/],
+  langchain: [/from\s+langchain/, /import\s+langchain/, /ChatOpenAI\(/, /LLMChain\(/],
+  llamaindex: [/from\s+llama_index/, /import\s+llama_index/, /llama_index\.llms/],
 };
 
 const MODEL_PATTERNS: RegExp[] = [
   /model\s*[=:]\s*['"]([^'"]+)['"]/i,
   /model_name\s*[=:]\s*['"]([^'"]+)['"]/i,
   /modelId\s*[=:]\s*['"]([^'"]+)['"]/i,
+  // DSPy-style: dspy.LM("openai/gpt-4o-mini") or dspy.LM("anthropic/claude-3-5-sonnet")
+  /dspy\.LM\s*\(\s*['"](?:[\w-]+\/)?([^'"]+)['"]/i,
+  // Embeddings models
+  /embeddings\.create\([^)]*model\s*[=:]\s*['"]([^'"]+)['"]/i,
 ];
 
 const PATTERN_DETECTORS: Record<keyof Patterns, RegExp[]> = {
@@ -90,6 +102,7 @@ interface LLMAnalysisResult {
 
 interface AnalyzeOptions {
   useLLM?: boolean;
+  useAgent?: boolean; // Use agent-based analysis with tool use (Opus 4.5) for better accuracy
   verbose?: boolean;
   promptId?: string; // ID of the analysis prompt to use (defaults to 'peak-performance')
   onProgress?: (data: { percent: number; currentFile?: string }) => void; // Progress callback
@@ -129,13 +142,26 @@ Analyze the following code and:
 
 ## PART 1: Identify LLM Usage
 For each LLM API call, extract:
-- line: The line number where the call is made
+- line: The EXACT line number where the inference call is made (not client initialization)
 - provider: MUST be one of: openai, anthropic, google, together, fireworks, groq, mistral, cohere, replicate, aws_bedrock, azure, vllm, sglang, ollama, unknown
-- model: The model name if specified (e.g., "gpt-4o", "claude-3-opus")
+- model: The EXACT model name as specified in the code (e.g., "gpt-4o", "gpt-4o-mini", "claude-3-5-sonnet-20241022", "text-embedding-3-small")
 - framework: langchain, llamaindex, dspy, or null
 - patterns: streaming, batching, retries, caching, fallback (true/false)
 - confidence: 0.0 to 1.0
 - reasoning: Brief explanation
+
+CRITICAL RULES FOR MODEL EXTRACTION:
+1. Look at the model= parameter in the SAME function call
+2. If model is a variable, trace it to find the string value
+3. For embeddings calls, use the embedding model name (e.g., "text-embedding-3-small"), NOT a chat model
+4. For DSPy: look at dspy.LM("provider/model") or dspy.context(lm=...) to find the model
+5. Return the FULL model name exactly as written (e.g., "gpt-4o-mini" not "gpt-4")
+
+CRITICAL: DO NOT flag these as callsites:
+- Client initialization: openai.OpenAI(), anthropic.Anthropic(), etc.
+- Import statements
+- Type annotations or comments
+- Variable assignments without actual API calls
 
 ## PART 2: Generate Insights
 Identify potential issues, anti-patterns, or improvements.
@@ -311,6 +337,17 @@ function detectProviderRegex(context: string, fileContent: string): string | und
   return undefined;
 }
 
+function detectFrameworkRegex(context: string, fileContent: string): string | null {
+  for (const [framework, patterns] of Object.entries(FRAMEWORK_PATTERNS)) {
+    for (const pattern of patterns) {
+      if (pattern.test(context) || pattern.test(fileContent)) {
+        return framework;
+      }
+    }
+  }
+  return null;
+}
+
 function detectModelRegex(context: string): string | undefined {
   for (const pattern of MODEL_PATTERNS) {
     const match = context.match(pattern);
@@ -372,7 +409,48 @@ export async function analyze(
   scanResult: ScanResult,
   options: AnalyzeOptions = {}
 ): Promise<AnalyzeResult> {
-  const { useLLM = true, promptId, onProgress } = options;
+  // Load config and determine analysis mode
+  const config = loadConfig();
+  const configuredMode = getConfiguredMode();
+  const cascadeEnabled = isCascadeEnabled();
+
+  // Options can override config, but config provides defaults
+  const {
+    useLLM = configuredMode === 'llm' || (configuredMode === 'agent' && cascadeEnabled),
+    useAgent = configuredMode === 'agent',
+    verbose = config.agent.verbose,
+    promptId,
+    onProgress
+  } = options;
+
+  if (verbose) {
+    console.log(`[analyzer] Mode: ${configuredMode}, Cascade: ${cascadeEnabled}`);
+  }
+
+  // First preference: Agent-based analysis (most accurate)
+  if (useAgent && process.env.ANTHROPIC_API_KEY) {
+    try {
+      if (verbose) {
+        console.log('[analyzer] Using agent-based analysis');
+      }
+      const agentResult = await analyzeWithAgent(scanResult, { verbose });
+      return {
+        callsites: convertAgentCallsites(agentResult.callsites),
+        insights: agentResult.insights as LLMInsight[],
+      };
+    } catch (error) {
+      if (cascadeEnabled) {
+        console.warn('[analyzer] Agent analysis failed, falling back to LLM/regex:', error);
+        // Fall through to LLM or regex analysis
+      } else {
+        throw error; // Don't cascade, re-throw
+      }
+    }
+  }
+
+  // Second preference: Single-prompt LLM analysis
+  // Third preference: Regex-only analysis (when useLLM=false or no API key)
+
   const callsites: Callsite[] = [];
   const llmInsights: LLMInsight[] = [];
   const fileContents = new Map<string, string>();
@@ -467,6 +545,7 @@ export async function analyze(
       const context = extractContext(content, candidate.line);
       const provider = detectProviderRegex(context, content);
       const model = detectModelRegex(context);
+      const framework = detectFrameworkRegex(context, content);
       const patterns = detectPatternsRegex(context);
 
       const patternCount = Object.values(patterns).filter(Boolean).length;
@@ -480,7 +559,7 @@ export async function analyze(
         line: candidate.line,
         provider: typedProvider,
         model: model ?? null,
-        framework: null,
+        framework: framework,
         runtime: null,
         patterns,
         confidence,
@@ -563,6 +642,7 @@ export async function analyzeFile(
       const context = extractContext(content, line);
       const provider = detectProviderRegex(context, content);
       const model = detectModelRegex(context);
+      const framework = detectFrameworkRegex(context, content);
       const patterns = detectPatternsRegex(context);
 
       const patternCount = Object.values(patterns).filter(Boolean).length;
@@ -576,7 +656,7 @@ export async function analyzeFile(
         line,
         provider: typedProvider,
         model: model ?? null,
-        framework: null,
+        framework: framework,
         runtime: null,
         patterns,
         confidence,

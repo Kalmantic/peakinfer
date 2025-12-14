@@ -34,6 +34,12 @@ program
   .option('--output <format>', 'output format: text (default) or json')
   .option('--cached', 'view previous analysis (offline, no API key needed)')
   .option('--verbose', 'show detailed task progress')
+  // Format detection options (PRD §6.4)
+  .option('--format <type>', 'specify runtime format: jsonl, json, csv, otel, jaeger, zipkin, langsmith, litellm')
+  .option('--map <mappings...>', 'field mappings: --map latency_ms=duration model=model_name')
+  .option('--lenient', 'accept low-confidence field mappings')
+  .option('--strict', 'fail on missing required fields or unknown formats')
+  .option('--redact', 'redact code snippets from artifacts')
   .action(async (path: string, options: {
     events?: string;
     html?: boolean;
@@ -42,6 +48,12 @@ program
     output?: string;
     cached?: boolean;
     verbose?: boolean;
+    // Format detection options
+    format?: string;
+    map?: string[];
+    lenient?: boolean;
+    strict?: boolean;
+    redact?: boolean;
   }) => {
     try {
       // Validate path exists
@@ -81,6 +93,17 @@ program
         onError: (error) => renderer.renderError(error),
       });
 
+      // Parse field mappings from --map option
+      const fieldHints: Record<string, string> = {};
+      if (options.map) {
+        for (const mapping of options.map) {
+          const [target, source] = mapping.split('=');
+          if (target && source) {
+            fieldHints[target.trim()] = source.trim();
+          }
+        }
+      }
+
       await agent.run({
         path,
         events: options.events,
@@ -90,6 +113,12 @@ program
         offline: false,
         noCache: !options.cached, // --cached means use cache
         verbose: options.verbose,
+        // Format detection options
+        formatHint: options.format,
+        fieldHints: Object.keys(fieldHints).length > 0 ? fieldHints : undefined,
+        lenient: options.lenient,
+        strict: options.strict,
+        redact: options.redact,
       });
     } catch (error) {
       if (error instanceof Error) {

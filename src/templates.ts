@@ -344,3 +344,205 @@ export function getDefaultPrompt(): AnalysisPrompt {
   }
   return prompt;
 }
+
+// =============================================================================
+// CONFIGURATION API
+// =============================================================================
+
+const CONFIG_DIR = join(__dirname, '..', 'config');
+
+/**
+ * PeakInfer configuration schema
+ */
+export interface PeakInferConfig {
+  id: string;
+  version: string;
+  description: string;
+  analysis: {
+    mode: 'agent' | 'llm' | 'regex';
+    cascade: boolean;
+  };
+  models: {
+    agent: {
+      primary: string;
+      fallback: string;
+    };
+    llm: {
+      primary: string;
+      fallback: string;
+    };
+  };
+  agent: {
+    max_iterations: number;
+    verbose: boolean;
+  };
+  scanner: {
+    extensions: string[];
+    max_file_size: number;
+    ignore: string[];
+  };
+  output: {
+    format: 'json' | 'yaml' | 'markdown';
+    include_confidence: boolean;
+    min_confidence: number;
+  };
+}
+
+// Default configuration (used as fallback)
+const DEFAULT_CONFIG: PeakInferConfig = {
+  id: 'peakinfer',
+  version: '1.0',
+  description: 'Default PeakInfer configuration',
+  analysis: {
+    mode: 'agent',
+    cascade: true,
+  },
+  models: {
+    agent: {
+      primary: 'claude-opus-4-5-20251101',
+      fallback: 'claude-sonnet-4-20250514',
+    },
+    llm: {
+      primary: 'claude-sonnet-4-20250514',
+      fallback: 'claude-sonnet-4-20250514',
+    },
+  },
+  agent: {
+    max_iterations: 15,
+    verbose: false,
+  },
+  scanner: {
+    extensions: ['.py', '.ts', '.tsx', '.js', '.jsx'],
+    max_file_size: 1048576,
+    ignore: ['node_modules', '.git', '__pycache__', '.venv', 'venv', 'dist', 'build'],
+  },
+  output: {
+    format: 'json',
+    include_confidence: true,
+    min_confidence: 0.5,
+  },
+};
+
+// Cached config
+let cachedConfig: PeakInferConfig | null = null;
+
+/**
+ * Load PeakInfer configuration from config/peakinfer.yaml
+ * Environment variables override file settings:
+ *   - PEAKINFER_MODE: analysis mode (agent, llm, regex)
+ *   - PEAKINFER_MODEL: primary model override
+ *   - PEAKINFER_VERBOSE: enable verbose output
+ * @returns PeakInferConfig
+ */
+export function loadConfig(): PeakInferConfig {
+  // Return cached config if available
+  if (cachedConfig) {
+    return cachedConfig;
+  }
+
+  let config: PeakInferConfig = { ...DEFAULT_CONFIG };
+
+  // Try to load from config file
+  const configPath = join(CONFIG_DIR, 'peakinfer.yaml');
+  if (existsSync(configPath)) {
+    try {
+      const content = readFileSync(configPath, 'utf-8');
+      const parsed = parseYAML(content) as Partial<PeakInferConfig>;
+
+      // Deep merge with defaults
+      config = deepMerge(
+        DEFAULT_CONFIG as unknown as Record<string, unknown>,
+        parsed as unknown as Record<string, unknown>
+      ) as unknown as PeakInferConfig;
+    } catch (err) {
+      console.warn('[config] Failed to load config file, using defaults:', err);
+    }
+  }
+
+  // Apply environment variable overrides
+  if (process.env.PEAKINFER_MODE) {
+    const mode = process.env.PEAKINFER_MODE.toLowerCase();
+    if (['agent', 'llm', 'regex'].includes(mode)) {
+      config.analysis.mode = mode as 'agent' | 'llm' | 'regex';
+    }
+  }
+
+  if (process.env.PEAKINFER_MODEL) {
+    config.models.agent.primary = process.env.PEAKINFER_MODEL;
+    config.models.llm.primary = process.env.PEAKINFER_MODEL;
+  }
+
+  if (process.env.PEAKINFER_VERBOSE === '1' || process.env.PEAKINFER_VERBOSE === 'true') {
+    config.agent.verbose = true;
+  }
+
+  // Cache the config
+  cachedConfig = config;
+
+  return config;
+}
+
+/**
+ * Get the configured model for a given analysis type
+ * @param type - 'agent' or 'llm'
+ * @param fallback - whether to return fallback model
+ * @returns model name
+ */
+export function getConfiguredModel(type: 'agent' | 'llm', fallback: boolean = false): string {
+  const config = loadConfig();
+  const models = config.models[type];
+  return fallback ? models.fallback : models.primary;
+}
+
+/**
+ * Get the configured analysis mode
+ * @returns analysis mode
+ */
+export function getConfiguredMode(): 'agent' | 'llm' | 'regex' {
+  const config = loadConfig();
+  return config.analysis.mode;
+}
+
+/**
+ * Check if cascade fallback is enabled
+ * @returns true if cascade is enabled
+ */
+export function isCascadeEnabled(): boolean {
+  const config = loadConfig();
+  return config.analysis.cascade;
+}
+
+/**
+ * Clear cached configuration (useful for testing)
+ */
+export function clearConfigCache(): void {
+  cachedConfig = null;
+}
+
+/**
+ * Deep merge two objects
+ */
+function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
+  const result = { ...target };
+
+  for (const key of Object.keys(source)) {
+    if (source[key] !== undefined) {
+      if (
+        typeof source[key] === 'object' &&
+        source[key] !== null &&
+        !Array.isArray(source[key]) &&
+        typeof target[key] === 'object' &&
+        target[key] !== null
+      ) {
+        result[key] = deepMerge(
+          target[key] as Record<string, unknown>,
+          source[key] as Record<string, unknown>
+        );
+      } else {
+        result[key] = source[key];
+      }
+    }
+  }
+
+  return result;
+}

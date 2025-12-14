@@ -52,13 +52,40 @@ prompt: |
 
   ### PART 1: Identify LLM Callsites
   For each call:
-  - line: Line number
+  - line: The EXACT line number where the inference call is made (not client initialization)
   - provider: openai, anthropic, google, together, fireworks, groq, mistral, cohere, replicate, aws_bedrock, azure, vllm, sglang, ollama, unknown
-  - model: Model name if found
+  - model: The EXACT model name as specified in the code
   - framework: langchain, llamaindex, dspy, or null
   - patterns: {streaming, batching, retries, caching, fallback} - true/false
   - confidence: 0.0 to 1.0
   - reasoning: Brief explanation
+
+  ### CRITICAL RULES FOR MODEL EXTRACTION
+  1. Look at the model= parameter in the SAME function call
+  2. If model is a variable, trace it to find the actual string value
+  3. For embeddings calls, use the embedding model name (e.g., "text-embedding-3-small"), NOT a chat model
+  4. For DSPy: look at dspy.LM("provider/model") or dspy.context(lm=...) to find the model
+  5. Return the FULL model name exactly as written (e.g., "gpt-4o-mini" not "gpt-4", "claude-3-5-sonnet-20241022" not "claude")
+
+  ### CRITICAL: DO NOT FLAG THESE AS CALLSITES
+  - Client initialization: openai.OpenAI(), anthropic.Anthropic(), AsyncOpenAI(), etc.
+  - Import statements: from openai import OpenAI
+  - Type annotations or comments
+  - Variable assignments without actual API calls: model = "gpt-4o"
+  - SDK client creation without inference: client = OpenAI()
+
+  ### DSPY FRAMEWORK DETECTION
+  DSPy wraps LLM calls in module invocations. Flag these as callsites:
+  - dspy.Predict(signature)(question=...) - the invocation, not the Predict() creation
+  - dspy.ChainOfThought(signature)(question=...) - the invocation
+  - predictor(question=...) where predictor is a DSPy module
+  - compiled_program(input=...) after BootstrapFewShot compilation
+  - self.generate(...) inside a dspy.Module.forward() method
+
+  For DSPy, find the model from:
+  - dspy.LM("provider/model") at module level
+  - dspy.configure(lm=...)
+  - dspy.context(lm=dspy.LM("provider/model"))
 
   ### PART 2: Performance Insights with Impact Estimation
   Generate insights focused on PEAK PERFORMANCE with estimated impact:

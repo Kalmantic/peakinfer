@@ -8,4 +8,9 @@ dist/
 design/
 DESIGN.md
 CLAUDE.md
+EVAL-FRAMEWORK-DESIGN.md
 .env
+
+# Evaluation fixtures and config (internal)
+evals/
+config/
