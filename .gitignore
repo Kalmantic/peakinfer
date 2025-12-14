@@ -3,3 +3,9 @@ dist/
 .DS_Store
 .peakinfer/
 *.log
+
+# Internal docs (not for public repo)
+design/
+DESIGN.md
+CLAUDE.md
+.env
