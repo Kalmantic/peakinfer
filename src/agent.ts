@@ -1,6 +1,6 @@
 import { existsSync, statSync } from 'fs';
 import { resolve } from 'path';
-import type { ExecutionPlan, PlannedTask, TaskResult, ScanResult, Callsite, InferenceEvent, JoinedOutput, Insight, RuntimeSummary, InferenceMap, ImpactEstimate } from './types.js';
+import type { ExecutionPlan, PlannedTask, TaskResult, ScanResult, Callsite, InferenceEvent, JoinedOutput, Insight, RuntimeSummary, InferenceMap, ImpactEstimate, EnrichedCallsite } from './types.js';
 import { scan } from './scanner.js';
 import { analyze, type LLMInsight } from './analyzer.js';
 import { parseEvents, aggregate } from './runtime.js';
@@ -16,6 +16,74 @@ import { VERSION } from './version.js';
 import { enrichInsightsWithImpact, generateImpactSummary, type ImpactSummary } from './impact.js';
 // Agent SDK pattern (DESIGN.md v2.0 Section 2.1)
 import { DiscoveryAgent, AnalyzerAgent, JoinerAgent, InsightAgent } from './agents/index.js';
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Create synthetic enriched callsites from runtime events for insight evaluation.
+ * Groups events by provider:model and computes usage statistics.
+ * This enables runtime-only analysis to benefit from template-based insights.
+ */
+function createSyntheticCallsitesFromEvents(events: InferenceEvent[]): EnrichedCallsite[] {
+  // Group events by provider:model
+  const groups = new Map<string, InferenceEvent[]>();
+
+  for (const event of events) {
+    const key = `${event.provider}:${event.model}`;
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+    groups.get(key)!.push(event);
+  }
+
+  // Convert each group to a synthetic enriched callsite
+  const callsites: EnrichedCallsite[] = [];
+  let id = 1;
+
+  for (const [key, groupEvents] of groups) {
+    const [provider, model] = key.split(':');
+
+    // Compute usage stats
+    const calls = groupEvents.length;
+    const tokens_in = groupEvents.reduce((sum, e) => sum + e.input_tokens, 0);
+    const tokens_out = groupEvents.reduce((sum, e) => sum + e.output_tokens, 0);
+    const latencies = groupEvents.map(e => e.latency_ms).sort((a, b) => a - b);
+
+    const p50Index = Math.floor(latencies.length * 0.5);
+    const p95Index = Math.floor(latencies.length * 0.95);
+    const p99Index = Math.floor(latencies.length * 0.99);
+
+    callsites.push({
+      id: `runtime-${id++}`,
+      file: 'runtime',  // Synthetic location
+      line: 0,
+      provider: provider as EnrichedCallsite['provider'],
+      model,
+      framework: null,
+      runtime: null,
+      patterns: {
+        streaming: groupEvents.some(e => e.streaming === true),
+        batching: groupEvents.some(e => e.batch_id !== undefined),
+        caching: groupEvents.some(e => e.cached === true),
+        retries: groupEvents.some(e => (e.retry_count || 0) > 0),
+        fallback: groupEvents.some(e => e.fallback_used === true),
+      },
+      confidence: 1.0,
+      usage: {
+        calls,
+        tokens_in,
+        tokens_out,
+        latency_p50: latencies[p50Index] || 0,
+        latency_p95: latencies[p95Index] || latencies[p50Index] || 0,
+        latency_p99: latencies[p99Index] || latencies[p95Index] || latencies[p50Index] || 0,
+      },
+    });
+  }
+
+  return callsites;
+}
 
 // =============================================================================
 // TYPES
@@ -402,7 +470,20 @@ async function executeTask(
 
     case 'generate_insights': {
       // Agent SDK pattern: InsightAgent evaluates templates
-      const data = ctx.joined || { callsites: ctx.callsites || [] };
+      // For runtime-only mode, create synthetic callsites from events for template evaluation
+      let data: { callsites: Callsite[] } | JoinedOutput;
+
+      if (ctx.joined) {
+        data = ctx.joined;
+      } else if (ctx.callsites && ctx.callsites.length > 0) {
+        data = { callsites: ctx.callsites };
+      } else if (ctx.events && ctx.events.length > 0) {
+        // Runtime-only mode: create synthetic enriched callsites from events
+        data = { callsites: createSyntheticCallsitesFromEvents(ctx.events) };
+      } else {
+        data = { callsites: [] };
+      }
+
       const insightResult = await InsightAgent.execute({ data, templates });
       const templateInsights = insightResult.result.insights;
 
