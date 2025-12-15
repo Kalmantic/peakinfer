@@ -22,7 +22,7 @@ import { DiscoveryAgent, AnalyzerAgent, JoinerAgent, InsightAgent } from './agen
 // =============================================================================
 
 /**
- * Create synthetic enriched callsites from runtime events for insight evaluation.
+ * Create synthetic enriched inference points from runtime events for insight evaluation.
  * Groups events by provider:model and computes usage statistics.
  * This enables runtime-only analysis to benefit from template-based insights.
  */
@@ -38,7 +38,7 @@ function createSyntheticCallsitesFromEvents(events: InferenceEvent[]): EnrichedC
     groups.get(key)!.push(event);
   }
 
-  // Convert each group to a synthetic enriched callsite
+  // Convert each group to a synthetic enriched inference point
   const callsites: EnrichedCallsite[] = [];
   let id = 1;
 
@@ -470,7 +470,7 @@ async function executeTask(
 
     case 'generate_insights': {
       // Agent SDK pattern: InsightAgent evaluates templates
-      // For runtime-only mode, create synthetic callsites from events for template evaluation
+      // For runtime-only mode, create synthetic inference points from events for template evaluation
       let data: { callsites: Callsite[] } | JoinedOutput;
 
       if (ctx.joined) {
@@ -478,7 +478,7 @@ async function executeTask(
       } else if (ctx.callsites && ctx.callsites.length > 0) {
         data = { callsites: ctx.callsites };
       } else if (ctx.events && ctx.events.length > 0) {
-        // Runtime-only mode: create synthetic enriched callsites from events
+        // Runtime-only mode: create synthetic enriched inference points from events
         data = { callsites: createSyntheticCallsitesFromEvents(ctx.events) };
       } else {
         data = { callsites: [] };
