@@ -1,0 +1,48 @@
+[
+  {
+    "id": "chatcmpl-001",
+    "call_type": "completion",
+    "model": "gpt-4o",
+    "litellm_params": {
+      "model": "gpt-4o",
+      "api_base": "https://api.openai.com/v1",
+      "custom_llm_provider": "openai"
+    },
+    "usage": {
+      "prompt_tokens": 500,
+      "completion_tokens": 400,
+      "total_tokens": 900
+    },
+    "response": {
+      "id": "chatcmpl-001",
+      "model": "gpt-4o",
+      "usage": {
+        "prompt_tokens": 500,
+        "completion_tokens": 400,
+        "total_tokens": 900
+      }
+    },
+    "startTime": 1702634400,
+    "endTime": 1702634401.2,
+    "response_cost": 0.0175,
+    "status": "success"
+  },
+  {
+    "id": "msg-002",
+    "call_type": "completion",
+    "model": "claude-3-sonnet-20240229",
+    "litellm_params": {
+      "model": "claude-3-sonnet-20240229",
+      "api_base": "https://api.anthropic.com",
+      "custom_llm_provider": "anthropic"
+    },
+    "usage": {
+      "prompt_tokens": 2000,
+      "completion_tokens": 300
+    },
+    "startTime": 1702634460,
+    "endTime": 1702634462.5,
+    "response_cost": 0.0105,
+    "status": "success"
+  }
+]

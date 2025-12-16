@@ -1,0 +1,211 @@
+# PeakInfer Insight Templates - TDD v1.3
+# Copy formula per DD v1.3: Headlines should reveal hidden truth and generate "aha" moments
+#
+# Template syntax:
+# - {{var}} for variable interpolation
+# - Markdown supported in description
+# - Severity: critical | warning | info | opportunity
+
+version: "1.3.0"
+
+# =============================================================================
+# COST INSIGHTS
+# =============================================================================
+
+cost:
+  gpt4_to_mini:
+    id: cost-model-swap-gpt4
+    severity: opportunity
+    headline: "GPT-4 → GPT-4o-mini could reduce costs ~{{savings}}%"
+    description: |
+      {{count}} inference points use GPT-4 which costs ~150x more than GPT-4o-mini. 
+      For many use cases, the quality difference is minimal.
+    action: "Evaluate if GPT-4o-mini meets quality requirements for these callsites"
+    triggers:
+      - model_contains: "gpt-4"
+      - model_not_contains: "mini"
+    
+  claude_to_haiku:
+    id: cost-model-swap-claude
+    severity: opportunity
+    headline: "Claude Sonnet → Haiku could reduce costs ~{{savings}}%"
+    description: |
+      Claude 3.5 Sonnet is premium pricing. For simpler tasks, 
+      Claude 3 Haiku offers similar capabilities at ~10x lower cost.
+    action: "Review if Claude Haiku meets requirements for simpler tasks"
+    triggers:
+      - model_contains: "claude"
+      - model_contains: "sonnet"
+      
+  cost_concentration:
+    id: cost-concentration
+    severity: info
+    headline: "{{percent}}% of cost concentrated in {{model}}"
+    description: |
+      A single model dominates your inference spend. This creates both 
+      optimization opportunity and vendor risk.
+    triggers:
+      - top_model_percent_gt: 70
+
+  embeddings_optimization:
+    id: cost-embeddings
+    severity: opportunity
+    headline: "{{count}} embedding calls could use cheaper model"
+    description: |
+      text-embedding-3-large is 5x more expensive than text-embedding-3-small.
+      For many retrieval tasks, the smaller model performs comparably.
+    action: "Benchmark text-embedding-3-small for your use case"
+    triggers:
+      - task_kind: embedding
+      - model_contains: "large"
+
+# =============================================================================
+# DRIFT INSIGHTS
+# =============================================================================
+
+drift:
+  dead_code:
+    id: drift-dead-code
+    severity: warning
+    headline: "{{count}} inference point(s) never exercised"
+    description: |
+      These callsites exist in code but were never observed at runtime. 
+      They may be dead code, behind feature flags, or untested paths.
+    action: "Review if these callsites are needed or if tests are missing"
+    triggers:
+      - code_only_count_gt: 0
+      
+  shadow_traffic:
+    id: drift-shadow-traffic
+    severity: warning  
+    headline: "{{count}} provider/model combo(s) not found in code"
+    description: |
+      These were observed at runtime but couldn't be traced to code. 
+      This often indicates dynamic provider selection or incomplete code scanning.
+    action: "Review dynamic provider selection or expand code scan scope"
+    triggers:
+      - runtime_only_count_gt: 0
+      
+  model_mismatch:
+    id: drift-model-mismatch
+    severity: warning
+    headline: "{{count}} model mismatch(es) between code and runtime"
+    description: |
+      Code specifies one model but runtime shows another. This could be 
+      environment-specific config or a deployment issue.
+    triggers:
+      - drift_type: model_mismatch
+
+# =============================================================================
+# PATTERN INSIGHTS
+# =============================================================================
+
+pattern:
+  fake_streaming:
+    id: pattern-fake-streaming
+    severity: warning
+    headline: "Your streaming is fake"
+    description: |
+      Code shows streaming patterns but runtime latency suggests responses 
+      are not actually streamed. This could be proxy buffering or disabled streaming.
+    action: "Check proxy/gateway configuration and verify stream=True is reaching the provider"
+    triggers:
+      - pattern_detected: streaming
+      - pattern_drift: streaming
+      
+  untested_fallback:
+    id: pattern-fallback-untested
+    severity: info
+    headline: "Your fallback has never fired"
+    description: |
+      Fallback logic exists in code but only one provider was observed at runtime. 
+      Your fallback path is untested in production.
+    action: "Consider testing fallback with synthetic failures or chaos engineering"
+    triggers:
+      - pattern_detected: fallback
+      - single_provider_runtime: true
+      
+  no_retry:
+    id: pattern-no-retry
+    severity: info
+    headline: "No retry pattern detected"
+    description: |
+      LLM API calls are inherently unreliable. Consider adding retry logic 
+      with exponential backoff.
+    action: "Add retry logic using tenacity, backoff, or similar library"
+    triggers:
+      - pattern_not_detected: retry
+
+  no_batching:
+    id: pattern-no-batching
+    severity: info
+    headline: "No batching detected for {{count}} parallel callsites"
+    description: |
+      Multiple inference calls could be batched to reduce overhead and cost.
+      Batching can improve throughput by 2-5x for embarrassingly parallel workloads.
+    action: "Consider using asyncio.gather or batch APIs where available"
+    triggers:
+      - pattern_not_detected: batching
+      - callsite_count_gt: 5
+
+# =============================================================================
+# PERFORMANCE INSIGHTS  
+# =============================================================================
+
+performance:
+  high_p95:
+    id: perf-high-p95
+    severity: warning
+    headline: "p95 latency is {{p95_seconds}}s"
+    description: |
+      5% of requests take over {{p95_seconds}} seconds. This may indicate 
+      timeout risks or poor user experience.
+    triggers:
+      - p95_latency_gt: 5000
+      
+  latency_variance:
+    id: perf-latency-variance
+    severity: info
+    headline: "High latency variance ({{ratio}}x spread)"
+    description: |
+      p95 is {{ratio}}x higher than p50. This indicates inconsistent response times - 
+      could be caused by retry storms, cold starts, or variable request complexity.
+    triggers:
+      - latency_ratio_gt: 5
+
+  throughput_potential:
+    id: perf-throughput
+    severity: opportunity
+    headline: "You're at {{percent}}% of achievable throughput"
+    description: |
+      Based on your models and batch sizes, you could achieve {{potential_rps}} RPS.
+      Currently averaging {{actual_rps}} RPS.
+    triggers:
+      - has_reference_benchmark: true
+
+# =============================================================================
+# CONFIGURATION INSIGHTS
+# =============================================================================
+
+configuration:
+  no_timeout:
+    id: config-no-timeout
+    severity: warning
+    headline: "No timeout configured for {{count}} callsites"
+    description: |
+      LLM requests can hang indefinitely without timeouts. This risks thread 
+      exhaustion and poor error handling.
+    action: "Add explicit timeout configuration to all inference callsites"
+    triggers:
+      - config_missing: timeout
+      
+  hardcoded_key:
+    id: config-hardcoded-key
+    severity: critical
+    headline: "API key appears hardcoded in code"
+    description: |
+      Found what appears to be an API key in source code. This is a security risk.
+    action: "Move API keys to environment variables or secret management"
+    triggers:
+      - pattern_detected: hardcoded_secret
+

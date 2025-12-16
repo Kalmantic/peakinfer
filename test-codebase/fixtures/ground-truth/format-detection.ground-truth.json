@@ -1,0 +1,251 @@
+{
+  "fixtures": [
+    {
+      "fixture": {
+        "name": "events.jsonl",
+        "category": "direct_parse",
+        "version": "1.3.0",
+        "labeled_by": "PeakInfer Team",
+        "labeled_at": "2024-12-15T00:00:00Z"
+      },
+      "detection": {
+        "file": "formats/events.jsonl",
+        "format_type": "jsonl",
+        "field_mappings": {
+          "id": "id",
+          "ts": "ts",
+          "provider": "provider",
+          "model": "model",
+          "input_tokens": "input_tokens",
+          "output_tokens": "output_tokens",
+          "latency_ms": "latency_ms",
+          "cost_usd": "cost_usd"
+        },
+        "expected_event_count": 5,
+        "sample_events": [
+          {
+            "line_number": 1,
+            "expected": {
+              "provider": "openai",
+              "model": "gpt-4o",
+              "input_tokens": 500,
+              "output_tokens": 400,
+              "latency_ms": 1200
+            }
+          },
+          {
+            "line_number": 3,
+            "expected": {
+              "provider": "openai",
+              "model": "text-embedding-3-small",
+              "input_tokens": 1000,
+              "output_tokens": 0,
+              "latency_ms": 150
+            }
+          }
+        ],
+        "difficulty": "easy",
+        "notes": "Exact InferenceEvent schema - should parse directly"
+      }
+    },
+    {
+      "fixture": {
+        "name": "events.json",
+        "category": "direct_parse",
+        "version": "1.3.0",
+        "labeled_by": "PeakInfer Team",
+        "labeled_at": "2024-12-15T00:00:00Z"
+      },
+      "detection": {
+        "file": "formats/events.json",
+        "format_type": "json_array",
+        "field_mappings": {
+          "id": "id",
+          "ts": "ts",
+          "provider": "provider",
+          "model": "model",
+          "input_tokens": "input_tokens",
+          "output_tokens": "output_tokens",
+          "latency_ms": "latency_ms"
+        },
+        "expected_event_count": 5,
+        "sample_events": [
+          {
+            "line_number": 1,
+            "expected": {
+              "provider": "openai",
+              "model": "gpt-4o"
+            }
+          }
+        ],
+        "difficulty": "easy",
+        "notes": "JSON array format"
+      }
+    },
+    {
+      "fixture": {
+        "name": "events.csv",
+        "category": "direct_parse",
+        "version": "1.3.0",
+        "labeled_by": "PeakInfer Team",
+        "labeled_at": "2024-12-15T00:00:00Z"
+      },
+      "detection": {
+        "file": "formats/events.csv",
+        "format_type": "csv",
+        "field_mappings": {
+          "id": "id",
+          "ts": "timestamp",
+          "provider": "provider",
+          "model": "model",
+          "input_tokens": "input_tokens",
+          "output_tokens": "output_tokens",
+          "latency_ms": "latency_ms"
+        },
+        "expected_event_count": 5,
+        "sample_events": [
+          {
+            "line_number": 2,
+            "expected": {
+              "provider": "openai",
+              "model": "gpt-4o"
+            }
+          }
+        ],
+        "difficulty": "easy",
+        "notes": "Standard CSV with header"
+      }
+    },
+    {
+      "fixture": {
+        "name": "otel-traces.json",
+        "category": "observability",
+        "version": "1.3.0",
+        "labeled_by": "PeakInfer Team",
+        "labeled_at": "2024-12-15T00:00:00Z"
+      },
+      "detection": {
+        "file": "formats/otel-traces.json",
+        "format_type": "otel",
+        "field_mappings": {
+          "id": "traceId",
+          "ts": "startTimeUnixNano",
+          "provider": "attributes.llm.vendor",
+          "model": "attributes.llm.request.model",
+          "input_tokens": "attributes.llm.usage.prompt_tokens",
+          "output_tokens": "attributes.llm.usage.completion_tokens",
+          "latency_ms": "duration"
+        },
+        "expected_event_count": 3,
+        "sample_events": [],
+        "difficulty": "medium",
+        "notes": "OpenTelemetry format with semantic conventions"
+      }
+    },
+    {
+      "fixture": {
+        "name": "jaeger-traces.json",
+        "category": "observability",
+        "version": "1.3.0",
+        "labeled_by": "PeakInfer Team",
+        "labeled_at": "2024-12-15T00:00:00Z"
+      },
+      "detection": {
+        "file": "formats/jaeger-traces.json",
+        "format_type": "jaeger",
+        "field_mappings": {
+          "id": "traceID",
+          "ts": "startTime",
+          "provider": "tags.llm.vendor",
+          "model": "tags.llm.model",
+          "input_tokens": "tags.llm.prompt_tokens",
+          "output_tokens": "tags.llm.completion_tokens",
+          "latency_ms": "duration"
+        },
+        "expected_event_count": 3,
+        "sample_events": [],
+        "difficulty": "medium",
+        "notes": "Jaeger trace format"
+      }
+    },
+    {
+      "fixture": {
+        "name": "langsmith-runs.json",
+        "category": "platform",
+        "version": "1.3.0",
+        "labeled_by": "PeakInfer Team",
+        "labeled_at": "2024-12-15T00:00:00Z"
+      },
+      "detection": {
+        "file": "formats/langsmith-runs.json",
+        "format_type": "langsmith",
+        "field_mappings": {
+          "id": "id",
+          "ts": "start_time",
+          "provider": "extra.invocation_params.model_provider",
+          "model": "extra.invocation_params.model_name",
+          "input_tokens": "total_tokens.prompt_tokens",
+          "output_tokens": "total_tokens.completion_tokens",
+          "latency_ms": "latency"
+        },
+        "expected_event_count": 3,
+        "sample_events": [],
+        "difficulty": "medium",
+        "notes": "LangSmith run format"
+      }
+    },
+    {
+      "fixture": {
+        "name": "helicone-logs.json",
+        "category": "platform",
+        "version": "1.3.0",
+        "labeled_by": "PeakInfer Team",
+        "labeled_at": "2024-12-15T00:00:00Z"
+      },
+      "detection": {
+        "file": "formats/helicone-logs.json",
+        "format_type": "helicone",
+        "field_mappings": {
+          "id": "request_id",
+          "ts": "created_at",
+          "provider": "provider",
+          "model": "model",
+          "input_tokens": "prompt_tokens",
+          "output_tokens": "completion_tokens",
+          "latency_ms": "latency_ms"
+        },
+        "expected_event_count": 3,
+        "sample_events": [],
+        "difficulty": "easy",
+        "notes": "Helicone logging format"
+      }
+    },
+    {
+      "fixture": {
+        "name": "litellm-logs.json",
+        "category": "platform",
+        "version": "1.3.0",
+        "labeled_by": "PeakInfer Team",
+        "labeled_at": "2024-12-15T00:00:00Z"
+      },
+      "detection": {
+        "file": "formats/litellm-logs.json",
+        "format_type": "litellm",
+        "field_mappings": {
+          "id": "id",
+          "ts": "startTime",
+          "provider": "model_info.llm_provider",
+          "model": "model",
+          "input_tokens": "usage.prompt_tokens",
+          "output_tokens": "usage.completion_tokens",
+          "latency_ms": "response_time_ms"
+        },
+        "expected_event_count": 3,
+        "sample_events": [],
+        "difficulty": "easy",
+        "notes": "LiteLLM proxy format"
+      }
+    }
+  ]
+}
+

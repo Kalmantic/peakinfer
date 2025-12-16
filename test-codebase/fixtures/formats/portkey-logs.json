@@ -1,0 +1,74 @@
+[
+  {
+    "request_id": "req_001",
+    "trace_id": "trace_001",
+    "request": {
+      "model": "gpt-4o",
+      "messages": [
+        { "role": "user", "content": "Hello!" }
+      ],
+      "provider": "openai"
+    },
+    "response": {
+      "id": "chatcmpl-001",
+      "model": "gpt-4o",
+      "choices": [
+        { "message": { "content": "Hi there!" } }
+      ],
+      "usage": {
+        "prompt_tokens": 500,
+        "completion_tokens": 400
+      }
+    },
+    "config": {
+      "provider": "openai",
+      "retry": {
+        "attempts": 3,
+        "on_status_codes": [429, 500, 502, 503]
+      },
+      "cache": {
+        "mode": "semantic",
+        "max_age": 3600
+      }
+    },
+    "metadata": {
+      "intent": "chat_completion",
+      "tenant": "team-alpha",
+      "region": "us-east-1"
+    },
+    "created_at": "2024-12-15T10:00:00Z",
+    "latency_ms": 1200,
+    "cost": 0.0175,
+    "status": "success",
+    "cache_status": "MISS"
+  },
+  {
+    "request_id": "req_002",
+    "trace_id": "trace_002",
+    "request": {
+      "model": "claude-3-sonnet",
+      "messages": [
+        { "role": "user", "content": "Summarize this..." }
+      ],
+      "provider": "anthropic"
+    },
+    "response": {
+      "model": "claude-3-sonnet-20240229",
+      "usage": {
+        "prompt_tokens": 2000,
+        "completion_tokens": 300
+      }
+    },
+    "config": {
+      "provider": "anthropic"
+    },
+    "metadata": {
+      "intent": "summarization"
+    },
+    "created_at": "2024-12-15T10:01:00Z",
+    "latency_ms": 2500,
+    "cost": 0.0105,
+    "status": "success",
+    "cache_status": "DISABLED"
+  }
+]

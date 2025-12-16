@@ -2,20 +2,22 @@
 /**
  * PeakInfer CLI — Main Entry Point
  *
- * Per PRD v0.95 Section 9: SLC v1 Commands
- * - peakinfer analyze .
+ * Per PRD v1.3 & TDD v1.3:
+ * - peakinfer analyze .                    # Static analysis
+ * - peakinfer analyze events.jsonl         # Runtime analysis (any format)
+ * - peakinfer analyze . --events prod.csv  # Combined analysis with drift detection
  * - peakinfer stackmap
  * - peakinfer pricing
  * - peakinfer diff old.json new.json
- * - peakinfer profile --events events.jsonl (Phase 2: Runtime Telemetry)
  *
  * Design: SLC (Simple, Lovable, Complete)
- * First-use experience: Welcoming, clear, actionable.
+ * Per DD v1.3: Output order is Header → Progress → Findings → Scope → Runtime → Drift → Artifacts
  */
 
 import * as path from 'path';
 import * as fs from 'fs';
 import { analyzeWithAgent } from './agent-analyzer.js';
+import { AgentOrchestrator, type AnalysisResult as OrchestratorResult } from './agent/orchestrator.js';
 import { scan } from './scanner.js';
 import {
   renderErrorState,
@@ -27,17 +29,30 @@ import {
   type SDKCheckResult,
 } from './prd-renderer.js';
 import { generateHTMLReport } from './html-renderer.js';
-import type { ScanResult, StackMap, PricingSummary, TechStack } from './types.js';
+import { writePDFReport } from './pdf-renderer.js';
+import type { ScanResult, StackMap, PricingSummary, TechStack, InferencePatterns } from './types.js';
 import { profileEvents, type ProfileResult } from './profiler.js';
+import { joinStaticAndRuntime, detectDrift, type JoinResult, type DriftReport } from './join/index.js';
+import { normalizeEventsFile, normalizeWithCodebaseContext } from './format/index.js';
+import type { JoinedInference, DriftSignal } from './types.js';
+import { ContextManager } from './context-manager.js';
 
 // =============================================================================
-// CONFIGURATION
+// CONFIGURATION (TDD v1.3 Section 6)
 // =============================================================================
 
-/** Output file names */
-const OUTPUT_STACKMAP = 'peakinfer-stackmap.json';
-const OUTPUT_PRICING = 'peakinfer-pricing.json';
-const OUTPUT_HTML = 'peakinfer-report.html';
+/** Artifact output directory - per TDD v1.3 */
+const OUTPUT_DIR = '.peakinfer';
+
+/** Output file names - all artifacts go to .peakinfer/ */
+const OUTPUT_STACKMAP = 'inferencemap.json';
+const OUTPUT_PRICING = 'pricing.json';
+const OUTPUT_INSIGHTS = 'insights.json';
+const OUTPUT_JOINED = 'joined.json';
+const OUTPUT_RUNTIME = 'runtime.json';
+const OUTPUT_HTML = 'report.html';
+const OUTPUT_PDF = 'report.pdf';
+const OUTPUT_META = 'meta.json';
 
 // =============================================================================
 // FIRST-USE EXPERIENCE
@@ -106,9 +121,13 @@ function checkApiKey(): boolean {
 /** Options for analyze command */
 interface AnalyzeOptions {
   html?: boolean;
+  pdf?: boolean;    // v1.3: PDF report generation
   open?: boolean;
   detailed?: boolean;
-  events?: string; // Optional path to events.jsonl for combined analysis
+  events?: string;  // Optional path to events file for combined analysis
+  format?: string;  // v1.3: Manually specify events file format
+  map?: string[];   // v1.3: Field mapping hints (field=source)
+  lenient?: boolean; // v1.3: Allow low-confidence normalizations
 }
 
 /** Common telemetry file patterns to search for */
@@ -276,6 +295,14 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
         }
       }
 
+      // Write PDF report if requested (PRD v1.3 Section 9)
+      if (options.pdf) {
+        const pdfPath = await writePDFReport(root, scanResult, stackMap, pricing, techStack, patterns);
+        if (pdfPath) {
+          outputFiles.push(pdfPath);
+        }
+      }
+
       progress.completeStep('generate-reports', 'success', `Generated ${outputFiles.length} output files`);
     }
 
@@ -311,7 +338,7 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
       console.log('');
 
       // =========================================================================
-      // PHASE 5: Runtime Telemetry Integration
+      // PHASE 5: Combined Analysis - Join Static + Runtime (TDD v1.3)
       // =========================================================================
 
       // Check for unknown models
@@ -322,21 +349,80 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
       const telemetryPath = options.events ? path.resolve(options.events) : findTelemetryFile(root);
 
       if (telemetryPath && fs.existsSync(telemetryPath)) {
-        // Telemetry file found - run profile analysis
+        // Combined analysis mode - TDD v1.3 compliant
         console.log('');
-        console.log('┌─────────────────────────────────────────────────────────────────────┐');
-        console.log('│                    RUNTIME TELEMETRY DETECTED                       │');
-        console.log('├─────────────────────────────────────────────────────────────────────┤');
-        console.log(`│   Found: ${path.basename(telemetryPath).padEnd(55)} │`);
-        console.log('│   Analyzing actual runtime costs and model usage...                 │');
-        console.log('└─────────────────────────────────────────────────────────────────────┘');
-        console.log('');
-
+        progress.startStep('combined-analysis', 'Performing combined analysis (static + runtime)');
+        
         try {
-          const profileResult = await profileEvents(telemetryPath, {});
-          renderRuntimeTelemetrySummary(profileResult, modelStats);
+          // TDD v1.3 Section 9.3: Codebase-aware normalization in combined mode
+          // Use static analysis callsites to extract logging context for better field mapping
+          const parseResult = await normalizeWithCodebaseContext(
+            telemetryPath,
+            callsites, // Pass callsites for codebase-aware normalization
+            {
+              format: options.format as any,
+              lenient: options.lenient,
+              skipErrors: true,
+            }
+          );
+          
+          const events = parseResult.events;
+          const formatInfo = parseResult.format;
+          const usedCodebaseContext = parseResult.codebaseContext?.confidence || 0;
+          
+          let formatMsg = `Parsed ${events.length} events (format: ${formatInfo.detected})`;
+          if (usedCodebaseContext > 0) {
+            formatMsg += ` [codebase-aware: ${(usedCodebaseContext * 100).toFixed(0)}% confidence]`;
+          }
+          progress.completeStep('combined-analysis', 'success', formatMsg);
+          
+          if (events.length > 0) {
+            // Run join engine to correlate static + runtime
+            progress.startStep('join-analysis', 'Joining static analysis with runtime events');
+            
+            const joinResult = joinStaticAndRuntime(callsites, events, {
+              enableFuzzyMatch: false,
+              minMatchConfidence: 0.7,
+              detectPatternDrift: true,
+              patterns,
+            });
+            
+            progress.completeStep('join-analysis', 
+              joinResult.drift.length > 0 ? 'warning' : 'success',
+              `${joinResult.joinStats.matchedCallsites}/${joinResult.joinStats.totalCallsites} callsites matched, ${joinResult.drift.length} drift signals`
+            );
+            
+            // Save joined.json artifact (TDD v1.3)
+            const outputDir = ensureOutputDir(root);
+            const joinedPath = path.join(outputDir, OUTPUT_JOINED);
+            fs.writeFileSync(joinedPath, JSON.stringify(joinResult, null, 2), 'utf-8');
+            
+            // Save runtime.json artifact (TDD v1.3)
+            const runtimePath = path.join(outputDir, OUTPUT_RUNTIME);
+            fs.writeFileSync(runtimePath, JSON.stringify({
+              format: formatInfo,
+              eventCount: events.length,
+              codebaseContext: parseResult.codebaseContext,
+            }, null, 2), 'utf-8');
+            
+            // Render drift detection results (PRD-aligned output)
+            renderDriftAnalysis(joinResult, formatInfo);
+            
+            // Also run profiler for cost analysis
+            const profileResult = await profileEvents(telemetryPath, {
+              format: options.format as any,
+              lenient: options.lenient,
+            });
+            renderRuntimeTelemetrySummary(profileResult, modelStats);
+          } else {
+            console.log('');
+            console.log('  No valid events found in runtime file.');
+            console.log(`  Format detected: ${formatInfo.detected} (confidence: ${(formatInfo.confidence * 100).toFixed(0)}%)`);
+          }
         } catch (telemetryError) {
-          console.log(`  (telemetry analysis failed: ${telemetryError instanceof Error ? telemetryError.message : 'unknown error'})`);
+          progress.completeStep('combined-analysis', 'warning',
+            `Runtime analysis failed: ${telemetryError instanceof Error ? telemetryError.message : 'unknown error'}`
+          );
         }
       } else if (dynamicPercent > 30) {
         // High unknown rate - suggest telemetry
@@ -345,7 +431,8 @@ async function analyze(targetPath: string, options: AnalyzeOptions = {}): Promis
 
       // Open HTML report in browser if requested
       if (options.html) {
-        const htmlPath = path.join(root, OUTPUT_HTML);
+        const outputDir = path.join(root, OUTPUT_DIR);
+        const htmlPath = path.join(outputDir, OUTPUT_HTML);
         if (fs.existsSync(htmlPath) && options.open) {
           openInBrowser(htmlPath);
         }
@@ -764,12 +851,17 @@ function diffPricing(oldData: any, newData: any): void {
 // =============================================================================
 
 /**
- * Analyze runtime telemetry from events.jsonl file.
- * PRD Phase 2: `peakinfer profile --events events.jsonl`
+ * Analyze runtime telemetry from events file (any format).
+ * v1.3: Supports multiple formats with automatic detection.
  */
 async function profile(
   eventsFile: string,
-  options: { clusterMethod?: 'semantic' | 'cost' | 'latency'; outputFile?: string } = {}
+  options: { 
+    clusterMethod?: 'semantic' | 'cost' | 'latency'; 
+    outputFile?: string;
+    format?: string;
+    lenient?: boolean;
+  } = {}
 ): Promise<void> {
   const eventsPath = path.resolve(eventsFile);
 
@@ -788,6 +880,9 @@ peakinfer profile
 
     const result = await profileEvents(eventsPath, {
       clusterMethod: options.clusterMethod,
+      format: options.format as any,
+      lenient: options.lenient,
+      onProgress: (msg) => console.log(`  ${msg}`),
     });
 
     // Render summary
@@ -905,23 +1000,139 @@ function renderProfileSummary(result: ProfileResult): void {
 }
 
 // =============================================================================
+// DRIFT ANALYSIS RENDERERS (TDD v1.3 Section 10)
+// =============================================================================
+
+/**
+ * Render drift analysis results - the core "combined analysis" output.
+ * Per DD v1.3: Drift must be explicit lists, not buried in paragraphs.
+ */
+function renderDriftAnalysis(
+  joinResult: JoinResult,
+  formatInfo: { detected: string; confidence: number }
+): void {
+  const { drift, codeOnly, runtimeOnly, joinStats } = joinResult;
+  
+  console.log('');
+  console.log('┌─────────────────────────────────────────────────────────────────────┐');
+  console.log('│                    COMBINED ANALYSIS (CODE + RUNTIME)               │');
+  console.log('├─────────────────────────────────────────────────────────────────────┤');
+  console.log(`│   Format: ${formatInfo.detected.toUpperCase().padEnd(15)} Confidence: ${(formatInfo.confidence * 100).toFixed(0)}%              │`);
+  console.log(`│   Callsites matched: ${joinStats.matchedCallsites}/${joinStats.totalCallsites} (${(joinStats.confidence * 100).toFixed(0)}% join rate)            │`);
+  console.log(`│   Events correlated: ${joinStats.matchedEvents}/${joinStats.totalEvents}                              │`);
+  console.log('└─────────────────────────────────────────────────────────────────────┘');
+  console.log('');
+  
+  // Drift section - only show if there's drift (DD v1.3 Section 6.8)
+  if (drift.length > 0) {
+    console.log('┌─────────────────────────────────────────────────────────────────────┐');
+    console.log('│                              DRIFT                                  │');
+    console.log('├─────────────────────────────────────────────────────────────────────┤');
+    
+    // Group by drift type for cleaner output
+    const codeOnlyDrifts = drift.filter(d => d.type === 'code_only');
+    const runtimeOnlyDrifts = drift.filter(d => d.type === 'runtime_only');
+    const mismatchDrifts = drift.filter(d => 
+      d.type === 'model_mismatch' || d.type === 'provider_mismatch'
+    );
+    const patternDrifts = drift.filter(d => d.type === 'pattern_mismatch');
+    
+    // Code-only (dead code)
+    if (codeOnlyDrifts.length > 0) {
+      console.log('│                                                                     │');
+      console.log('│   In code, not in events (dead code / untested):                    │');
+      for (const d of codeOnlyDrifts.slice(0, 5)) {
+        const loc = d.file ? `${d.file}:${d.line}` : 'unknown';
+        const shortLoc = loc.length > 40 ? '...' + loc.slice(-37) : loc;
+        console.log(`│     - ${shortLoc.padEnd(42)} ${d.codeValue?.padEnd(15) || ''}  │`);
+      }
+      if (codeOnlyDrifts.length > 5) {
+        console.log(`│     ... and ${codeOnlyDrifts.length - 5} more                                          │`);
+      }
+    }
+    
+    // Runtime-only (shadow traffic)
+    if (runtimeOnlyDrifts.length > 0) {
+      console.log('│                                                                     │');
+      console.log('│   In events, not in code (dynamic routing / missing scan):          │');
+      for (const d of runtimeOnlyDrifts.slice(0, 5)) {
+        const calls = d.observationCount || 0;
+        console.log(`│     - ${(d.runtimeValue || 'unknown').padEnd(30)} (${calls} calls observed)    │`);
+      }
+      if (runtimeOnlyDrifts.length > 5) {
+        console.log(`│     ... and ${runtimeOnlyDrifts.length - 5} more                                          │`);
+      }
+    }
+    
+    // Mismatches
+    if (mismatchDrifts.length > 0) {
+      console.log('│                                                                     │');
+      console.log('│   Mismatches (code vs runtime):                                     │');
+      for (const d of mismatchDrifts.slice(0, 5)) {
+        const loc = d.file ? `${d.file}:${d.line}` : '';
+        const shortLoc = loc.length > 25 ? '...' + loc.slice(-22) : loc;
+        console.log(`│     - ${shortLoc.padEnd(25)} code: ${(d.codeValue || '?').padEnd(12)} runtime: ${d.runtimeValue || '?'} │`);
+      }
+      if (mismatchDrifts.length > 5) {
+        console.log(`│     ... and ${mismatchDrifts.length - 5} more                                          │`);
+      }
+    }
+    
+    // Pattern drift
+    if (patternDrifts.length > 0) {
+      console.log('│                                                                     │');
+      console.log('│   Pattern mismatches:                                               │');
+      for (const d of patternDrifts.slice(0, 3)) {
+        const desc = d.description.length > 60 ? d.description.slice(0, 57) + '...' : d.description;
+        console.log(`│     - ${desc.padEnd(60)}   │`);
+      }
+    }
+    
+    console.log('│                                                                     │');
+    console.log('└─────────────────────────────────────────────────────────────────────┘');
+    console.log('');
+    
+    // Severity summary
+    const errors = drift.filter(d => d.severity === 'error').length;
+    const warnings = drift.filter(d => d.severity === 'warning').length;
+    const infos = drift.filter(d => d.severity === 'info').length;
+    
+    if (errors > 0) {
+      console.log(`  ⚠ ${errors} error(s), ${warnings} warning(s), ${infos} info(s)`);
+      console.log('');
+    }
+  } else {
+    console.log('  ✓ No drift detected - code and runtime are aligned');
+    console.log('');
+  }
+}
+
+// =============================================================================
 // RUNTIME TELEMETRY INTEGRATION RENDERERS
 // =============================================================================
 
 /**
  * Render runtime telemetry summary within analyze output
- * Shows actual costs and model usage from events.jsonl
+ * Shows actual costs and model usage from events file (any format)
  */
 function renderRuntimeTelemetrySummary(
   result: ProfileResult,
   modelStats: { total: number; dynamic: number }
 ): void {
-  const { summary, optimizations, monthlyProjection } = result;
+  const { summary, optimizations, monthlyProjection, formatInfo } = result;
 
   // Runtime vs Static comparison header
   console.log('┌─────────────────────────────────────────────────────────────────────┐');
   console.log('│                    ACTUAL RUNTIME COSTS                             │');
   console.log('├─────────────────────────────────────────────────────────────────────┤');
+  
+  // v1.3: Show format detection info
+  if (formatInfo) {
+    const formatStr = formatInfo.detected.toUpperCase();
+    const confStr = `${(formatInfo.confidence * 100).toFixed(0)}%`;
+    console.log(`│   Format: ${formatStr.padEnd(15)} Confidence: ${confStr.padEnd(5)}              │`);
+  }
+  
   console.log(`│   Events analyzed:    ${String(summary.total_events).padEnd(10)}                             │`);
   console.log(`│   Total runtime cost: $${summary.total_cost.toFixed(4).padEnd(12)}                           │`);
   console.log(`│   Avg latency:        ${summary.avg_latency_ms.toFixed(0)}ms                                   │`);
@@ -1032,11 +1243,153 @@ function renderTelemetrySuggestion(
 }
 
 // =============================================================================
+// REFS COMMAND (TDD v1.3 Section 10)
+// =============================================================================
+
+/**
+ * Reference data management command.
+ * Sub-commands:
+ *   refs status   - Show current reference data version and age
+ *   refs refresh  - Force refresh reference data from sources
+ *   refs pin      - Pin to specific version for reproducibility
+ */
+async function refs(
+  subCommand: string | undefined,
+  options: { version?: string }
+): Promise<void> {
+  const { ContextManager } = await import('./context-manager.js');
+  const contextManager = new ContextManager(process.cwd());
+  await contextManager.initialize();
+  
+  const refsCachePath = path.join(contextManager.getBaseDir(), 'cache', 'refs');
+  
+  if (subCommand === 'status' || !subCommand) {
+    console.log(`
+peakinfer refs status
+─────────────────────────────────────────────────────────────────
+`);
+    
+    // Check for cached reference data
+    const pricingPath = path.join(refsCachePath, 'pricing.json');
+    const benchmarkPath = path.join(refsCachePath, 'benchmarks.json');
+    
+    const checkFile = (filePath: string, name: string) => {
+      if (fs.existsSync(filePath)) {
+        const stat = fs.statSync(filePath);
+        const ageMs = Date.now() - stat.mtimeMs;
+        const ageHours = Math.round(ageMs / (1000 * 60 * 60));
+        const stale = ageHours > 24;
+        const status = stale ? '⚠ stale' : '✓ current';
+        console.log(`  ${name.padEnd(15)} ${status} (${ageHours}h old)`);
+      } else {
+        console.log(`  ${name.padEnd(15)} ✗ not cached`);
+      }
+    };
+    
+    checkFile(pricingPath, 'Pricing');
+    checkFile(benchmarkPath, 'Benchmarks');
+    
+    // Show pinned version if any
+    const pinnedPath = path.join(refsCachePath, '.pinned');
+    if (fs.existsSync(pinnedPath)) {
+      const pinned = fs.readFileSync(pinnedPath, 'utf-8').trim();
+      console.log(`\n  Pinned to: ${pinned}`);
+    } else {
+      console.log(`\n  Not pinned (using latest)`);
+    }
+    
+    console.log(`
+  Run \`peakinfer refs refresh\` to update reference data.
+  Run \`peakinfer refs pin --version <id>\` to pin a version.
+`);
+    
+  } else if (subCommand === 'refresh') {
+    console.log(`
+peakinfer refs refresh
+─────────────────────────────────────────────────────────────────
+`);
+    
+    console.log('  Refreshing reference data...\n');
+    
+    // Clear existing cache
+    await contextManager.clearCache();
+    
+    // Import and refresh pricing data
+    try {
+      const pricingDataPath = path.resolve(process.cwd(), 'data/pricing/gpu-providers.json');
+      if (fs.existsSync(pricingDataPath)) {
+        const pricingData = JSON.parse(fs.readFileSync(pricingDataPath, 'utf-8'));
+        await contextManager.setRefsCache('pricing', pricingData);
+        console.log('  ✓ Pricing data refreshed');
+      } else {
+        console.log('  ⚠ Pricing data not found locally');
+      }
+    } catch (e) {
+      console.log('  ✗ Failed to refresh pricing data');
+    }
+    
+    // Note: In production, this would fetch from remote sources
+    console.log(`
+  Reference data refreshed.
+  Cache expires in 24 hours.
+`);
+    
+  } else if (subCommand === 'pin') {
+    if (!options.version) {
+      console.error('error: pin requires --version <id>');
+      console.error('usage: peakinfer refs pin --version 2024-01-15');
+      process.exit(1);
+    }
+    
+    const pinnedPath = path.join(refsCachePath, '.pinned');
+    fs.mkdirSync(path.dirname(pinnedPath), { recursive: true });
+    fs.writeFileSync(pinnedPath, options.version);
+    
+    console.log(`
+peakinfer refs pin
+─────────────────────────────────────────────────────────────────
+
+  Reference data pinned to: ${options.version}
+  
+  This ensures deterministic results across runs.
+  Use \`peakinfer refs status\` to check current state.
+`);
+    
+  } else if (subCommand === 'unpin') {
+    const pinnedPath = path.join(refsCachePath, '.pinned');
+    if (fs.existsSync(pinnedPath)) {
+      fs.unlinkSync(pinnedPath);
+      console.log('  Reference data unpinned. Using latest.');
+    } else {
+      console.log('  Not currently pinned.');
+    }
+    
+  } else {
+    console.error(`unknown refs sub-command: ${subCommand}`);
+    console.error('usage: peakinfer refs [status|refresh|pin|unpin]');
+    process.exit(1);
+  }
+}
+
+// =============================================================================
 // HELPERS
 // =============================================================================
 
 /**
- * Write output files (stackmap.json, pricing.json).
+ * Ensure .peakinfer/ directory exists and return path.
+ * Per TDD v1.3 Section 6: All artifacts go to .peakinfer/
+ */
+function ensureOutputDir(root: string): string {
+  const outputDir = path.join(root, OUTPUT_DIR);
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+  return outputDir;
+}
+
+/**
+ * Write output files to .peakinfer/ directory.
+ * Per TDD v1.3: Artifacts are deterministic and auditable.
  * Returns paths of written files.
  */
 function writeOutputFiles(
@@ -1046,6 +1399,7 @@ function writeOutputFiles(
   skipJson?: boolean
 ): string[] {
   const writtenFiles: string[] = [];
+  const outputDir = ensureOutputDir(root);
 
   // Skip JSON files if only HTML is needed (cleaner output)
   if (skipJson) {
@@ -1053,15 +1407,26 @@ function writeOutputFiles(
   }
 
   try {
-    // Write stackmap.json
-    const stackMapPath = path.join(root, OUTPUT_STACKMAP);
+    // Write inferencemap.json (was stackmap.json - renamed per TDD v1.3)
+    const stackMapPath = path.join(outputDir, OUTPUT_STACKMAP);
     fs.writeFileSync(stackMapPath, JSON.stringify(stackMap, null, 2), 'utf-8');
     writtenFiles.push(stackMapPath);
 
     // Write pricing.json
-    const pricingPath = path.join(root, OUTPUT_PRICING);
+    const pricingPath = path.join(outputDir, OUTPUT_PRICING);
     fs.writeFileSync(pricingPath, JSON.stringify(pricing, null, 2), 'utf-8');
     writtenFiles.push(pricingPath);
+
+    // Write meta.json with run metadata
+    const metaPath = path.join(outputDir, OUTPUT_META);
+    const meta = {
+      version: '1.3.0',
+      timestamp: new Date().toISOString(),
+      root: root,
+      totalCallsites: stackMap.summary?.totalCallsites || 0,
+    };
+    fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
+    writtenFiles.push(metaPath);
   } catch {
     // Silently fail on write errors (non-critical)
   }
@@ -1070,7 +1435,8 @@ function writeOutputFiles(
 }
 
 /**
- * Write HTML report.
+ * Write HTML report to .peakinfer/ directory.
+ * Per TDD v1.3: Reports are artifacts that live alongside JSON files.
  * Returns path if successful, null otherwise.
  */
 function writeHTMLReport(
@@ -1081,8 +1447,9 @@ function writeHTMLReport(
   techStack?: TechStack
 ): string | null {
   try {
+    const outputDir = ensureOutputDir(root);
     const htmlContent = generateHTMLReport(scan, stackMap, pricing, techStack);
-    const htmlPath = path.join(root, OUTPUT_HTML);
+    const htmlPath = path.join(outputDir, OUTPUT_HTML);
     fs.writeFileSync(htmlPath, htmlContent, 'utf-8');
     return htmlPath;
   } catch {
@@ -1131,21 +1498,33 @@ function main(): void {
   // Show help (PRD Section 9 commands only)
   if (args.includes('--help') || args.includes('-h')) {
     console.log(`
-peakinfer — llm inference intelligence
+peakinfer v1.3 — llm inference intelligence
 
 usage:
   peakinfer analyze <path>              analyze codebase for LLM usage (static)
-  peakinfer profile --events <file>     analyze runtime telemetry (events.jsonl)
+  peakinfer analyze <events-file>       analyze runtime events (any format)
+  peakinfer analyze <path> --events <file>  combined analysis (static + runtime)
   peakinfer stackmap                    show stackmap from previous analysis
   peakinfer pricing                     show pricing breakdown
   peakinfer diff <old.json> <new.json>  compare two analyses
 
 analyze options:
-  --html                      generate an html report
-  --open                      open html report in browser
+  --html                      generate an HTML report
+  --pdf                       generate a PDF report
+  --open                      open report in browser after generation
+  --events <file>             path to events file for combined analysis
 
-profile options:
-  --events <file>             path to events.jsonl file (required)
+runtime format options (v1.3):
+  --format <type>             manually specify format (jsonl, csv, otel, jaeger, etc.)
+  --map <field>=<source>      provide field mapping hints (can use multiple times)
+  --lenient                   allow low-confidence format detection
+
+supported formats:
+  direct parse:    jsonl, json, csv, tsv
+  agent-normalized: otel, jaeger, zipkin, langsmith, helicone, wandb, litellm
+
+profile options (legacy):
+  --events <file>             path to events file (required)
   --cluster <method>          clustering method: semantic, cost, latency
   --output <file>             save profile report to file
 
@@ -1157,30 +1536,41 @@ stackmap options:
   --json                      output raw JSON
   --cached                    show cached stackmap even if stale
 
+refs sub-commands:
+  refs status                 show reference data version and staleness
+  refs refresh                force refresh from sources
+  refs pin --version <id>     pin to specific version
+  refs unpin                  unpin and use latest
+
 examples:
-  peakinfer analyze .                      # static codebase analysis
-  peakinfer profile --events events.jsonl  # runtime telemetry analysis
-  peakinfer stackmap                       # view your inference map
-  peakinfer pricing --detailed             # detailed cost breakdown
-  peakinfer diff old.json new.json         # compare changes over time
+  peakinfer analyze .                          # static codebase analysis
+  peakinfer analyze events.jsonl               # runtime analysis (auto-detect format)
+  peakinfer analyze traces.json --format otel  # OpenTelemetry traces
+  peakinfer analyze . --events prod.csv --html # combined with CSV events
+  peakinfer analyze logs.txt --lenient         # custom logs with lenient parsing
 
 environment:
-  ANTHROPIC_API_KEY           required for analyze command
+  ANTHROPIC_API_KEY           required for analyze command (static analysis)
 `);
     process.exit(0);
   }
 
   // Show version
   if (args.includes('--version') || args.includes('-v')) {
-    console.log('peakinfer v0.95');
+    console.log('peakinfer v1.3.0');
     process.exit(0);
   }
 
   // Parse options
   const options: AnalyzeOptions = {
     html: args.includes('--html') || args.includes('--open'),
+    pdf: args.includes('--pdf'),
     open: args.includes('--open'),
     detailed: args.includes('--detailed'),
+    events: getArgValue(args, '--events'),
+    format: getArgValue(args, '--format'),
+    lenient: args.includes('--lenient'),
+    map: getArgValues(args, '--map'), // Can be specified multiple times
   };
 
   // Filter out options to get positional args
@@ -1223,8 +1613,17 @@ environment:
     const profileOptions = {
       clusterMethod: getArgValue(args, '--cluster') as 'semantic' | 'cost' | 'latency' | undefined,
       outputFile: getArgValue(args, '--output'),
+      format: getArgValue(args, '--format'),
+      lenient: args.includes('--lenient'),
     };
     profile(eventsFile, profileOptions);
+  } else if (command === 'refs') {
+    // Reference data management (TDD v1.3 Section 10)
+    const refsSubCommand = positionalArgs[1];
+    const refsOptions = {
+      version: getArgValue(args, '--version'),
+    };
+    refs(refsSubCommand, refsOptions);
   } else if (!command) {
     // Default: analyze current directory
     analyze('.', options);
@@ -1242,6 +1641,17 @@ function getArgValue(args: string[], argName: string): string | undefined {
     return args[idx + 1];
   }
   return undefined;
+}
+
+/** Get all values for a CLI argument that can appear multiple times like --map field=value --map field2=value2 */
+function getArgValues(args: string[], argName: string): string[] {
+  const values: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === argName && i + 1 < args.length) {
+      values.push(args[i + 1]);
+    }
+  }
+  return values;
 }
 
 // Run if executed directly

@@ -26,6 +26,8 @@ import * as path from 'path';
 import { glob } from 'glob';
 import ignore from 'ignore';
 
+type Ignore = ReturnType<typeof ignore>;
+
 export class CodebaseCollector extends BaseCollector {
   private scanOptions: CodebaseScanOptions;
   private languagePatterns: LanguagePatterns[];
@@ -244,7 +246,7 @@ export class CodebaseCollector extends BaseCollector {
   /**
    * Load ignore patterns from .gitignore and .peakinferignore
    */
-  private async loadIgnorePatterns(): Promise<ReturnType<typeof ignore>> {
+  private async loadIgnorePatterns(): Promise<Ignore> {
     const ig = ignore();
     
     // Default ignore patterns
@@ -293,7 +295,7 @@ export class CodebaseCollector extends BaseCollector {
   /**
    * Find all files to scan
    */
-  private async findFilesToScan(ignorePatterns: ReturnType<typeof ignore>): Promise<string[]> {
+  private async findFilesToScan(ignorePatterns: Ignore): Promise<string[]> {
     const pattern = '**/*';
     const files = await glob(pattern, {
       cwd: this.scanOptions.rootPath,

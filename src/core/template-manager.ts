@@ -93,7 +93,7 @@ export class TemplateManager {
    * Parse a template markdown file
    */
   private async parseTemplateFile(filePath: string): Promise<OptimizationTemplate | null> {
-    const content = await readFile(filePath, {encoding: 'utf-8'});
+    const content = await readFile(filePath, 'utf-8');
 
     // Extract YAML frontmatter from markdown (can be anywhere in the file, not just at start)
     const frontmatterMatch = content.match(/\n---\s*\n([\s\S]*?)\n---/);
@@ -130,7 +130,7 @@ export class TemplateManager {
 
     if (await pathExists(cacheFile)) {
       console.log('  📦 Loading templates from cache...');
-      const cached = await readJson(cacheFile);
+      const cached = await readJson(cacheFile) as OptimizationTemplate[];
       
       for (const template of cached) {
         this.templates.set(template.id, template);
@@ -394,7 +394,7 @@ export class TemplateManager {
     
     if (await pathExists(cacheFile)) {
       const stats = await stat(cacheFile);
-      const cached = await readJson(cacheFile);
+      const cached = await readJson(cacheFile) as unknown[];
       
       return {
         exists: true,

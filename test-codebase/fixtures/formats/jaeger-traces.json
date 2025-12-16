@@ -1,0 +1,45 @@
+{
+  "data": [
+    {
+      "traceID": "abc123def456789",
+      "spans": [
+        {
+          "traceID": "abc123def456789",
+          "spanID": "span001",
+          "operationName": "openai.ChatCompletion",
+          "startTime": 1702634400000000,
+          "duration": 1200000,
+          "processID": "p1",
+          "tags": [
+            { "key": "llm.provider", "type": "string", "value": "openai" },
+            { "key": "llm.model", "type": "string", "value": "gpt-4o" },
+            { "key": "llm.usage.prompt_tokens", "type": "int64", "value": 500 },
+            { "key": "llm.usage.completion_tokens", "type": "int64", "value": 400 }
+          ]
+        },
+        {
+          "traceID": "abc123def456789",
+          "spanID": "span002",
+          "operationName": "anthropic.Messages",
+          "startTime": 1702634460000000,
+          "duration": 2500000,
+          "processID": "p1",
+          "tags": [
+            { "key": "llm.provider", "type": "string", "value": "anthropic" },
+            { "key": "llm.model", "type": "string", "value": "claude-3-sonnet" },
+            { "key": "llm.usage.prompt_tokens", "type": "int64", "value": 2000 },
+            { "key": "llm.usage.completion_tokens", "type": "int64", "value": 300 }
+          ]
+        }
+      ],
+      "processes": {
+        "p1": {
+          "serviceName": "llm-service",
+          "tags": [
+            { "key": "deployment.environment", "type": "string", "value": "production" }
+          ]
+        }
+      }
+    }
+  ]
+}

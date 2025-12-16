@@ -1,0 +1,100 @@
+# Ground Truth: r13-multi-provider-fallback
+# Category: Nasty Reality - Multi-provider with fallback
+# Per Test Case Document v1.3 Section 2.1
+
+fixture_id: r13-multi-provider-fallback
+fixture_path: repos/r13-multi-provider-fallback
+description: Production app with multiple providers, fallback chains, and routing
+
+callsites:
+  # Primary provider - OpenAI
+  - file: src/llm/router.py
+    line: 45
+    provider: openai
+    model: gpt-4o
+    pattern: chat
+    notes: Primary model for complex tasks
+
+  # Fallback 1 - Anthropic
+  - file: src/llm/router.py
+    line: 58
+    provider: anthropic
+    model: claude-3-sonnet-20240229
+    pattern: fallback
+    notes: First fallback if OpenAI fails
+
+  # Fallback 2 - Together
+  - file: src/llm/router.py
+    line: 72
+    provider: together
+    model: meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo
+    pattern: fallback
+    notes: Second fallback for cost savings
+
+  # Speed-optimized path
+  - file: src/llm/fast_path.py
+    line: 25
+    provider: groq
+    model: llama-3.1-70b-versatile
+    pattern: chat
+    notes: Fast inference for simple queries
+
+  # Cost-optimized path
+  - file: src/llm/cheap_path.py
+    line: 20
+    provider: openai
+    model: gpt-4o-mini
+    pattern: chat
+    notes: Budget model for high-volume tasks
+
+  # Embeddings
+  - file: src/embeddings/service.py
+    line: 35
+    provider: openai
+    model: text-embedding-3-large
+    pattern: embedding
+    notes: Embeddings for semantic search
+
+  # Gateway usage (LiteLLM)
+  - file: src/llm/gateway.py
+    line: 42
+    provider: litellm
+    model: gpt-4o
+    pattern: gateway
+    notes: LiteLLM proxy for observability
+
+  # Dynamic model selection
+  - file: src/llm/selector.py
+    line: 55
+    provider: openai
+    model: null
+    pattern: dynamic
+    notes: Model selected at runtime based on task
+
+non_callsites:
+  # Retry decorator
+  - file: src/utils/retry.py
+    line: 15
+    reason: Retry logic wrapper, not direct inference
+
+  # Model registry
+  - file: src/llm/registry.py
+    line: 8
+    reason: Model configuration, not invocation
+
+  # Metrics collection
+  - file: src/observability/metrics.py
+    line: 30
+    reason: Prometheus metrics, not LLM call
+
+  # Mock in tests
+  - file: tests/test_router.py
+    line: 45
+    reason: Test mock with MagicMock
+
+quality_gates:
+  min_precision: 0.85
+  min_recall: 0.80
+  min_f1: 0.82
+  notes: Lower threshold due to dynamic routing complexity
+

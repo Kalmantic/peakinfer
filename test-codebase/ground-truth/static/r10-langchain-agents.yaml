@@ -1,0 +1,78 @@
+# Ground Truth: r10-langchain-agents
+# Category: Framework - LangChain
+# Per Test Case Document v1.3 Section 2.1
+
+fixture_id: r10-langchain-agents
+fixture_path: repos/r10-langchain-agents
+description: LangChain with multiple LLMs and agents
+
+callsites:
+  # ChatOpenAI
+  - file: agents/qa_agent.py
+    line: 18
+    provider: openai
+    model: gpt-4o
+    pattern: chat
+    notes: LangChain ChatOpenAI wrapper
+
+  # ChatAnthropic
+  - file: agents/summary_agent.py
+    line: 22
+    provider: anthropic
+    model: claude-3-sonnet-20240229
+    pattern: chat
+    notes: LangChain ChatAnthropic wrapper
+
+  # Ollama local
+  - file: agents/local_agent.py
+    line: 30
+    provider: ollama
+    model: llama3
+    pattern: chat
+    notes: Local model via Ollama
+
+  # OpenAI embeddings
+  - file: embeddings/embed.py
+    line: 15
+    provider: openai
+    model: text-embedding-3-small
+    pattern: embedding
+    notes: OpenAI embeddings for RAG
+
+  # LCEL chain with multiple models
+  - file: chains/multi_step.py
+    line: 45
+    provider: openai
+    model: gpt-4o-mini
+    pattern: chain
+    notes: LCEL chain with RunnableSequence
+
+  - file: chains/multi_step.py
+    line: 52
+    provider: anthropic
+    model: claude-3-haiku-20240307
+    pattern: chain
+    notes: Second step in LCEL chain
+
+non_callsites:
+  # Prompt template
+  - file: prompts/qa_prompt.py
+    line: 8
+    reason: PromptTemplate definition, not inference
+
+  # Memory class
+  - file: memory/buffer.py
+    line: 12
+    reason: Memory configuration, not LLM call
+
+  # OutputParser
+  - file: parsers/json_parser.py
+    line: 20
+    reason: Parser definition, not inference
+
+quality_gates:
+  min_precision: 0.90
+  min_recall: 0.85
+  min_f1: 0.87
+  notes: Lower threshold due to framework abstraction complexity
+

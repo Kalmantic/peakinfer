@@ -1,0 +1,62 @@
+# Ground Truth: r1-openai-simple
+# Category: SaaS Provider - OpenAI
+# Per Test Case Document v1.3 Section 2.1
+
+fixture_id: r1-openai-simple
+fixture_path: repos/r1-openai-simple
+description: Basic OpenAI SDK usage patterns (Python & TypeScript)
+
+callsites:
+  # Python chat completion
+  - file: src/chat.py
+    line: 15
+    provider: openai
+    model: gpt-4o
+    pattern: chat
+    notes: Standard chat completion with explicit model
+
+  # Python streaming
+  - file: src/stream.py
+    line: 22
+    provider: openai
+    model: gpt-4o-mini
+    pattern: stream
+    notes: Streaming response with stream=True
+
+  # TypeScript completion
+  - file: src/complete.ts
+    line: 18
+    provider: openai
+    model: gpt-3.5-turbo
+    pattern: chat
+    notes: Node.js SDK usage
+
+  # Environment variable model
+  - file: src/dynamic.py
+    line: 30
+    provider: openai
+    model: null
+    pattern: chat
+    notes: Model from env var - cannot determine at static time
+
+non_callsites:
+  # Test mocks
+  - file: tests/test_chat.py
+    line: 12
+    reason: Test mock, not actual API call
+
+  # Import statement
+  - file: src/chat.py
+    line: 1
+    reason: Import, not invocation
+
+  # Type hint
+  - file: src/types.py
+    line: 8
+    reason: Type annotation only
+
+quality_gates:
+  min_precision: 0.95
+  min_recall: 0.90
+  min_f1: 0.92
+

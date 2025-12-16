@@ -1,0 +1,49 @@
+[
+  {
+    "_wandb": {
+      "runtime": 120,
+      "desc": "LLM inference run"
+    },
+    "_runtime": 1.5,
+    "_timestamp": 1702634400,
+    "_step": 0,
+    "model": "gpt-4o",
+    "provider": "openai",
+    "prompt_tokens": 500,
+    "completion_tokens": 400,
+    "latency_ms": 1200,
+    "cost": 0.0175,
+    "task": "chat_completion"
+  },
+  {
+    "_wandb": {
+      "runtime": 125,
+      "desc": "LLM inference run"
+    },
+    "_runtime": 3.0,
+    "_timestamp": 1702634460,
+    "_step": 1,
+    "model": "claude-3-sonnet",
+    "provider": "anthropic",
+    "prompt_tokens": 2000,
+    "completion_tokens": 300,
+    "latency_ms": 2500,
+    "cost": 0.0105,
+    "task": "summarization"
+  },
+  {
+    "_wandb": {
+      "runtime": 130
+    },
+    "_runtime": 3.5,
+    "_timestamp": 1702634520,
+    "_step": 2,
+    "model": "text-embedding-3-small",
+    "provider": "openai",
+    "prompt_tokens": 1000,
+    "completion_tokens": 0,
+    "latency_ms": 150,
+    "cost": 0.00002,
+    "task": "embedding"
+  }
+]

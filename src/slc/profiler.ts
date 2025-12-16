@@ -1,11 +1,12 @@
 /**
  * Runtime Telemetry Profiler
  *
- * Analyzes events.jsonl files to provide accurate runtime cost analysis
- * and optimization recommendations. This solves the "unknown model" problem
- * by using actual runtime data instead of static analysis.
+ * Analyzes runtime events files to provide accurate cost analysis
+ * and optimization recommendations. Supports multiple formats:
+ * - JSONL, JSON Array, CSV, TSV (direct parse)
+ * - OpenTelemetry, Jaeger, LangSmith, Helicone (adapter-based)
  *
- * PRD Phase 2: peakinfer profile --events events.jsonl
+ * PRD v1.3: Flexible runtime format support with agent-based normalization
  */
 
 import * as fs from 'fs';
@@ -17,6 +18,13 @@ import type {
   ModelStats,
   IntentStats,
 } from '../types/events.js';
+import {
+  normalizeEventsFile,
+  type NormalizerOptions,
+  type FormatType,
+  type ParseResult,
+  type FormatDetection,
+} from './format/index.js';
 
 // =============================================================================
 // TYPES
@@ -28,6 +36,8 @@ export interface ProfileResult {
   optimizations: OptimizationSuggestion[];
   workloadClusters: WorkloadCluster[];
   monthlyProjection: MonthlyProjection;
+  /** Format detection info (v1.3) */
+  formatInfo?: FormatDetection;
 }
 
 export interface Hotspot {
@@ -71,6 +81,14 @@ export interface ProfileOptions {
   clusterMethod?: 'semantic' | 'cost' | 'latency';
   timeRange?: { start: Date; end: Date };
   minCostThreshold?: number;
+  /** v1.3: Manually specify format */
+  format?: FormatType;
+  /** v1.3: Custom field mappings */
+  fieldMappings?: Array<{ targetField: string; sourceExpression: string }>;
+  /** v1.3: Allow low-confidence normalizations */
+  lenient?: boolean;
+  /** v1.3: Progress callback */
+  onProgress?: (message: string) => void;
 }
 
 // =============================================================================
@@ -78,18 +96,39 @@ export interface ProfileOptions {
 // =============================================================================
 
 /**
- * Parse and analyze events.jsonl file
+ * Parse and analyze runtime events file.
+ * v1.3: Supports multiple formats with automatic detection.
  */
 export async function profileEvents(
   eventsPath: string,
   options: ProfileOptions = {}
 ): Promise<ProfileResult> {
-  // Read and parse events
-  const events = await parseEventsFile(eventsPath);
+  const { onProgress } = options;
+  
+  // Use the new format normalization pipeline (v1.3)
+  onProgress?.('Detecting and parsing events file...');
+  
+  const parseResult = await normalizeEventsFile(eventsPath, {
+    format: options.format,
+    lenient: options.lenient,
+    skipErrors: true,
+    onProgress,
+  });
+  
+  const events = parseResult.events;
 
   if (events.length === 0) {
-    throw new Error('No events found in file');
+    const formatInfo = parseResult.format;
+    throw new Error(
+      `No events found in file. ` +
+      `Format detected: ${formatInfo.detected} (confidence: ${(formatInfo.confidence * 100).toFixed(0)}%). ` +
+      (parseResult.stats.errors.length > 0 
+        ? `Errors: ${parseResult.stats.errors.slice(0, 3).join('; ')}`
+        : '')
+    );
   }
+  
+  onProgress?.(`Parsed ${events.length} events (format: ${parseResult.format.detected})`);
 
   // Filter by time range if specified
   const filteredEvents = options.timeRange
@@ -100,6 +139,7 @@ export async function profileEvents(
     : events;
 
   // Aggregate events
+  onProgress?.('Aggregating metrics...');
   const summary = aggregateEvents(filteredEvents);
 
   // Find hotspots (highest cost areas)
@@ -120,49 +160,18 @@ export async function profileEvents(
     optimizations,
     workloadClusters,
     monthlyProjection,
+    formatInfo: parseResult.format,
   };
 }
 
 // =============================================================================
-// PARSING
+// PARSING (v1.3: Moved to format/normalizer.ts)
 // =============================================================================
 
-/**
- * Parse events.jsonl file
- */
-async function parseEventsFile(filePath: string): Promise<InferenceEvent[]> {
-  const absolutePath = path.resolve(filePath);
-
-  if (!fs.existsSync(absolutePath)) {
-    throw new Error(`Events file not found: ${absolutePath}`);
-  }
-
-  const content = fs.readFileSync(absolutePath, 'utf-8');
-  const lines = content.trim().split('\n').filter(line => line.trim());
-
-  const events: InferenceEvent[] = [];
-  const errors: string[] = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    try {
-      const event = JSON.parse(lines[i]) as InferenceEvent;
-      // Validate required fields
-      if (event.id && event.ts && event.model && event.provider) {
-        events.push(event);
-      } else {
-        errors.push(`Line ${i + 1}: Missing required fields`);
-      }
-    } catch (e) {
-      errors.push(`Line ${i + 1}: Invalid JSON`);
-    }
-  }
-
-  if (errors.length > 0 && events.length === 0) {
-    throw new Error(`Failed to parse events: ${errors.slice(0, 5).join(', ')}`);
-  }
-
-  return events;
-}
+// NOTE: Event parsing is now handled by the format normalization pipeline.
+// See src/slc/format/normalizer.ts for the implementation.
+// Supported formats: JSONL, JSON Array, CSV, TSV, OpenTelemetry, Jaeger,
+// LangSmith, Helicone, and custom formats with agent inference.
 
 // =============================================================================
 // AGGREGATION
@@ -590,7 +599,6 @@ function projectMonthlyCosts(
 // =============================================================================
 
 export {
-  parseEventsFile,
   aggregateEvents,
   findHotspots,
   generateOptimizations,

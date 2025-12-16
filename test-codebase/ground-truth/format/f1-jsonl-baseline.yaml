@@ -1,0 +1,66 @@
+# Ground Truth: f1-jsonl-baseline
+# Category: Valid Baseline - JSONL
+# Per Test Case Document v1.3 Section 2.1
+
+fixture_id: f1-jsonl-baseline
+format_file: fixtures/formats/events.jsonl
+description: Standard JSONL format with exact InferenceEvent schema
+
+expected:
+  format: jsonl
+  confidence: 0.98
+
+field_mappings:
+  - target_field: id
+    source_expression: id
+    confidence: 1.0
+
+  - target_field: ts
+    source_expression: ts
+    confidence: 1.0
+
+  - target_field: provider
+    source_expression: provider
+    confidence: 1.0
+
+  - target_field: model
+    source_expression: model
+    confidence: 1.0
+
+  - target_field: input_tokens
+    source_expression: input_tokens
+    confidence: 1.0
+
+  - target_field: output_tokens
+    source_expression: output_tokens
+    confidence: 1.0
+
+  - target_field: latency_ms
+    source_expression: latency_ms
+    confidence: 1.0
+
+sample_extracted_values:
+  id:
+    - "evt-001"
+    - "evt-002"
+  provider:
+    - "openai"
+    - "anthropic"
+  model:
+    - "gpt-4o"
+    - "claude-3-sonnet"
+  input_tokens:
+    - 150
+    - 200
+  output_tokens:
+    - 50
+    - 75
+  latency_ms:
+    - 1200
+    - 1500
+
+quality_gates:
+  min_format_confidence: 0.95
+  min_mapping_confidence: 0.95
+  max_unmapped_required: 0
+

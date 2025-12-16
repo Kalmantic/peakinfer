@@ -28,7 +28,7 @@ export class APIKeyManager {
 
     // Check config file
     if (await fs.pathExists(this.configFile)) {
-      const config = await fs.readJson(this.configFile);
+      const config = await fs.readJson(this.configFile) as { anthropic_api_key?: string };
       return config.anthropic_api_key || null;
     }
 
@@ -140,7 +140,7 @@ export class APIKeyManager {
    */
   async clearAPIKey(): Promise<void> {
     if (await fs.pathExists(this.configFile)) {
-      const config = await fs.readJson(this.configFile);
+      const config = await fs.readJson(this.configFile) as Record<string, unknown>;
       delete config.anthropic_api_key;
       await fs.writeJson(this.configFile, config, { spaces: 2 });
       console.log('✅ API key cleared from config');

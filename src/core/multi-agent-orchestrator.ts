@@ -1207,13 +1207,13 @@ Format the output as a structured JSON object matching the AuditReport interface
             merged.metadata.sources.push(file);
             this.logVerbose('Appended JSONL events', { file, events: events.length });
           } else if (ext === 'json') {
-            const content = await fs.readJson(file);
+            const content = await fs.readJson(file) as Record<string, unknown>;
             if (Array.isArray(content)) {
               merged.events.push(...content);
               this.logVerbose('Appended JSON events', { file, events: content.length });
-            } else if (content.resources) {
+            } else if (content && typeof content === 'object' && 'resources' in content && content.resources) {
               merged.infrastructure = content;
-              this.logVerbose('Loaded infrastructure JSON', { file, resourceCount: Object.keys(content.resources).length });
+              this.logVerbose('Loaded infrastructure JSON', { file, resourceCount: Object.keys(content.resources as object).length });
             } else {
               merged.events.push(content);
               this.logVerbose('Appended single JSON event', { file });

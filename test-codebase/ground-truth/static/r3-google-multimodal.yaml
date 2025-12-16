@@ -1,0 +1,57 @@
+# Ground Truth: r3-google-multimodal
+# Category: SaaS Provider - Google
+# Per Test Case Document v1.3 Section 2.1
+
+fixture_id: r3-google-multimodal
+fixture_path: repos/r3-google-multimodal
+description: Google Generative AI SDK with multimodal inputs
+
+callsites:
+  # Text generation
+  - file: src/generate.py
+    line: 20
+    provider: google
+    model: gemini-1.5-pro
+    pattern: generate
+    notes: Text-only generation
+
+  # Multimodal (image + text)
+  - file: src/vision.py
+    line: 35
+    provider: google
+    model: gemini-1.5-flash
+    pattern: multimodal
+    notes: Image analysis with PIL
+
+  # Streaming
+  - file: src/stream.py
+    line: 28
+    provider: google
+    model: gemini-2.0-flash
+    pattern: stream
+    notes: Streaming generation
+
+  # Chat session
+  - file: src/chat.py
+    line: 45
+    provider: google
+    model: gemini-1.5-pro
+    pattern: chat
+    notes: Multi-turn chat session
+
+non_callsites:
+  # Configuration
+  - file: src/config.py
+    line: 12
+    reason: genai.configure() is config, not inference
+
+  # Model listing
+  - file: src/utils.py
+    line: 8
+    reason: genai.list_models() is metadata, not inference
+
+quality_gates:
+  min_precision: 0.95
+  min_recall: 0.90
+  min_f1: 0.92
+

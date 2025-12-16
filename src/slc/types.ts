@@ -1,11 +1,44 @@
 /**
- * PeakInfer SLC v1 — Core Type Definitions
+ * PeakInfer v1.3 — Core Type Definitions
  *
  * Design Philosophy:
- * - Minimal types that map directly to PRD v0.95 requirements
- * - AI-first architecture (Tech Design v1.1)
+ * - Types aligned with PRD/TDD/DD v1.3
+ * - AI-first architecture with agent-based analysis
+ * - Flexible runtime format support
  * - All types support the 5 UX states (Design Doc)
  */
+
+// Re-export format normalization types (v1.3)
+export type {
+  FormatType,
+  FormatDetection,
+  FieldMapping,
+  ParseResult,
+  NormalizationResult,
+} from './format/schemas.js';
+
+// =============================================================================
+// PROVIDER TYPE (TDD v1.3 Section 7.1)
+// =============================================================================
+
+/**
+ * Known LLM providers per TDD v1.3
+ */
+export type Provider =
+  | 'openai'
+  | 'anthropic'
+  | 'google'
+  | 'cohere'
+  | 'mistral'
+  | 'bedrock'
+  | 'azure_openai'
+  | 'together'
+  | 'fireworks'
+  | 'groq'
+  | 'replicate'
+  | 'perplexity'
+  | 'deepseek'
+  | 'unknown';
 
 // =============================================================================
 // SCANNER TYPES
@@ -306,4 +339,229 @@ export interface RiskAssessment {
     medium: number;
     low: number;
   };
+}
+
+// =============================================================================
+// CANONICAL CALLSITE (TDD v1.3 Section 7.1)
+// =============================================================================
+
+/**
+ * Canonical Static Callsite - the ground truth from code analysis.
+ * This is the TDD v1.3 compliant interface.
+ */
+export interface Callsite {
+  /** Stable hash of file+line+signature */
+  id: string;
+  
+  /** Relative path to file */
+  file: string;
+  
+  /** Line number of the callsite */
+  line: number;
+  
+  /** Source language */
+  language: Language;
+  
+  /** Detected provider (may be null if indeterminate) */
+  provider: Provider | null;
+  
+  /** Detected model (may be null if runtime-configured) */
+  model: string | null;
+  
+  /** Framework if using one (langchain, llamaindex, etc.) */
+  framework: string | null;
+  
+  /** Runtime if self-hosted (vllm, sglang, ollama, etc.) */
+  runtime: string | null;
+  
+  /** Detected patterns at this callsite */
+  patterns: {
+    streaming?: boolean;
+    batching?: boolean;
+    retries?: boolean;
+    caching?: boolean;
+    routing?: boolean;
+    fallback?: boolean;
+  };
+  
+  /** Confidence in this detection (0-1) */
+  confidence: number;
+  
+  /** Evidence for classification decisions */
+  evidence: {
+    whyProvider?: string;
+    whyModel?: string;
+    snippetsRedacted?: boolean;
+  };
+}
+
+// =============================================================================
+// JOINED OUTPUT & DRIFT DETECTION (TDD v1.3 Section 7.4 & 10)
+// =============================================================================
+
+/**
+ * Runtime usage statistics for a callsite.
+ * Computed from correlated runtime events.
+ */
+export interface UsageStats {
+  /** Number of calls observed */
+  calls: number;
+  
+  /** Total input tokens */
+  tokens_in: number;
+  
+  /** Total output tokens */
+  tokens_out: number;
+  
+  /** Total cost in USD */
+  cost_usd: number;
+  
+  /** Latency percentiles in ms */
+  latency: {
+    avg: number;
+    p50: number;
+    p95: number;
+    p99: number;
+  };
+  
+  /** Time range of observations */
+  timeRange: {
+    start: string;
+    end: string;
+  };
+}
+
+/**
+ * Types of drift that can be detected between code and runtime.
+ */
+export type DriftType = 
+  | 'code_only'       // In code but never observed at runtime
+  | 'runtime_only'    // Observed at runtime but not found in code
+  | 'model_mismatch'  // Code says one model, runtime shows another
+  | 'provider_mismatch' // Code says one provider, runtime shows another
+  | 'pattern_mismatch'; // Pattern in code doesn't match runtime behavior
+
+/**
+ * A detected drift signal between static code and runtime behavior.
+ * TDD v1.3 Section 10.2
+ */
+export interface DriftSignal {
+  /** Type of drift detected */
+  type: DriftType;
+  
+  /** Severity of the drift */
+  severity: 'info' | 'warning' | 'error';
+  
+  /** Human-readable description */
+  description: string;
+  
+  /** Related callsite ID (if applicable) */
+  callsiteId?: string;
+  
+  /** File where drift was detected */
+  file?: string;
+  
+  /** Line number (if applicable) */
+  line?: number;
+  
+  /** Value in code (if mismatch) */
+  codeValue?: string;
+  
+  /** Value observed at runtime (if mismatch) */
+  runtimeValue?: string;
+  
+  /** Number of runtime observations */
+  observationCount?: number;
+  
+  /** Evidence supporting this drift signal */
+  evidence: string[];
+}
+
+/**
+ * Complete joined analysis result - static code + runtime events.
+ * TDD v1.3 Section 7.4
+ */
+export interface JoinedInference {
+  /** Callsites enriched with runtime usage stats */
+  callsites: Array<Callsite & { usage?: UsageStats }>;
+  
+  /** Runtime events with no matching callsite in code */
+  runtimeOnly: Array<{
+    provider: string;
+    model: string;
+    callCount: number;
+    totalCost: number;
+    avgLatency: number;
+    firstSeen: string;
+    lastSeen: string;
+  }>;
+  
+  /** Callsites in code that were never observed at runtime */
+  codeOnly: Callsite[];
+  
+  /** Detected drift signals */
+  drift: DriftSignal[];
+  
+  /** Join statistics */
+  joinStats: {
+    /** Total callsites from static analysis */
+    totalCallsites: number;
+    /** Callsites matched to runtime events */
+    matchedCallsites: number;
+    /** Total runtime event records */
+    totalEvents: number;
+    /** Events matched to callsites */
+    matchedEvents: number;
+    /** Join confidence score (0-1) */
+    confidence: number;
+  };
+}
+
+// =============================================================================
+// COMBINED ANALYSIS RESULT (TDD v1.3)
+// =============================================================================
+
+/**
+ * Complete result from combined static + runtime analysis.
+ */
+export interface CombinedAnalysisResult {
+  /** Analysis state */
+  state: AnalysisState;
+  
+  /** Scan results */
+  scan?: ScanResult;
+  
+  /** Static analysis callsites (before join) */
+  staticCallsites?: Callsite[];
+  
+  /** Runtime event summary */
+  runtimeSummary?: {
+    totalEvents: number;
+    timeRange: { start: string; end: string };
+    providers: string[];
+    models: string[];
+    format: string;
+    formatConfidence: number;
+  };
+  
+  /** Joined analysis with drift detection */
+  joined?: JoinedInference;
+  
+  /** StackMap (includes both static and runtime info) */
+  stackMap?: StackMap;
+  
+  /** Pricing analysis */
+  pricing?: PricingSummary;
+  
+  /** Tech stack detection */
+  techStack?: TechStack;
+  
+  /** Detected patterns */
+  patterns?: InferencePatterns;
+  
+  /** Errors if any */
+  error?: AnalysisError;
+  
+  /** Warnings */
+  warnings?: string[];
 }

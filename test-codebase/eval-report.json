@@ -1,0 +1,55 @@
+{
+  "timestamp": "2025-12-15T12:54:19.830Z",
+  "overallPassed": true,
+  "results": [
+    {
+      "name": "Static Analysis Accuracy",
+      "passed": true,
+      "details": "All gates passed: P=100.0%, R=100.0%, F1=100.0%",
+      "metrics": {
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "providerAccuracy": 1,
+        "modelAccuracy": 1
+      }
+    },
+    {
+      "name": "Format Detection Accuracy",
+      "passed": true,
+      "details": "All gates passed: Format=100.0%, Mapping=100.0%",
+      "metrics": {
+        "formatTypeAccuracy": 1,
+        "fieldMappingAccuracy": 1,
+        "extractionCorrectness": 1
+      }
+    },
+    {
+      "name": "Confidence Calibration",
+      "passed": true,
+      "details": "ECE=7.65% - well-calibrated",
+      "metrics": {
+        "ece": 0.07653061224489821,
+        "mce": 0.1775000000000001,
+        "accuracy": 1,
+        "avgConfidence": 0.923469387755102
+      }
+    },
+    {
+      "name": "Drift Detection",
+      "passed": true,
+      "details": "All drift scenarios correctly detected",
+      "metrics": {
+        "cleanMatchAccuracy": 1,
+        "codeOnlyAccuracy": 1,
+        "runtimeOnlyAccuracy": 1,
+        "mismatchAccuracy": 1
+      }
+    }
+  ],
+  "summary": {
+    "totalTests": 4,
+    "passed": 4,
+    "failed": 0
+  }
+}

@@ -274,8 +274,10 @@ export async function analyzeWithAgent(
         });
 
         // Extract tool uses from assistant message
-        const toolUses = (message.message.content as Array<{ type: string; name?: string; input?: unknown }>)
-          .filter((c): c is { type: 'tool_use'; name: string; input: unknown } => c.type === 'tool_use');
+        const messageContent = message.message?.content;
+        const toolUses = (Array.isArray(messageContent) ? messageContent : [])
+          .filter((c): c is { type: 'tool_use'; name: string; input: unknown } => 
+            c.type === 'tool_use' && typeof c.name === 'string');
 
         // Emit tool use events
         for (const tool of toolUses) {
@@ -305,8 +307,8 @@ export async function analyzeWithAgent(
         }
       } else if (message.type === 'result') {
         if (message.subtype === 'success') {
-          resultText = message.result;
-          totalCost = message.total_cost_usd;
+          resultText = message.result ?? '';
+          totalCost = message.total_cost_usd ?? 0;
           emitProgress({ 
             type: 'complete', 
             turn: currentTurn, 
@@ -633,16 +635,17 @@ export async function* analyzeWithAgentStreaming(
   })) {
     if (message.type === 'assistant') {
       // Check for tool use
-      const toolUses = (message.message.content as Array<{ type: string; name?: string }>).filter(
-        (c): c is { type: 'tool_use'; name: string } => c.type === 'tool_use'
+      const messageContent = message.message?.content;
+      const toolUses = (Array.isArray(messageContent) ? messageContent : []).filter(
+        (c): c is { type: 'tool_use'; name: string } => c.type === 'tool_use' && typeof c.name === 'string'
       );
 
       for (const tool of toolUses) {
         yield { type: 'progress', data: `Using ${tool.name}...` };
       }
     } else if (message.type === 'result' && message.subtype === 'success') {
-      resultText = message.result;
-      totalCost = message.total_cost_usd;
+      resultText = message.result ?? '';
+      totalCost = message.total_cost_usd ?? 0;
     }
   }
 

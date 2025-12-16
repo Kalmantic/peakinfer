@@ -302,16 +302,18 @@ Warning: Skipped files may contain undetected LLM calls.
 // =============================================================================
 
 /**
- * Render the full success state per PRD Section 9.1
+ * Render the full success state per DD v1.3 Section 6.1
  *
- * This is the main output format showing:
- * - Scan summary
- * - Detection summary
- * - STACKMAP box
- * - PRICING SUMMARY box
- * - HOTSPOTS box
- * - Output files
- * - Next commands
+ * Output order is NON-NEGOTIABLE (DD v1.3):
+ * 1. Header
+ * 2. Progress (handled by progress manager)
+ * 3. FINDINGS (insights - primary value) ← VALUE FIRST
+ * 4. SCOPE (what was analyzed - trust context)
+ * 5. Runtime (if events provided)
+ * 6. Drift (if combined analysis)
+ * 7. Artifacts saved + next steps
+ *
+ * This "value-first" ordering improves perceived usefulness.
  */
 export function renderPRDSuccessState(
   scan: ScanResult,
@@ -322,38 +324,89 @@ export function renderPRDSuccessState(
   patterns?: InferencePatterns,
   outputFiles: string[] = []
 ): void {
-  // Header
+  // 1. HEADER — Brief, factual
   console.log(`
-$ peakinfer analyze .
-
 PeakInfer ${VERSION}
-
-Scanned: ${scan.totalFiles} files (${scan.totalLines.toLocaleString()} LOC)
-Languages: ${Object.keys(scan.languages).join(', ') || 'unknown'}
-
-Found ${callsites.length} inference callsites across ${countUniqueFiles(callsites)} files.
 `);
 
-  // STACKMAP box
-  renderStackMapBox(callsites, stackMap, techStack, patterns);
+  // 3. FINDINGS — The value, shown first per DD v1.3 "value-first" ordering
+  // Findings come BEFORE scope so users see insights immediately
+  console.log(`FINDINGS`);
+  console.log(`────────────────────────────────────────────────────────────────────────`);
+  
+  // Quick summary of what was found
+  const uniqueModels = [...new Set(callsites.map(c => c.model).filter(Boolean))];
+  const uniqueProviders = [...new Set(callsites.map(c => c.provider).filter(Boolean))];
+  
+  console.log(`  ${callsites.length} inference points detected`);
+  console.log(`  ${uniqueProviders.length} providers: ${uniqueProviders.slice(0, 4).join(', ')}${uniqueProviders.length > 4 ? '...' : ''}`);
+  console.log(`  ${uniqueModels.length} models: ${uniqueModels.slice(0, 3).join(', ')}${uniqueModels.length > 3 ? '...' : ''}`);
+  console.log('');
 
-  // PRICING SUMMARY box
-  renderPricingBox(pricing);
-
-  // HOTSPOTS box
-  renderHotspotsBox(pricing.hotspots);
-
-  // Output files
-  console.log(`Output saved:`);
-  for (const file of outputFiles) {
-    console.log(`  → ${file}`);
+  // HOTSPOTS — Show these as primary findings
+  if (pricing.hotspots && pricing.hotspots.length > 0) {
+    console.log(`  Cost hotspots:`);
+    for (const h of pricing.hotspots.slice(0, 3)) {
+      const costRange = formatCurrencyRange(h.estimatedMonthlyLow, h.estimatedMonthlyHigh);
+      console.log(`    ⚠ ${h.file}:${h.line} — ${h.model || '(runtime-configured)'} — ${costRange}/mo`);
+      if (h.suggestion) {
+        console.log(`      └─ ${h.suggestion}`);
+      }
+    }
+    console.log('');
   }
 
-  // Next commands
-  console.log(`
-Run \`peakinfer pricing --detailed\` for GPU-level cost modeling.
-Run \`peakinfer diff old.json new.json\` to compare changes.
-`);
+  // Patterns detected as findings
+  if (patterns) {
+    const detectedPatterns: string[] = [];
+    if (patterns.streaming?.detected) detectedPatterns.push('streaming');
+    if (patterns.batching?.detected) detectedPatterns.push('batching');
+    if (patterns.retry?.detected) detectedPatterns.push('retry');
+    if (patterns.caching?.detected) detectedPatterns.push('caching');
+    if (patterns.routing?.detected) detectedPatterns.push('routing');
+    if (patterns.fallback?.detected) detectedPatterns.push('fallback');
+    
+    if (detectedPatterns.length > 0) {
+      console.log(`  Patterns: ${detectedPatterns.join(', ')}`);
+    } else {
+      console.log(`  Patterns: none detected (consider adding retry, batching, caching)`);
+    }
+    console.log('');
+  }
+
+  // Estimated cost summary
+  console.log(`  Estimated monthly: ${formatCurrencyRange(pricing.estimatedRange.low, pricing.estimatedRange.high)}`);
+  console.log('');
+
+  // 4. SCOPE — Trust context (after findings)
+  console.log(`SCOPE`);
+  console.log(`────────────────────────────────────────────────────────────────────────`);
+  console.log(`  Files scanned: ${scan.totalFiles}`);
+  console.log(`  Lines of code: ${scan.totalLines.toLocaleString()}`);
+  console.log(`  Languages: ${Object.keys(scan.languages).join(', ') || 'unknown'}`);
+  console.log(`  Root: ${scan.root}`);
+  console.log('');
+
+  // Detailed STACKMAP box (for those who want it)
+  renderStackMapBox(callsites, stackMap, techStack, patterns);
+
+  // Detailed PRICING box
+  renderPricingBox(pricing);
+
+  // 7. Artifacts saved + next steps
+  console.log(`SAVED`);
+  console.log(`────────────────────────────────────────────────────────────────────────`);
+  for (const file of outputFiles) {
+    console.log(`  ${file}`);
+  }
+  console.log('');
+
+  console.log(`NEXT`);
+  console.log(`────────────────────────────────────────────────────────────────────────`);
+  console.log(`  peakinfer analyze . --events <logs.jsonl>   compare code vs runtime`);
+  console.log(`  peakinfer pricing --detailed                GPU-level cost modeling`);
+  console.log(`  peakinfer diff old.json new.json            track changes over time`);
+  console.log('');
 }
 
 // =============================================================================

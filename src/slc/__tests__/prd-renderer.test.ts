@@ -189,13 +189,13 @@ describe('PRD Success State', () => {
     expect(output).toContain('$1,240');
   });
 
-  it('should show HOTSPOTS box', () => {
+  it('should show cost hotspots in FINDINGS', () => {
     renderPRDSuccessState(mockScan, mockCallsites, mockStackMap, mockPricing);
     const output = consoleOutput.join('\n');
-    expect(output).toContain('HOTSPOTS');
+    // DD v1.3: Hotspots now shown in FINDINGS section as "Cost hotspots:"
+    expect(output).toContain('Cost hotspots:');
     expect(output).toContain('⚠');
     expect(output).toContain('src/agents/summarizer.py:47');
-    expect(output).toContain('Suggestion:');
   });
 
   it('should show next commands', () => {

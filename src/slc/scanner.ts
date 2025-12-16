@@ -13,8 +13,10 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import ignore, { Ignore } from 'ignore';
+import ignore from 'ignore';
 import type { Language, ScanResult, ScannedFile } from './types.js';
+
+type Ignore = ReturnType<typeof ignore>;
 
 // =============================================================================
 // CONFIGURATION

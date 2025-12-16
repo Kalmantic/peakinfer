@@ -1,0 +1,35 @@
+[
+  {
+    "id": "evt_001",
+    "ts": "2024-12-15T10:00:00Z",
+    "intent": "chat_completion",
+    "provider": "openai",
+    "model": "gpt-4o",
+    "input_tokens": 500,
+    "output_tokens": 400,
+    "latency_ms": 1200,
+    "cost_usd": 0.0175
+  },
+  {
+    "id": "evt_002",
+    "ts": "2024-12-15T10:01:00Z",
+    "intent": "summarization",
+    "provider": "anthropic",
+    "model": "claude-3-sonnet-20240229",
+    "input_tokens": 2000,
+    "output_tokens": 300,
+    "latency_ms": 2500,
+    "cost_usd": 0.0105
+  },
+  {
+    "id": "evt_003",
+    "ts": "2024-12-15T10:02:00Z",
+    "intent": "embedding",
+    "provider": "openai",
+    "model": "text-embedding-3-small",
+    "input_tokens": 1000,
+    "output_tokens": 0,
+    "latency_ms": 150,
+    "cost_usd": 0.00002
+  }
+]

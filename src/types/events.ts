@@ -1,7 +1,9 @@
 /**
  * Canonical Event Schema for PeakInfer
  * Provider-neutral schema for LLM inference events across heterogeneous stacks
- * Based on PRD v0.7 Section 3: Canonical Event Schema
+ * 
+ * Per TDD v1.3 Section 7.2: Runtime Event (Offline)
+ * Per PRD v1.3 Section 6.2: Supported Formats
  */
 
 /**
@@ -50,6 +52,9 @@ export interface InferenceEvent {
   
   /** Optional context window usage */
   context_length?: number;
+  
+  /** Optional callsite ID for explicit join key (TDD v1.3 Section 10.1) */
+  callsite_id?: string;
   
   /** Optional metadata for extensibility */
   metadata?: Record<string, any>;

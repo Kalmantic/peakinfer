@@ -1,0 +1,57 @@
+# Ground Truth: r2-anthropic-streaming
+# Category: SaaS Provider - Anthropic
+# Per Test Case Document v1.3 Section 2.1
+
+fixture_id: r2-anthropic-streaming
+fixture_path: repos/r2-anthropic-streaming
+description: Anthropic SDK with streaming and tools
+
+callsites:
+  # Basic message
+  - file: app/claude.ts
+    line: 24
+    provider: anthropic
+    model: claude-3-5-sonnet-20241022
+    pattern: chat
+    notes: Standard message creation
+
+  # Streaming message
+  - file: app/stream.ts
+    line: 18
+    provider: anthropic
+    model: claude-3-haiku-20240307
+    pattern: stream
+    notes: Streaming with MessageStream
+
+  # Tool use
+  - file: app/tools.ts
+    line: 35
+    provider: anthropic
+    model: claude-3-opus-20240229
+    pattern: tool_use
+    notes: Function calling with tools array
+
+  # Beta features
+  - file: app/beta.ts
+    line: 42
+    provider: anthropic
+    model: claude-sonnet-4-20250514
+    pattern: chat
+    notes: Beta endpoint usage
+
+non_callsites:
+  # Client instantiation
+  - file: app/client.ts
+    line: 5
+    reason: Client creation, not API call
+
+  # Type definition
+  - file: types/anthropic.d.ts
+    line: 22
+    reason: Type declaration file
+
+quality_gates:
+  min_precision: 0.95
+  min_recall: 0.90
+  min_f1: 0.92
+

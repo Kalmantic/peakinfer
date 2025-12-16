@@ -44,12 +44,6 @@
                       "pattern": "langchain.openai.chat",
                       "provider": "openai",
                       "model": "gpt-4o-mini"
-                    },
-                    {
-                      "line": 189,
-                      "pattern": "langchain.anthropic.chat",
-                      "provider": "anthropic",
-                      "model": "claude-sonnet-4-20250514"
                     }
                   ]
                 }
@@ -187,12 +181,6 @@
                       "pattern": "other.completion",
                       "provider": "other",
                       "model": null
-                    },
-                    {
-                      "line": 24,
-                      "pattern": "other.completion",
-                      "provider": "other",
-                      "model": null
                     }
                   ]
                 },
@@ -270,16 +258,10 @@
                       "model": "gpt-4o-mini"
                     },
                     {
-                      "line": 124,
+                      "line": 134,
                       "pattern": "anthropic.chat",
                       "provider": "anthropic",
                       "model": "claude-3-5-haiku-20241022"
-                    },
-                    {
-                      "line": 142,
-                      "pattern": "openai.chat",
-                      "provider": "openai",
-                      "model": "gpt-4o-mini"
                     },
                     {
                       "line": 188,
@@ -315,7 +297,7 @@
     }
   ],
   "summary": {
-    "totalCallsites": 38,
+    "totalCallsites": 35,
     "providers": [
       "anthropic",
       "openai",

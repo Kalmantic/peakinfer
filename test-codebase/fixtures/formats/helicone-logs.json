@@ -1,0 +1,60 @@
+[
+  {
+    "id": "req_001",
+    "created_at": "2024-12-15T10:00:00Z",
+    "request": {
+      "model": "gpt-4o",
+      "messages": [
+        { "role": "user", "content": "Hello, world!" }
+      ],
+      "max_tokens": 1000
+    },
+    "response": {
+      "id": "chatcmpl-001",
+      "model": "gpt-4o",
+      "choices": [
+        { "message": { "role": "assistant", "content": "Hello! How can I help?" } }
+      ],
+      "usage": {
+        "prompt_tokens": 500,
+        "completion_tokens": 400,
+        "total_tokens": 900
+      }
+    },
+    "properties": {
+      "intent": "chat_completion",
+      "tenant": "team-alpha",
+      "region": "us-east-1"
+    },
+    "latency": 1200,
+    "user_id": "user_123",
+    "cost": 0.0175,
+    "status": 200,
+    "target_url": "https://api.openai.com/v1/chat/completions"
+  },
+  {
+    "id": "req_002",
+    "created_at": "2024-12-15T10:01:00Z",
+    "request": {
+      "model": "claude-3-sonnet-20240229",
+      "messages": [
+        { "role": "user", "content": "Summarize this..." }
+      ]
+    },
+    "response": {
+      "id": "msg_002",
+      "model": "claude-3-sonnet-20240229",
+      "usage": {
+        "prompt_tokens": 2000,
+        "completion_tokens": 300
+      }
+    },
+    "properties": {
+      "intent": "summarization",
+      "tenant": "team-alpha"
+    },
+    "latency": 2500,
+    "provider": "anthropic",
+    "cost": 0.0105
+  }
+]

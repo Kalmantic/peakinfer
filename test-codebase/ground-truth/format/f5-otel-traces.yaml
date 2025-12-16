@@ -1,0 +1,69 @@
+# Ground Truth: f5-otel-traces
+# Category: Agent-Normalized - OpenTelemetry
+# Per Test Case Document v1.3 Section 2.1
+
+fixture_id: f5-otel-traces
+format_file: fixtures/formats/otel-traces.json
+description: OpenTelemetry OTLP format requiring agent normalization
+
+expected:
+  format: otel
+  confidence: 0.95
+
+field_mappings:
+  - target_field: id
+    source_expression: $.resourceSpans[*].scopeSpans[*].spans[*].spanId
+    confidence: 0.95
+
+  - target_field: ts
+    source_expression: $.resourceSpans[*].scopeSpans[*].spans[*].startTimeUnixNano
+    confidence: 0.90
+    notes: Unix nanoseconds, needs conversion
+
+  - target_field: provider
+    source_expression: $.resourceSpans[*].scopeSpans[*].spans[*].attributes[?(@.key=="llm.vendor")].value.stringValue
+    confidence: 0.85
+
+  - target_field: model
+    source_expression: $.resourceSpans[*].scopeSpans[*].spans[*].attributes[?(@.key=="llm.request.model")].value.stringValue
+    confidence: 0.90
+
+  - target_field: input_tokens
+    source_expression: $.resourceSpans[*].scopeSpans[*].spans[*].attributes[?(@.key=="llm.usage.prompt_tokens")].value.intValue
+    confidence: 0.90
+
+  - target_field: output_tokens
+    source_expression: $.resourceSpans[*].scopeSpans[*].spans[*].attributes[?(@.key=="llm.usage.completion_tokens")].value.intValue
+    confidence: 0.90
+
+  - target_field: latency_ms
+    source_expression: (endTimeUnixNano - startTimeUnixNano) / 1000000
+    extraction_type: computed
+    confidence: 0.95
+
+sample_extracted_values:
+  id:
+    - "abc123"
+    - "def456"
+  provider:
+    - "openai"
+    - "anthropic"
+  model:
+    - "gpt-4"
+    - "claude-3-sonnet"
+  input_tokens:
+    - 100
+    - 250
+  output_tokens:
+    - 50
+    - 120
+  latency_ms:
+    - 850
+    - 1200
+
+quality_gates:
+  min_format_confidence: 0.90
+  min_mapping_confidence: 0.80
+  max_unmapped_required: 1
+  notes: OTEL requires agent interpretation, lower confidence expected
+

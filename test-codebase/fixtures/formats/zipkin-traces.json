@@ -1,0 +1,47 @@
+[
+  {
+    "traceId": "abc123def456789",
+    "id": "span001",
+    "name": "openai.chat.completions",
+    "kind": "CLIENT",
+    "timestamp": 1702634400000000,
+    "duration": 1200000,
+    "localEndpoint": {
+      "serviceName": "my-app",
+      "ipv4": "192.168.1.100",
+      "port": 8080
+    },
+    "remoteEndpoint": {
+      "serviceName": "openai-api",
+      "ipv4": "104.18.0.1",
+      "port": 443
+    },
+    "tags": {
+      "llm.provider": "openai",
+      "llm.model": "gpt-4o",
+      "llm.usage.prompt_tokens": "500",
+      "llm.usage.completion_tokens": "400"
+    }
+  },
+  {
+    "traceId": "abc123def456789",
+    "id": "span002",
+    "parentId": "span001",
+    "name": "anthropic.messages",
+    "kind": "CLIENT",
+    "timestamp": 1702634460000000,
+    "duration": 2500000,
+    "localEndpoint": {
+      "serviceName": "my-app"
+    },
+    "remoteEndpoint": {
+      "serviceName": "anthropic-api"
+    },
+    "tags": {
+      "llm.provider": "anthropic",
+      "llm.model": "claude-3-sonnet",
+      "llm.usage.prompt_tokens": "2000",
+      "llm.usage.completion_tokens": "300"
+    }
+  }
+]
