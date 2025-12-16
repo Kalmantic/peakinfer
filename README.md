@@ -1,8 +1,8 @@
 # PeakInfer
 
-LLM inference performance analysis CLI by Kalmantic AI Labs.
+LLM inference performance analysis CLI.
 
-PeakInfer reveals the truth about your LLM inference patterns - what models you're calling, how they perform, and where code intent diverges from runtime reality.
+Reveals the truth about your LLM inference patterns - what models you're calling, how they perform, and where code intent diverges from runtime reality.
 
 ## Features
 
@@ -303,8 +303,10 @@ Both agents follow prompt templates in `prompts/*.yaml` and have fallback modes 
 
 ## License
 
-MIT
+Apache-2.0
 
-## Author
+## About
 
-Kalmantic AI Labs
+Built by [Kalmantic](https://github.com/Kalmantic) - inference research, optimization and support.
+
+For questions, issues, or contributions, visit the [GitHub repository](https://github.com/Kalmantic/peakinfer).
