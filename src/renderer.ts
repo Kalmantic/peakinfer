@@ -35,6 +35,7 @@ const STATE = {
 const PHASE = {
   SCANNING: 'scanning files',
   ANALYZING: 'analyzing codebase',
+  PROFILING: 'profiling performance',
   PARSING: 'parsing events',
   CORRELATING: 'correlating code + runtime',
   GENERATING: 'generating insights',
@@ -224,7 +225,31 @@ function renderSuccess(results: AgentResults): void {
   }
   console.log('');
 
-  // 4. Runtime summary (if events)
+  // 4. Performance Profile (if static analysis ran)
+  if (results.staticAnalysis) {
+    const sa = results.staticAnalysis;
+    console.log(dim('Performance Profile'));
+    console.log(`  Cost: $${sa.summary.estimated_cost_per_1k_calls.toFixed(2)}/1K calls`);
+    if (sa.summary.cost_risk_high > 0) {
+      console.log(`    ${sa.summary.cost_risk_high} high-risk inference points`);
+    }
+    console.log(`  Latency: p95=${sa.summary.estimated_p95_ms}ms`);
+    if (sa.summary.blocking_calls > 0) {
+      console.log(`    ${sa.summary.blocking_calls} blocking calls`);
+    }
+    console.log(`  Throughput: ${sa.summary.has_rate_limiting} with rate limiting`);
+    if (sa.summary.scaling_bottlenecks > 0) {
+      console.log(`    ${sa.summary.scaling_bottlenecks} scaling bottlenecks`);
+    }
+    console.log(`  Reliability: ${sa.summary.overall_reliability}`);
+    if (sa.summary.anti_patterns_found > 0) {
+      console.log(`    ${sa.summary.anti_patterns_found} anti-patterns found`);
+    }
+    console.log(`  Optimizations: ${sa.summary.total_optimizations} (${sa.summary.critical_optimizations} critical)`);
+    console.log('');
+  }
+
+  // 5. Runtime summary (if events)
   if (results.runtimeSummary) {
     const rt = results.runtimeSummary;
     console.log(dim('Runtime'));
@@ -352,7 +377,7 @@ export interface RendererOptions {
 
 // Progress data for user-meaningful updates
 export interface ProgressData {
-  phase: 'scanning' | 'analyzing' | 'parsing' | 'correlating' | 'generating';
+  phase: 'scanning' | 'analyzing' | 'profiling' | 'parsing' | 'correlating' | 'generating';
   detail?: string; // e.g., "847 files" or "23 inference points"
   percent?: number; // 0-100 for progress bar
   currentFile?: string; // current file being analyzed
@@ -399,6 +424,7 @@ export function createRenderer(opts: RendererOptions = {}) {
   function getPhaseForTask(task: PlannedTask): PhaseKey | null {
     if (task.description === 'Load pricing data') return null;
     if (task.description === 'Load cached results') return null;
+    if (task.description === 'Profile performance') return 'PROFILING';
     if (task.type === 'scan') return 'SCANNING';
     if (task.type === 'analyze') return 'ANALYZING';
     if (task.type === 'parse_events') return 'PARSING';
@@ -530,6 +556,7 @@ export function createRenderer(opts: RendererOptions = {}) {
       const phaseLabel = {
         scanning: PHASE.SCANNING,
         analyzing: PHASE.ANALYZING,
+        profiling: PHASE.PROFILING,
         parsing: PHASE.PARSING,
         correlating: PHASE.CORRELATING,
         generating: PHASE.GENERATING,

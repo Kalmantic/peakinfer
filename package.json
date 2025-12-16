@@ -1,6 +1,6 @@
 {
   "name": "@kalmantic/peakinfer",
-  "version": "1.0.50",
+  "version": "1.0.64",
   "description": "LLM inference performance analysis CLI",
   "type": "module",
   "main": "dist/cli.js",

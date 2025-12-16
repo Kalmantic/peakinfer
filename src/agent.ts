@@ -1,4 +1,4 @@
-import { existsSync, statSync } from 'fs';
+import { existsSync, statSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import type { ExecutionPlan, PlannedTask, TaskResult, ScanResult, Callsite, InferenceEvent, JoinedOutput, Insight, RuntimeSummary, InferenceMap, ImpactEstimate, EnrichedCallsite } from './types.js';
 import { scan } from './scanner.js';
@@ -22,6 +22,9 @@ import {
   InsightAgent,
   RuntimeAnalyzerAgent,
   CorrelationAnalyzerAgent,
+  StaticAnalysisOrchestrator,
+  type StaticAnalysisOutput,
+  type PerformanceProfile,
 } from './agents/index.js';
 import { getPricingContext } from './costs.js';
 
@@ -93,6 +96,106 @@ function createSyntheticCallsitesFromEvents(events: InferenceEvent[]): EnrichedC
   return callsites;
 }
 
+/**
+ * Convert StaticAnalysisOutput to LLM insights for display.
+ * Maps optimizations from all dimensions (cost, latency, throughput, reliability) to insights.
+ */
+function convertPerformanceToInsights(analysis: StaticAnalysisOutput): Array<{
+  severity: 'critical' | 'warning' | 'info';
+  category: string;
+  headline: string;
+  evidence: string;
+  location?: string;
+  recommendation: string;
+  impact?: {
+    layer: string;
+    impactType: string;
+    estimatedImpactPercent: number;
+    effort: string;
+  };
+}> {
+  const insights: Array<{
+    severity: 'critical' | 'warning' | 'info';
+    category: string;
+    headline: string;
+    evidence: string;
+    location?: string;
+    recommendation: string;
+    impact?: {
+      layer: string;
+      impactType: string;
+      estimatedImpactPercent: number;
+      effort: string;
+    };
+  }> = [];
+
+  // Convert all optimizations to insights
+  for (const opt of analysis.all_optimizations) {
+    const severity = opt.priority === 'critical' || opt.priority === 'high' ? 'critical' :
+                     opt.priority === 'medium' ? 'warning' : 'info';
+
+    const categoryMap: Record<string, string> = {
+      cost: 'Cost Optimization',
+      latency: 'Latency Optimization',
+      throughput: 'Throughput Optimization',
+      reliability: 'Reliability Improvement',
+    };
+
+    const impactTypeMap: Record<string, string> = {
+      cost: 'cost',
+      latency: 'latency',
+      throughput: 'throughput',
+      reliability: 'improvement',
+    };
+
+    // Parse impact percentage from the impact string (e.g., "90% savings" or "50% improvement")
+    const impactMatch = opt.impact.match(/(\d+)%/);
+    const impactPercent = impactMatch ? parseInt(impactMatch[1]) : 20;
+
+    insights.push({
+      severity,
+      category: categoryMap[opt.dimension] || opt.dimension,
+      headline: opt.description,
+      evidence: `${opt.type}: ${opt.impact}`,
+      location: `${opt.file}:${opt.line}`,
+      recommendation: opt.description,
+      impact: {
+        layer: opt.dimension,
+        impactType: impactTypeMap[opt.dimension] || 'improvement',
+        estimatedImpactPercent: impactPercent,
+        effort: opt.effort,
+      },
+    });
+  }
+
+  // Add reliability anti-pattern insights
+  for (const profile of analysis.performance_profiles) {
+    if (profile.reliability?.anti_patterns) {
+      for (const antiPattern of profile.reliability.anti_patterns) {
+        const severity = antiPattern.severity === 'high' ? 'critical' :
+                        antiPattern.severity === 'medium' ? 'warning' : 'info';
+
+        insights.push({
+          severity,
+          category: 'Reliability Issue',
+          headline: antiPattern.pattern,
+          evidence: antiPattern.description,
+          location: antiPattern.location,
+          recommendation: `Fix: ${antiPattern.pattern}`,
+          impact: {
+            layer: 'reliability',
+            impactType: 'improvement',
+            estimatedImpactPercent: antiPattern.severity === 'high' ? 40 : 20,
+            effort: 'low',
+          },
+        });
+      }
+    }
+  }
+
+  return insights;
+}
+
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -115,7 +218,7 @@ export interface AgentOptions {
 }
 
 // Progress phases - Julie Zhou aligned (DD Section 6.4)
-export type ProgressPhase = 'scanning' | 'analyzing' | 'parsing' | 'correlating' | 'generating';
+export type ProgressPhase = 'scanning' | 'analyzing' | 'profiling' | 'parsing' | 'correlating' | 'generating';
 
 export interface ProgressData {
   phase: ProgressPhase;
@@ -147,6 +250,7 @@ export interface AgentResults {
   insights: Insight[];
   impactSummary?: ImpactSummary; // Stack-ranked impact analysis
   inferenceMap?: InferenceMap;
+  staticAnalysis?: StaticAnalysisOutput; // 6-agent performance profiling
   htmlPath?: string;
   pdfPath?: string;
   warnings?: string[]; // Partial state warnings
@@ -169,6 +273,7 @@ interface AgentContext {
   llmInsights?: LLMInsight[]; // Phase 1: LLM-generated semantic insights
   impactSummary?: ImpactSummary; // Stack-ranked impact analysis
   inferenceMap?: InferenceMap;
+  staticAnalysis?: StaticAnalysisOutput; // 6-agent performance profiling
   htmlContent?: string;
   pdfPath?: string;
   warnings: string[]; // Track partial state warnings
@@ -256,10 +361,11 @@ export function plan(opts: AgentOptions): PlanResult {
         type: 'scan',
         description: 'Scan repository',
       });
+      // Unified analysis: discovery + profiling in single LLM call
       tasks.push({
         id: id++,
         type: 'analyze',
-        description: 'Analyze inference points',
+        description: 'Analyze and profile inference points',
         depends_on: [id - 1],
       });
     }
@@ -419,7 +525,7 @@ async function executeTask(
       break;
 
     case 'analyze':
-      // Handle both static code analysis AND runtime pattern analysis
+      // Handle static code analysis, runtime pattern analysis, AND performance profiling
       if (task.description === 'Analyze runtime patterns') {
         // NEW: LLM-based runtime analysis (Patterns v0.2)
         if (!ctx.events || !ctx.runtimeSummary) {
@@ -448,6 +554,85 @@ async function executeTask(
         } catch (error) {
           ctx.warnings.push(`Runtime analysis warning: ${error instanceof Error ? error.message : String(error)}`);
         }
+      } else if (task.description === 'Analyze and profile inference points') {
+        // UNIFIED: Discovery + Profiling in single LLM call
+        if (!ctx.scanResult) throw new Error('Scan result required');
+        try {
+          const scanRoot = ctx.scanResult.root;
+
+          // Read all source files
+          const filesToAnalyze = ctx.scanResult.files
+            .slice(0, 20) // Limit for performance
+            .map(f => {
+              const fullPath = resolve(scanRoot, f.path);
+              try {
+                return {
+                  path: fullPath,
+                  content: readFileSync(fullPath, 'utf-8'),
+                  language: f.language,
+                };
+              } catch {
+                return null;
+              }
+            })
+            .filter((f): f is { path: string; content: string; language: string } => f !== null);
+
+          if (filesToAnalyze.length === 0) {
+            ctx.warnings.push('Analysis skipped: no source files available');
+            ctx.callsites = [];
+            ctx.llmInsights = [];
+            break;
+          }
+
+          // Run unified analysis (discovery + profiling in one LLM call)
+          const orchestrator = new StaticAnalysisOrchestrator();
+          ctx.staticAnalysis = await orchestrator.analyze({ files: filesToAnalyze });
+
+          // Extract callsites from unified analysis for rest of pipeline
+          const callsitesFromAnalysis: Callsite[] = [];
+          for (const profile of ctx.staticAnalysis.performance_profiles) {
+            callsitesFromAnalysis.push({
+              id: profile.inference_point_id,
+              file: profile.file.replace(scanRoot + '/', '').replace(scanRoot, ''),
+              line: profile.line,
+              provider: profile.provider as Callsite['provider'],
+              model: profile.model ?? null,
+              framework: null,
+              runtime: null,
+              patterns: {},
+              confidence: 0.9,
+            });
+          }
+          ctx.callsites = callsitesFromAnalysis;
+
+          // Convert performance profiles to insights
+          const performanceInsights = convertPerformanceToInsights(ctx.staticAnalysis);
+          ctx.llmInsights = performanceInsights as LLMInsight[];
+
+          // Build inference map
+          let promptMeta: MapMetadata = { llmUsed: true };
+          try {
+            const prompt = getDefaultPrompt();
+            promptMeta.promptId = prompt.id;
+            promptMeta.promptVersion = prompt.version;
+          } catch {
+            // Prompt not found, use defaults
+          }
+          ctx.inferenceMap = buildInferenceMap(ctx.opts.path, ctx.callsites, promptMeta);
+
+          onProgress?.({
+            phase: 'profiling',
+            detail: `${ctx.staticAnalysis.summary.total_optimizations} optimizations found`,
+          });
+        } catch (error) {
+          ctx.warnings.push(`Analysis warning: ${error instanceof Error ? error.message : String(error)}`);
+          ctx.callsites = [];
+          ctx.llmInsights = [];
+          ctx.inferenceMap = buildInferenceMap(ctx.opts.path, [], { llmUsed: false });
+        }
+      } else if (task.description === 'Profile performance') {
+        // Legacy: Skip - now handled by unified analysis above
+        break;
       } else {
         // Original static code analysis
         if (!ctx.scanResult) throw new Error('Scan result required');
@@ -806,6 +991,7 @@ export class Agent {
       insights: ctx.insights || [],
       impactSummary: ctx.impactSummary,
       inferenceMap: ctx.inferenceMap,
+      staticAnalysis: ctx.staticAnalysis,
       htmlPath: reportFileName,
       pdfPath: ctx.pdfPath,
       warnings: ctx.warnings.length > 0 ? ctx.warnings : undefined,
