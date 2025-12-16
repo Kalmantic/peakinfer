@@ -7,10 +7,12 @@
  * - JoinerAgent: Correlate static + runtime truth
  * - InsightAgent: Generate findings from templates
  *
- * From Autonomous Agent Architecture Patterns v0.1:
+ * From Autonomous Agent Architecture Patterns v0.2:
  * - Two-pass execution (description → tool resolution → execute)
  * - Filesystem-based context with pointers
  * - Callback-driven architecture
+ * - RuntimeAnalyzerAgent: LLM-based runtime telemetry analysis (NEW)
+ * - CorrelationAnalyzerAgent: LLM-based code-runtime drift detection (NEW)
  */
 
 import { z } from 'zod';
@@ -21,6 +23,10 @@ import { join as joinData } from '../joiner.js';
 import { evaluate } from '../insights.js';
 import { ENVELOPES } from '../envelopes.js';
 import type { ScanResult, Callsite, InferenceEvent, JoinedOutput, Insight, InsightTemplate } from '../types.js';
+
+// Re-export new agents
+export { RuntimeAnalyzerAgent, type RuntimeAnalyzerInput, type RuntimeAnalyzerOutput } from './runtime-analyzer.js';
+export { CorrelationAnalyzerAgent, type CorrelationAnalyzerInput, type CorrelationAnalyzerOutput } from './correlation-analyzer.js';
 
 // =============================================================================
 // AGENT INTERFACE (from Patterns v0.1 Section 4)
@@ -200,11 +206,18 @@ export const InsightAgent: BaseAgent<InsightInput, InsightOutput> = {
 // AGENT REGISTRY
 // =============================================================================
 
+// Import new agents for registry
+import { RuntimeAnalyzerAgent } from './runtime-analyzer.js';
+import { CorrelationAnalyzerAgent } from './correlation-analyzer.js';
+
 export const AGENTS = {
   discovery: DiscoveryAgent,
   analyzer: AnalyzerAgent,
   joiner: JoinerAgent,
   insight: InsightAgent,
+  // New LLM-based agents (Patterns v0.2)
+  runtimeAnalyzer: RuntimeAnalyzerAgent,
+  correlationAnalyzer: CorrelationAnalyzerAgent,
 } as const;
 
 export type AgentName = keyof typeof AGENTS;

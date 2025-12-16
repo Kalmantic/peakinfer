@@ -14,8 +14,16 @@ import { generateHTML } from './html.js';
 import { generatePDF } from './pdf.js';
 import { VERSION } from './version.js';
 import { enrichInsightsWithImpact, generateImpactSummary, type ImpactSummary } from './impact.js';
-// Agent SDK pattern (DESIGN.md v2.0 Section 2.1)
-import { DiscoveryAgent, AnalyzerAgent, JoinerAgent, InsightAgent } from './agents/index.js';
+// Agent SDK pattern (DESIGN.md v2.0 Section 2.1, Patterns v0.2)
+import {
+  DiscoveryAgent,
+  AnalyzerAgent,
+  JoinerAgent,
+  InsightAgent,
+  RuntimeAnalyzerAgent,
+  CorrelationAnalyzerAgent,
+} from './agents/index.js';
+import { getPricingContext } from './costs.js';
 
 // =============================================================================
 // HELPERS
@@ -262,6 +270,14 @@ export function plan(opts: AgentOptions): PlanResult {
         type: 'parse_events',
         description: 'Parse runtime events',
       });
+
+      // NEW: LLM-based runtime analysis for ALL modes with runtime data (Patterns v0.2)
+      tasks.push({
+        id: id++,
+        type: 'analyze', // Reuse 'analyze' type for runtime LLM analysis
+        description: 'Analyze runtime patterns',
+        depends_on: [id - 1],
+      });
     }
 
     if (mode === 'combined') {
@@ -269,6 +285,14 @@ export function plan(opts: AgentOptions): PlanResult {
         id: id++,
         type: 'join',
         description: 'Correlate static + runtime',
+      });
+
+      // NEW: LLM-based correlation analysis (Patterns v0.2)
+      tasks.push({
+        id: id++,
+        type: 'join', // Reuse 'join' type for correlation analysis
+        description: 'Analyze code-runtime drift',
+        depends_on: [id - 1],
       });
     }
 
@@ -395,37 +419,69 @@ async function executeTask(
       break;
 
     case 'analyze':
-      if (!ctx.scanResult) throw new Error('Scan result required');
-      try {
-        // Agent SDK pattern: AnalyzerAgent with tool-limited semantic analysis
-        // Pass progress callback for visual progress bar during LLM analysis
-        const analyzerResult = await AnalyzerAgent.execute({
-          scanResult: ctx.scanResult,
-          onProgress: onProgress ? (data) => {
-            onProgress({ phase: 'analyzing', percent: data.percent, currentFile: data.currentFile });
-          } : undefined,
-        });
-        ctx.callsites = analyzerResult.result.callsites;
-        ctx.llmInsights = analyzerResult.result.llmInsights as LLMInsight[];
-
-        // Get prompt metadata for report
-        let promptMeta: MapMetadata = { llmUsed: ctx.llmInsights.length > 0 };
-        try {
-          const prompt = getDefaultPrompt();
-          promptMeta.promptId = prompt.id;
-          promptMeta.promptVersion = prompt.version;
-        } catch {
-          // Prompt not found, use defaults
+      // Handle both static code analysis AND runtime pattern analysis
+      if (task.description === 'Analyze runtime patterns') {
+        // NEW: LLM-based runtime analysis (Patterns v0.2)
+        if (!ctx.events || !ctx.runtimeSummary) {
+          ctx.warnings.push('Runtime analysis skipped: no events parsed');
+          break;
         }
+        try {
+          // Get pricing context for models in the data
+          const models = Object.keys(ctx.runtimeSummary.byModel);
+          const pricingContext = getPricingContext(models);
 
-        ctx.inferenceMap = buildInferenceMap(ctx.opts.path, ctx.callsites, promptMeta);
-        onProgress?.({ phase: 'analyzing', detail: `${ctx.callsites.length} inference points` });
-      } catch (error) {
-        // Partial state: analysis failed but we can continue
-        ctx.warnings.push(`Analysis warning: ${error instanceof Error ? error.message : String(error)}`);
-        ctx.callsites = [];
-        ctx.llmInsights = [];
-        ctx.inferenceMap = buildInferenceMap(ctx.opts.path, [], { llmUsed: false });
+          const runtimeResult = await RuntimeAnalyzerAgent.execute({
+            events: ctx.events,
+            runtimeSummary: ctx.runtimeSummary,
+            pricingContext,
+          });
+
+          // Store runtime insights for later merging
+          const runtimeInsights = runtimeResult.result.insights.map(i => ({
+            ...i,
+            source: 'llm' as const,
+          }));
+          ctx.llmInsights = [...(ctx.llmInsights || []), ...runtimeInsights as LLMInsight[]];
+
+          onProgress?.({ phase: 'analyzing', detail: `${runtimeResult.result.insights.length} runtime insights` });
+        } catch (error) {
+          ctx.warnings.push(`Runtime analysis warning: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      } else {
+        // Original static code analysis
+        if (!ctx.scanResult) throw new Error('Scan result required');
+        try {
+          // Agent SDK pattern: AnalyzerAgent with tool-limited semantic analysis
+          // Pass progress callback for visual progress bar during LLM analysis
+          const analyzerResult = await AnalyzerAgent.execute({
+            scanResult: ctx.scanResult,
+            onProgress: onProgress ? (data) => {
+              onProgress({ phase: 'analyzing', percent: data.percent, currentFile: data.currentFile });
+            } : undefined,
+          });
+          ctx.callsites = analyzerResult.result.callsites;
+          ctx.llmInsights = analyzerResult.result.llmInsights as LLMInsight[];
+
+          // Get prompt metadata for report
+          let promptMeta: MapMetadata = { llmUsed: ctx.llmInsights.length > 0 };
+          try {
+            const prompt = getDefaultPrompt();
+            promptMeta.promptId = prompt.id;
+            promptMeta.promptVersion = prompt.version;
+          } catch {
+            // Prompt not found, use defaults
+          }
+
+          ctx.inferenceMap = buildInferenceMap(ctx.opts.path, ctx.callsites, promptMeta);
+          onProgress?.({ phase: 'analyzing', detail: `${ctx.callsites.length} inference points` });
+        } catch (error) {
+          // Partial state: analysis failed but we can continue
+          ctx.warnings.push(`Analysis warning: ${error instanceof Error ? error.message : String(error)}`);
+          ctx.callsites = [];
+          ctx.llmInsights = [];
+          ctx.inferenceMap = buildInferenceMap(ctx.opts.path, [], { llmUsed: false });
+        }
       }
       break;
 
@@ -454,14 +510,53 @@ async function executeTask(
     }
 
     case 'join':
-      if (!ctx.callsites || !ctx.events) throw new Error('Callsites and events required');
-      // Agent SDK pattern: JoinerAgent correlates static + runtime
-      const joinerResult = await JoinerAgent.execute({ callsites: ctx.callsites, events: ctx.events });
-      ctx.joined = joinerResult.result.joined;
-      onProgress?.({
-        phase: 'correlating',
-        detail: `${ctx.joined.callsites.filter(c => 'usage' in c && c.usage).length} matched`,
-      });
+      // Handle both basic join AND LLM-based correlation analysis
+      if (task.description === 'Analyze code-runtime drift') {
+        // NEW: LLM-based correlation analysis (Patterns v0.2)
+        if (!ctx.callsites || !ctx.events || !ctx.runtimeSummary) {
+          ctx.warnings.push('Correlation analysis skipped: missing callsites or events');
+          break;
+        }
+        try {
+          const correlationResult = await CorrelationAnalyzerAgent.execute({
+            callsites: ctx.callsites,
+            events: ctx.events,
+            runtimeSummary: ctx.runtimeSummary,
+          });
+
+          // Merge correlation insights
+          const correlationInsights = correlationResult.result.insights.map(i => ({
+            ...i,
+            source: 'llm' as const,
+          }));
+          ctx.llmInsights = [...(ctx.llmInsights || []), ...correlationInsights as LLMInsight[]];
+
+          // Update drift signals in joined output
+          if (ctx.joined) {
+            ctx.joined.drift = [
+              ...ctx.joined.drift,
+              ...correlationResult.result.driftSignals,
+            ];
+          }
+
+          onProgress?.({
+            phase: 'correlating',
+            detail: `alignment: ${Math.round(correlationResult.result.alignmentScore * 100)}%`,
+          });
+        } catch (error) {
+          ctx.warnings.push(`Correlation analysis warning: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      } else {
+        // Original basic join
+        if (!ctx.callsites || !ctx.events) throw new Error('Callsites and events required');
+        // Agent SDK pattern: JoinerAgent correlates static + runtime
+        const joinerResult = await JoinerAgent.execute({ callsites: ctx.callsites, events: ctx.events });
+        ctx.joined = joinerResult.result.joined;
+        onProgress?.({
+          phase: 'correlating',
+          detail: `${ctx.joined.callsites.filter(c => 'usage' in c && c.usage).length} matched`,
+        });
+      }
       break;
 
     case 'load_templates':

@@ -194,3 +194,86 @@ export function setTestPricing(data: Record<string, { input: number; output: num
     fetchedAt: Date.now(),
   };
 }
+
+// =============================================================================
+// PRICING CONTEXT FOR LLM
+// =============================================================================
+
+/**
+ * Pricing tier classification based on cost per 1M tokens
+ */
+export type PricingTier = 'expensive' | 'moderate' | 'cheap' | 'unknown';
+
+const EXPENSIVE_THRESHOLD = 10.0; // >$10/1M = expensive
+const MODERATE_THRESHOLD = 1.0;   // $1-10/1M = moderate
+
+/**
+ * Classify a model into pricing tiers
+ */
+export function classifyModelCost(model: string): PricingTier {
+  const cost = getModelCost(model);
+  if (cost.input === 0 && cost.output === 0) {
+    return 'unknown';
+  }
+
+  // Use average of input/output cost for classification
+  const avgCost = (cost.input + cost.output) / 2;
+
+  if (avgCost > EXPENSIVE_THRESHOLD) {
+    return 'expensive';
+  } else if (avgCost > MODERATE_THRESHOLD) {
+    return 'moderate';
+  } else {
+    return 'cheap';
+  }
+}
+
+/**
+ * Get pricing context for LLM analysis
+ * Returns a condensed pricing map for models used in the data
+ */
+export interface PricingContext {
+  models: Record<string, {
+    input: number;   // $/1M tokens
+    output: number;  // $/1M tokens
+    tier: PricingTier;
+  }>;
+  thresholds: {
+    expensive: number;
+    moderate: number;
+  };
+}
+
+export function getPricingContext(models: string[]): PricingContext {
+  const result: PricingContext = {
+    models: {},
+    thresholds: {
+      expensive: EXPENSIVE_THRESHOLD,
+      moderate: MODERATE_THRESHOLD,
+    },
+  };
+
+  for (const model of models) {
+    const cost = getModelCost(model);
+    result.models[model] = {
+      input: cost.input,
+      output: cost.output,
+      tier: classifyModelCost(model),
+    };
+  }
+
+  return result;
+}
+
+/**
+ * Calculate total cost for a set of events
+ */
+export function calculateTotalCost(events: Array<{
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+}>): number {
+  return events.reduce((total, event) => {
+    return total + calculateCost(event.model, event.input_tokens, event.output_tokens);
+  }, 0);
+}
