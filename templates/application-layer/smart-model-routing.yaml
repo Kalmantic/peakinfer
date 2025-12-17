@@ -1,0 +1,112 @@
+id: "smart-model-routing"
+name: "Intelligent Model Routing for Cost-Optimized Task Execution"
+description: "Route different task types to appropriately-sized models instead of using premium models for everything"
+category: "model_routing"
+confidence: 0.92
+success_count: 1567
+verified_environments: 78
+contributors: ["app_architect", "cost_optimizer", "routing_specialist"]
+last_updated: "2025-01-16"
+
+environment_match:
+  task_variety: "mixed"
+  model_usage: "single_premium_model"
+  monthly_api_cost: ">$10K"
+  task_complexity: "variable"
+
+optimization:
+  technique: "smart_model_routing"
+  expected_cost_reduction: "60-80%"
+  expected_quality_maintenance: ">95%"
+  effort_estimate: "2-3 weeks"
+  risk_level: "low"
+
+economics:
+  baseline_calculation:
+    current_cost_per_task: "${total_monthly_cost} / ${total_monthly_tasks}"
+    premium_model_cost_per_token: 0.03
+    current_avg_tokens_per_task: 200
+  projected_improvement:
+    extraction_cost_per_token: 0.003
+    qa_cost_per_token: 0.01
+    generation_cost_per_token: 0.03
+    weighted_avg_cost: "(${extraction_pct} * 0.003) + (${qa_pct} * 0.01) + (${generation_pct} * 0.03)"
+  implementation_cost:
+    engineering_hours: 160
+    hourly_rate: 200
+    total_cost: 32000
+
+implementation:
+  prerequisites:
+    - requirement: "Task classification capability"
+      validation_command: "python scripts/test_classifier.py --accuracy-threshold 0.95"
+    - requirement: "Multiple model access"
+      validation_command: "python scripts/test_model_access.py --models claude-haiku,gpt-4o-mini,gpt-4o"
+    - requirement: "Request routing infrastructure"
+      validation_command: "python scripts/test_routing.py"
+
+  automated_steps:
+    - step_id: "task_classification_setup"
+      name: "Task Classification"
+      executable: true
+      commands:
+        - "python scripts/setup_task_classifier.py --tasks extraction,qa,summarization,generation"
+        - "python scripts/train_routing_model.py --training-data task_examples.json --accuracy-target 0.95"
+      validation:
+        command: "python scripts/validate_classifier.py --test-data validation_tasks.json"
+        success_criteria: "accuracy > 0.95 AND precision > 0.93 AND recall > 0.93"
+        rollback_command: "python scripts/disable_classification.py"
+
+    - step_id: "routing_configuration"
+      name: "Model Routing Logic"
+      executable: true
+      commands:
+        - "python scripts/configure_model_routing.py --extraction claude-haiku --qa gpt-4o-mini --generation gpt-4o"
+        - "python scripts/implement_fallback_logic.py --quality-threshold 0.9 --fallback-model gpt-4o"
+      validation:
+        command: "python scripts/test_routing_logic.py --sample-tasks 100"
+        success_criteria: "routing_accuracy > 0.95 AND fallback_rate < 0.1"
+        rollback_command: "python scripts/revert_to_single_model.py"
+
+    - step_id: "cost_monitoring_setup"
+      name: "Cost Monitoring"
+      executable: true
+      commands:
+        - "python scripts/setup_cost_tracking.py --per-task --per-model --cost-alerts"
+        - "python scripts/implement_budget_controls.py --daily-limit 1000 --model-caps extraction=5000,qa=2000"
+      validation:
+        command: "python scripts/test_cost_tracking.py"
+        success_criteria: "cost_attribution_accuracy > 0.98"
+        rollback_command: "python scripts/disable_cost_controls.py"
+
+monitoring:
+  key_metrics:
+    - metric: "routing_accuracy"
+      target: ">0.95"
+      alert_threshold: "<0.93"
+    - metric: "cost_per_task"
+      target: "<${baseline_cost} * 0.4"
+      alert_threshold: ">${baseline_cost} * 0.6"
+    - metric: "task_quality_score"
+      target: ">0.95"
+      alert_threshold: "<0.93"
+    - metric: "fallback_rate"
+      target: "<0.1"
+      alert_threshold: ">0.15"
+
+  rollback_triggers:
+    - condition: "routing_accuracy < 0.9 for 30 minutes"
+      action: "automatic_rollback"
+    - condition: "cost_per_task > baseline * 0.8 for 60 minutes"
+      action: "alert_and_investigation"
+    - condition: "task_quality_score < 0.9 for 3 consecutive measurements"
+      action: "automatic_rollback"
+
+results:
+  recent_implementations:
+    - environment: "document_processing_saas"
+      baseline_monthly_cost: 47000
+      optimized_monthly_cost: 18000
+      cost_reduction_percent: 62
+      routing_accuracy: 96.5
+      implementation_days: 18
