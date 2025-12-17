@@ -5,7 +5,7 @@ import { join } from 'path';
 // TYPES
 // =============================================================================
 
-interface ModelCost {
+export interface ModelCost {
   input: number;  // per 1M tokens
   output: number; // per 1M tokens
 }
@@ -13,14 +13,89 @@ interface ModelCost {
 interface PricingCache {
   data: Record<string, ModelCost>;
   fetchedAt: number;
+  source: string;
 }
+
+// =============================================================================
+// PRICING PROVIDER INTERFACE
+// =============================================================================
+// This interface allows swapping LiteLLM for a local implementation.
+// To replace: implement PricingProvider and call setPricingProvider().
+
+export interface PricingProvider {
+  name: string;
+  fetch(): Promise<Record<string, ModelCost>>;
+}
+
+// =============================================================================
+// LITELLM PROVIDER (Default)
+// =============================================================================
+
+const LITELLM_PRICING_URL = 'https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json';
+
+function normalizeLiteLLMPricing(litellmData: Record<string, unknown>): Record<string, ModelCost> {
+  const result: Record<string, ModelCost> = {};
+
+  for (const [model, info] of Object.entries(litellmData)) {
+    if (typeof info !== 'object' || info === null) continue;
+
+    const data = info as Record<string, unknown>;
+    const inputCost = data.input_cost_per_token;
+    const outputCost = data.output_cost_per_token;
+
+    if (typeof inputCost === 'number' && typeof outputCost === 'number') {
+      // Convert per-token to per-1M-tokens
+      result[model] = {
+        input: inputCost * 1_000_000,
+        output: outputCost * 1_000_000,
+      };
+    }
+  }
+
+  return result;
+}
+
+const litellmProvider: PricingProvider = {
+  name: 'litellm',
+  async fetch(): Promise<Record<string, ModelCost>> {
+    const response = await fetch(LITELLM_PRICING_URL);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const rawData = await response.json() as Record<string, unknown>;
+    return normalizeLiteLLMPricing(rawData);
+  },
+};
+
+// =============================================================================
+// LOCAL PROVIDER (Ready for future use)
+// =============================================================================
+// Uncomment and populate to use local pricing instead of LiteLLM.
+// Then call: setPricingProvider(localProvider)
+
+/*
+const localProvider: PricingProvider = {
+  name: 'local',
+  async fetch(): Promise<Record<string, ModelCost>> {
+    // Local pricing data - $/1M tokens
+    return {
+      'gpt-4o': { input: 2.50, output: 10.00 },
+      'gpt-4o-mini': { input: 0.15, output: 0.60 },
+      'gpt-4-turbo': { input: 10.00, output: 30.00 },
+      'claude-3-5-sonnet': { input: 3.00, output: 15.00 },
+      'claude-3-haiku': { input: 0.25, output: 1.25 },
+      'claude-sonnet-4-20250514': { input: 3.00, output: 15.00 },
+      // Add more models as needed
+    };
+  },
+};
+*/
 
 // =============================================================================
 // CONSTANTS
 // =============================================================================
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const LITELLM_PRICING_URL = 'https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json';
 const CACHE_DIR = '.peakinfer/cache';
 const CACHE_FILE = 'pricing.json';
 
@@ -29,6 +104,39 @@ const CACHE_FILE = 'pricing.json';
 // =============================================================================
 
 let pricingCache: PricingCache | null = null;
+let activeProvider: PricingProvider = litellmProvider;
+
+// =============================================================================
+// PROVIDER MANAGEMENT
+// =============================================================================
+
+/**
+ * Set a custom pricing provider.
+ * Call this before loadPricing() to use a different data source.
+ *
+ * Example:
+ *   setPricingProvider({ name: 'local', fetch: async () => ({ ... }) });
+ */
+export function setPricingProvider(provider: PricingProvider): void {
+  activeProvider = provider;
+  // Invalidate cache when provider changes
+  pricingCache = null;
+}
+
+/**
+ * Get the current pricing provider name.
+ */
+export function getPricingProviderName(): string {
+  return activeProvider.name;
+}
+
+/**
+ * Reset to default LiteLLM provider.
+ */
+export function resetToDefaultProvider(): void {
+  activeProvider = litellmProvider;
+  pricingCache = null;
+}
 
 // =============================================================================
 // HELPERS
@@ -60,34 +168,14 @@ function saveCacheToDisk(cache: PricingCache): void {
   writeFileSync(cachePath, JSON.stringify(cache, null, 2));
 }
 
-function normalizePricing(litellmData: Record<string, unknown>): Record<string, ModelCost> {
-  const result: Record<string, ModelCost> = {};
-
-  for (const [model, info] of Object.entries(litellmData)) {
-    if (typeof info !== 'object' || info === null) continue;
-
-    const data = info as Record<string, unknown>;
-    const inputCost = data.input_cost_per_token;
-    const outputCost = data.output_cost_per_token;
-
-    if (typeof inputCost === 'number' && typeof outputCost === 'number') {
-      // Convert per-token to per-1M-tokens
-      result[model] = {
-        input: inputCost * 1_000_000,
-        output: outputCost * 1_000_000,
-      };
-    }
-  }
-
-  return result;
-}
-
 // =============================================================================
 // PUBLIC API
 // =============================================================================
 
 export function isCacheValid(): boolean {
   if (!pricingCache) return false;
+  // Also invalidate if provider changed
+  if (pricingCache.source !== activeProvider.name) return false;
   return Date.now() - pricingCache.fetchedAt < CACHE_TTL_MS;
 }
 
@@ -97,42 +185,40 @@ export async function loadPricing(): Promise<void> {
     return;
   }
 
-  // Check disk cache
+  // Check disk cache (only if same provider)
   const diskCache = loadCacheFromDisk();
-  if (diskCache && Date.now() - diskCache.fetchedAt < CACHE_TTL_MS) {
+  if (diskCache &&
+      diskCache.source === activeProvider.name &&
+      Date.now() - diskCache.fetchedAt < CACHE_TTL_MS) {
     pricingCache = diskCache;
     return;
   }
 
-  // Fetch from LiteLLM
+  // Fetch from active provider
   try {
-    const response = await fetch(LITELLM_PRICING_URL);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const rawData = await response.json() as Record<string, unknown>;
-    const normalized = normalizePricing(rawData);
+    const data = await activeProvider.fetch();
 
     pricingCache = {
-      data: normalized,
+      data,
       fetchedAt: Date.now(),
+      source: activeProvider.name,
     };
 
     saveCacheToDisk(pricingCache);
   } catch (error) {
-    // Fall back to stale cache if available
-    if (diskCache) {
-      console.warn('[costs] Failed to fetch pricing, using stale cache');
+    // Fall back to stale cache if available and same provider
+    if (diskCache && diskCache.source === activeProvider.name) {
+      console.warn(`[costs] Failed to fetch from ${activeProvider.name}, using stale cache`);
       pricingCache = diskCache;
       return;
     }
 
     // No cache at all - use empty with warning
-    console.warn('[costs] Failed to fetch pricing, no cache available');
+    console.warn(`[costs] Failed to fetch from ${activeProvider.name}, no cache available`);
     pricingCache = {
       data: {},
       fetchedAt: Date.now(),
+      source: activeProvider.name,
     };
   }
 }
@@ -192,6 +278,7 @@ export function setTestPricing(data: Record<string, { input: number; output: num
   pricingCache = {
     data,
     fetchedAt: Date.now(),
+    source: 'test',
   };
 }
 

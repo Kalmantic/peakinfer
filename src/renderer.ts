@@ -1,4 +1,4 @@
-import type { ExecutionPlan, PlannedTask, TaskResult, Insight, JoinedOutput, RuntimeSummary, InferenceMap, StackLayer } from './types.js';
+import type { ExecutionPlan, PlannedTask, TaskResult, Insight, JoinedOutput, RuntimeSummary, InferenceMap, StackLayer, ComparisonResult, PredictionResult, CounterfactualResult } from './types.js';
 import type { AgentResults } from './agent.js';
 import { VERSION_DISPLAY } from './version.js';
 import { formatImpactSummary, type ImpactSummary } from './impact.js';
@@ -64,6 +64,235 @@ function dim(text: string): string {
 
 function bold(text: string): string {
   return `\x1b[1m${text}\x1b[0m`;
+}
+
+function green(text: string): string {
+  return `\x1b[32m${text}\x1b[0m`;
+}
+
+function red(text: string): string {
+  return `\x1b[31m${text}\x1b[0m`;
+}
+
+function yellow(text: string): string {
+  return `\x1b[33m${text}\x1b[0m`;
+}
+
+// =============================================================================
+// COMPARISON RENDERER (v1.5)
+// =============================================================================
+
+/**
+ * Render historical comparison results.
+ * Shows what changed prominently at the top.
+ */
+function renderComparison(comparison: ComparisonResult): void {
+  const { metrics, insightDeltas } = comparison;
+
+  // Header with date context
+  const baseDate = new Date(comparison.baseTimestamp).toLocaleDateString();
+  console.log(bold('Changes since last run') + dim(` (${baseDate})`));
+  console.log('');
+
+  // Summary line
+  const delta = metrics.netChange;
+  const deltaStr = delta > 0 ? green(`+${delta}`) : delta < 0 ? red(`${delta}`) : dim('0');
+  console.log(`  Inference points: ${metrics.totalBefore} → ${metrics.totalAfter} (${deltaStr})`);
+  console.log('');
+
+  // Show changes if any
+  const hasChanges = metrics.addedCount > 0 || metrics.removedCount > 0 || metrics.changedCount > 0;
+
+  if (hasChanges) {
+    if (metrics.addedCount > 0) {
+      console.log(`  ${green('+')} ${metrics.addedCount} new inference point${metrics.addedCount !== 1 ? 's' : ''}`);
+      // Show first few added locations
+      for (const added of comparison.added.slice(0, 3)) {
+        console.log(`      ${dim(added.file + ':' + added.line)}`);
+      }
+      if (comparison.added.length > 3) {
+        console.log(`      ${dim(`... and ${comparison.added.length - 3} more`)}`);
+      }
+    }
+
+    if (metrics.removedCount > 0) {
+      console.log(`  ${red('-')} ${metrics.removedCount} removed inference point${metrics.removedCount !== 1 ? 's' : ''}`);
+      for (const removed of comparison.removed.slice(0, 3)) {
+        console.log(`      ${dim(removed.file + ':' + removed.line)}`);
+      }
+      if (comparison.removed.length > 3) {
+        console.log(`      ${dim(`... and ${comparison.removed.length - 3} more`)}`);
+      }
+    }
+
+    if (metrics.changedCount > 0) {
+      console.log(`  ${yellow('~')} ${metrics.changedCount} modified inference point${metrics.changedCount !== 1 ? 's' : ''}`);
+      for (const changed of comparison.changed.slice(0, 3)) {
+        const changeDesc = changed.changes.map(c => c.field).join(', ');
+        console.log(`      ${dim(changed.point.file + ':' + changed.point.line)} ${dim('(' + changeDesc + ')')}`);
+      }
+      if (comparison.changed.length > 3) {
+        console.log(`      ${dim(`... and ${comparison.changed.length - 3} more`)}`);
+      }
+    }
+    console.log('');
+  } else {
+    console.log(`  ${dim('No changes detected')}`);
+    console.log('');
+  }
+
+  // Insight deltas (if available)
+  if (insightDeltas) {
+    const hasInsightChanges = insightDeltas.newCritical > 0 ||
+                              insightDeltas.resolvedCritical > 0 ||
+                              insightDeltas.newWarnings > 0 ||
+                              insightDeltas.resolvedWarnings > 0;
+
+    if (hasInsightChanges) {
+      console.log(dim('Issue changes'));
+      if (insightDeltas.newCritical > 0) {
+        console.log(`  ${red('[!]')} ${insightDeltas.newCritical} new critical issue${insightDeltas.newCritical !== 1 ? 's' : ''}`);
+      }
+      if (insightDeltas.resolvedCritical > 0) {
+        console.log(`  ${green('[✓]')} ${insightDeltas.resolvedCritical} critical issue${insightDeltas.resolvedCritical !== 1 ? 's' : ''} resolved`);
+      }
+      if (insightDeltas.newWarnings > 0) {
+        console.log(`  ${yellow('[*]')} ${insightDeltas.newWarnings} new warning${insightDeltas.newWarnings !== 1 ? 's' : ''}`);
+      }
+      if (insightDeltas.resolvedWarnings > 0) {
+        console.log(`  ${green('[✓]')} ${insightDeltas.resolvedWarnings} warning${insightDeltas.resolvedWarnings !== 1 ? 's' : ''} resolved`);
+      }
+      console.log('');
+    }
+  }
+}
+
+// =============================================================================
+// PREDICTION RENDERER (v1.5)
+// =============================================================================
+
+/**
+ * Render deploy-time latency predictions.
+ * Surfaces potential performance risks before deployment.
+ */
+function renderPrediction(prediction: PredictionResult): void {
+  const { predictions, summary, targetP95 } = prediction;
+
+  // Header with deploy-time anxiety framing
+  console.log(bold('Deploy-time Prediction'));
+  console.log('');
+
+  // Summary line with risk counts
+  if (summary.highRiskCount > 0) {
+    console.log(`  ${red('[!]')} ${summary.highRiskCount} high-risk inference point${summary.highRiskCount !== 1 ? 's' : ''} (p95 > 5000ms)`);
+  }
+  if (summary.mediumRiskCount > 0) {
+    console.log(`  ${yellow('[*]')} ${summary.mediumRiskCount} medium-risk inference point${summary.mediumRiskCount !== 1 ? 's' : ''} (p95 > 2000ms)`);
+  }
+  if (summary.lowRiskCount > 0) {
+    console.log(`  ${dim('[-]')} ${summary.lowRiskCount} low-risk inference point${summary.lowRiskCount !== 1 ? 's' : ''}`);
+  }
+
+  const neutralCount = summary.totalPoints - summary.highRiskCount - summary.mediumRiskCount - summary.lowRiskCount;
+  if (neutralCount > 0) {
+    console.log(`  ${dim('[✓]')} ${neutralCount} within acceptable latency`);
+  }
+  console.log('');
+
+  // Show worst predictions
+  const sortedByRisk = [...predictions].sort((a, b) => b.riskScore - a.riskScore);
+  const riskyPredictions = sortedByRisk.filter(p => p.risk === 'high' || p.risk === 'medium').slice(0, 5);
+
+  if (riskyPredictions.length > 0) {
+    console.log(dim('Top latency risks'));
+    for (const pred of riskyPredictions) {
+      const riskMarker = pred.risk === 'high' ? red('[!]') : yellow('[*]');
+      const modelInfo = pred.model ? dim(` (${pred.model})`) : '';
+      console.log(`  ${riskMarker} ${pred.location}${modelInfo}`);
+      console.log(`      p95: ${pred.predictedLatency.p95}ms | p99: ${pred.predictedLatency.p99}ms`);
+    }
+    console.log('');
+  }
+
+  // Latency budget check
+  if (targetP95 !== undefined) {
+    if (summary.budgetExceeded) {
+      console.log(`  ${red('[!]')} Budget exceeded: worst p95 ${summary.worstP95}ms > target ${targetP95}ms`);
+    } else {
+      console.log(`  ${green('[✓]')} Within budget: worst p95 ${summary.worstP95}ms ≤ target ${targetP95}ms`);
+    }
+    console.log('');
+  }
+
+  // Overall stats
+  console.log(dim('Latency estimates'));
+  console.log(`  Average p95: ${summary.averageP95}ms`);
+  console.log(`  Worst p95: ${summary.worstP95}ms`);
+  console.log('');
+}
+
+// =============================================================================
+// COUNTERFACTUAL RENDERER (v1.5)
+// =============================================================================
+
+/**
+ * Render counterfactual "what if" optimization scenarios.
+ * Shows the road not taken and its potential impact.
+ */
+function renderCounterfactuals(counterfactuals: CounterfactualResult): void {
+  const { counterfactuals: items, summary } = counterfactuals;
+
+  if (summary.totalOpportunities === 0) return;
+
+  console.log(bold('Optimization Opportunities'));
+  console.log('');
+
+  // Summary line
+  const savingsInfo: string[] = [];
+  if (summary.maxLatencySavingsPercent > 0) {
+    savingsInfo.push(`up to ${summary.maxLatencySavingsPercent}% latency reduction`);
+  }
+  if (summary.maxCostSavingsPercent > 0) {
+    savingsInfo.push(`up to ${summary.maxCostSavingsPercent}% cost savings`);
+  }
+
+  console.log(`  ${summary.totalOpportunities} opportunities: ${savingsInfo.join(', ')}`);
+  console.log('');
+
+  // Show top opportunities (up to 5)
+  const topItems = items.slice(0, 5);
+
+  for (const cf of topItems) {
+    // Format impact
+    const impactParts: string[] = [];
+    if (cf.impact.latencyDeltaPercent < 0) {
+      impactParts.push(green(`${cf.impact.latencyDeltaPercent}% latency`));
+    }
+    if (cf.impact.costDeltaPercent < 0) {
+      impactParts.push(green(`${cf.impact.costDeltaPercent}% cost`));
+    }
+    const impactStr = impactParts.length > 0 ? impactParts.join(', ') : dim('neutral');
+
+    // Effort indicator
+    const effortMarker = cf.effort === 'low' ? dim('[easy]') :
+                         cf.effort === 'medium' ? dim('[moderate]') :
+                         dim('[complex]');
+
+    console.log(`  ${bold(cf.headline)} ${effortMarker}`);
+    console.log(`      Impact: ${impactStr}`);
+
+    // Show tradeoffs for first few
+    if (cf.impact.tradeoffs.length > 0 && topItems.indexOf(cf) < 3) {
+      console.log(`      ${dim('Tradeoff: ' + cf.impact.tradeoffs[0])}`);
+    }
+
+    console.log('');
+  }
+
+  if (items.length > 5) {
+    console.log(dim(`  ... and ${items.length - 5} more opportunities`));
+    console.log('');
+  }
 }
 
 // =============================================================================
@@ -162,18 +391,56 @@ function renderError(error: Error, context?: { file?: string; line?: number; fie
 
 /**
  * SUCCESS STATE: Full results
- * Julie Zhou DD Section 6.1 - BLUF (Bottom Line Up Front) order:
- * 1. Summary (headroom totals) - PROMINENT, the bottom line
- * 2. Headroom by layer + Quick Wins + Strategic
- * 3. Scope (what was analyzed)
- * 4. Runtime (if events)
- * 5. Findings (detailed evidence - supporting info)
- * 6. Artifacts + Next steps
+ * v1.5 Output Order (decision-relevant first):
+ * 1. Historical Comparison (if --compare) - what changed since last run
+ * 2. Deploy-Time Prediction (if --predict) - latency risk before deploy
+ * 3. Counterfactual Insights - what-if optimization scenarios
+ * 4. Code-Runtime Drift (if combined) - code/runtime mismatch
+ * 5. BLUF Summary (headroom totals) - the bottom line
+ * 6. Headroom by layer + Quick Wins + Strategic
+ * 7. Scope (what was analyzed)
+ * 8. Performance Profile (if static)
+ * 9. Runtime (if events)
+ * 10. Run info
+ * 11. Findings (detailed evidence)
+ * 12. Saved artifacts + Next steps
  */
 function renderSuccess(results: AgentResults): void {
   // Show warnings if partial state
   if (results.warnings && results.warnings.length > 0) {
     renderPartialState(results.warnings);
+  }
+
+  // v1.5: Show comparison first (what changed since last time?)
+  if (results.comparison) {
+    renderComparison(results.comparison);
+  }
+
+  // v1.5: Show prediction (deploy-time risk assessment)
+  if (results.prediction) {
+    renderPrediction(results.prediction);
+  }
+
+  // v1.5: Show counterfactuals (optimization opportunities)
+  if (results.counterfactuals) {
+    renderCounterfactuals(results.counterfactuals);
+  }
+
+  // v1.5: Drift detection early (code-runtime mismatch detection)
+  if (results.joined && results.joined.drift.length > 0) {
+    console.log(bold('Code-Runtime Drift'));
+    console.log('');
+    const codeOnly = results.joined.codeOnly.length;
+    const runtimeOnly = results.joined.runtimeOnly.length;
+    if (codeOnly > 0) {
+      console.log(`  ${yellow('[*]')} ${codeOnly} inference point${codeOnly !== 1 ? 's' : ''} in code but not in runtime`);
+      console.log(dim('      (dead code? not yet deployed?)'));
+    }
+    if (runtimeOnly > 0) {
+      console.log(`  ${red('[!]')} ${runtimeOnly} runtime event${runtimeOnly !== 1 ? 's' : ''} not mapped to code`);
+      console.log(dim('      (dynamic calls? wrapper functions?)'));
+    }
+    console.log('');
   }
 
   // 1. BLUF: One-liner with potential improvement
@@ -220,8 +487,8 @@ function renderSuccess(results: AgentResults): void {
     }
   }
   if (results.joined) {
-    console.log(`  Matched: ${results.joined.callsites.filter(c => 'usage' in c && c.usage).length}`);
-    console.log(`  Drift signals: ${results.joined.drift.length}`);
+    const matchedCount = results.joined.callsites.filter(c => 'usage' in c && c.usage).length;
+    console.log(`  Matched: ${matchedCount} of ${results.joined.callsites.length} inference points`);
   }
   console.log('');
 
@@ -325,17 +592,7 @@ function renderSuccess(results: AgentResults): void {
     console.log('');
   }
 
-  // 7. Drift summary (if combined)
-  if (results.joined && results.joined.drift.length > 0) {
-    console.log(dim('Drift'));
-    const codeOnly = results.joined.codeOnly.length;
-    const runtimeOnly = results.joined.runtimeOnly.length;
-    if (codeOnly > 0) console.log(`  Code-only: ${codeOnly} inference points`);
-    if (runtimeOnly > 0) console.log(`  Runtime-only: ${runtimeOnly} events`);
-    console.log('');
-  }
-
-  // 8. Saved artifacts + Next steps
+  // 7. Saved artifacts + Next steps
   console.log(dim('Saved'));
   console.log('  .peakinfer/inferencemap.json');
   console.log('  .peakinfer/insights.json');

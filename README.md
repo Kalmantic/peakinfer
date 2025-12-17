@@ -2,13 +2,16 @@
 
 LLM inference performance analysis CLI.
 
-Reveals the truth about your LLM inference patterns - what models you're calling, how they perform, and where code intent diverges from runtime reality.
+Reveals the truth about your LLM inference patterns - what models you're calling, how they perform, and where code intent diverges from runtime reality. **v1.5 adds pre-deploy validation** with historical comparison, latency predictions, and optimization insights.
 
 ## Features
 
 - **Static Analysis**: Scan codebases to detect LLM inference points (OpenAI, Anthropic, Azure, Bedrock, etc.)
 - **Runtime Analysis**: Analyze telemetry logs to understand actual inference behavior
 - **Combined Analysis**: Detect drift between code intent and runtime reality
+- **Historical Comparison** (v1.5): Track changes over time with `--compare`
+- **Deploy-Time Prediction** (v1.5): Assess latency risk before deployment with `--predict`
+- **Counterfactual Insights** (v1.5): See optimization opportunities you're missing
 - **LLM-Powered Insights**: Semantic analysis using Claude for deeper pattern detection
 - **Multi-Format Support**: JSONL, JSON, CSV, OpenTelemetry, Jaeger, Zipkin, LiteLLM, Langsmith
 
@@ -22,6 +25,22 @@ npm install -g @kalmantic/peakinfer
 ```
 
 **Requirements**: Node.js >= 18.0.0
+
+## Quick Start
+
+```bash
+# Basic analysis
+peakinfer analyze .
+
+# With historical comparison (v1.5)
+peakinfer analyze . --compare
+
+# With latency predictions (v1.5)
+peakinfer analyze . --predict --target-p95 2000
+
+# Full analysis with HTML report
+peakinfer analyze . --compare --predict --html --open
+```
 
 ## Configuration
 
@@ -84,6 +103,82 @@ peakinfer analyze . --events production.jsonl
 
 **Output**: Everything from static + runtime, plus drift signals (model mismatches, dead code, orphan events).
 
+### v1.5 Features
+
+#### Historical Comparison (`--compare`)
+
+Track changes between analysis runs:
+
+```bash
+# Compare with most recent previous run
+peakinfer analyze . --compare
+
+# Compare with specific run ID
+peakinfer analyze . --compare abc123def
+```
+
+**Output**:
+```
+Changes since last run (12/15/2024)
+
+  Inference points: 4 → 6 (+2)
+
+  + 2 new inference points
+      src/api/chat.ts:45
+      src/api/embed.ts:23
+
+  ~ 1 modified inference point
+      src/llm/client.ts:89 (model changed)
+
+Issue changes
+  [!] 1 new critical issue
+  [✓] 2 warnings resolved
+```
+
+#### Deploy-Time Prediction (`--predict`)
+
+Assess latency risk before deployment:
+
+```bash
+# Generate predictions
+peakinfer analyze . --predict
+
+# With latency budget
+peakinfer analyze . --predict --target-p95 2000
+```
+
+**Output**:
+```
+Deploy-time Prediction
+
+  [!] 2 high-risk inference points (p95 > 5000ms)
+  [*] 1 medium-risk inference point (p95 > 2000ms)
+  [-] 3 low-risk inference points
+
+Top latency risks
+  [!] src/api/analyze.ts:78 (claude-3-opus)
+      p95: 8000ms | p99: 15000ms
+
+  [!] Budget exceeded: worst p95 8000ms > target 2000ms
+```
+
+#### Counterfactual Insights (Always On)
+
+See optimization opportunities automatically:
+
+```
+Optimization Opportunities
+
+  8 opportunities: up to 80% latency reduction, up to 90% cost savings
+
+  Switch from gpt-4 to gpt-4o-mini [easy]
+      Impact: -75% latency, -90% cost
+      Tradeoff: Good for simpler tasks
+
+  Enable response streaming [easy]
+      Impact: -80% perceived latency
+```
+
 ### CLI Options
 
 ```bash
@@ -97,6 +192,12 @@ Options:
   --output <format>    Output format: text (default) or json
   --cached             View previous analysis (offline, no API key needed)
   --verbose            Show detailed task progress
+
+History Options (v1.5):
+  --no-history         Skip saving run to history
+  --compare [runId]    Compare with previous run (default: latest)
+  --predict            Generate deploy-time latency predictions
+  --target-p95 <ms>    Target p95 latency for budget calculation
 
 Format Detection:
   --format <type>      Specify runtime format: jsonl, json, csv, otel, jaeger, zipkin, langsmith, litellm
@@ -121,6 +222,12 @@ peakinfer analyze . --html --open
 # Combined analysis with PDF report
 peakinfer analyze . --events prod-logs.jsonl --pdf --open
 
+# Full v1.5 analysis
+peakinfer analyze . --events prod.jsonl --compare --predict --target-p95 3000 --html --open
+
+# Skip history for quick check
+peakinfer analyze . --no-history
+
 # Custom format with field mapping
 peakinfer analyze logs.csv --format csv --map latency_ms=response_time model=llm_model
 
@@ -140,6 +247,14 @@ PeakInfer generates artifacts in `.peakinfer/`:
 | `insights.json` | Optimization recommendations |
 | `report.html` | Interactive HTML report |
 | `report.pdf` | PDF report (if `--pdf` specified) |
+
+History is stored in `.peakinfer/runs/`:
+
+| File | Description |
+|------|-------------|
+| `runs/<runId>/manifest.json` | Run metadata |
+| `runs/<runId>/analysis.json` | Full analysis results |
+| `runs/index.json` | Index of all runs |
 
 ## Supported Providers
 
@@ -200,6 +315,21 @@ The agents have two modes:
 - **Fallback Mode** (no API key): Uses deterministic regex-based analysis
 - **LLM Mode** (with API key): Uses Claude for semantic analysis
 
+### Demo Project (v1.5)
+
+Test v1.5 features with the included demo project:
+
+```bash
+# Interactive demo
+./scripts/demo-v1.5.sh
+
+# Or run directly
+cd fixtures/demo-project
+peakinfer analyze .
+peakinfer analyze . --compare
+peakinfer analyze . --predict --target-p95 2000
+```
+
 ### Eval Framework
 
 Evaluation fixtures are in `evals/fixtures/`:
@@ -248,6 +378,10 @@ src/
 ├── runtime.ts          # Runtime event parsing
 ├── joiner.ts           # Static + runtime joining
 ├── insights.ts         # Insight generation
+├── history.ts          # v1.5: History storage
+├── comparison.ts       # v1.5: Historical comparison
+├── prediction.ts       # v1.5: Deploy-time predictions
+├── counterfactuals.ts  # v1.5: Optimization scenarios
 ├── format-normalizer.ts # Multi-format detection
 ├── costs.ts            # Model pricing data
 ├── renderer.ts         # Terminal output
@@ -271,6 +405,10 @@ evals/                  # Evaluation framework
   ├── fixtures/         # Test fixtures
   ├── ground-truth/     # Expected results
   └── metrics/          # Metrics computation
+
+fixtures/demo-project/  # v1.5 demo project
+scripts/demo-v1.5.sh    # v1.5 demo script
+docs/v1.5-demo-guide.md # v1.5 demo guide
 ```
 
 ### Architecture
@@ -279,6 +417,13 @@ PeakInfer uses a **two-pass execution model**:
 
 1. **Planning Pass**: Analyze inputs, determine what analysis is needed
 2. **Execution Pass**: Run analysis tasks with progress tracking
+
+**v1.5 Task Flow**:
+```
+scan → analyze → [parse_events] → [join] →
+compare → predict → counterfactuals →
+generate_insights → render → save_artifacts → save_history
+```
 
 **LLM Agents** (when API key is available):
 - `RuntimeAnalyzerAgent`: Semantic analysis of runtime patterns

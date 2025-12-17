@@ -40,6 +40,11 @@ program
   .option('--lenient', 'accept low-confidence field mappings')
   .option('--strict', 'fail on missing required fields or unknown formats')
   .option('--redact', 'redact code snippets from artifacts')
+  // History options (v1.5)
+  .option('--no-history', 'skip saving run to history (disables comparison/prediction)')
+  .option('--compare [runId]', 'compare with previous run (default: latest)')
+  .option('--predict', 'generate deploy-time latency predictions')
+  .option('--target-p95 <ms>', 'target p95 latency for budget calculation (use with --predict)')
   .action(async (path: string, options: {
     events?: string;
     html?: boolean;
@@ -54,6 +59,11 @@ program
     lenient?: boolean;
     strict?: boolean;
     redact?: boolean;
+    // History options (v1.5)
+    history?: boolean; // Commander negates --no-history to history: false
+    compare?: string | boolean; // --compare or --compare <runId>
+    predict?: boolean; // --predict flag
+    targetP95?: string; // --target-p95 <ms>
   }) => {
     try {
       // Validate path exists
@@ -119,6 +129,12 @@ program
         lenient: options.lenient,
         strict: options.strict,
         redact: options.redact,
+        // History options (v1.5)
+        noHistory: options.history === false, // --no-history sets history to false
+        compare: options.compare !== undefined, // --compare flag was used
+        compareRunId: typeof options.compare === 'string' ? options.compare : undefined, // specific run ID
+        predict: options.predict, // --predict flag
+        targetP95: options.targetP95 ? parseInt(options.targetP95, 10) : undefined, // --target-p95 <ms>
       });
     } catch (error) {
       if (error instanceof Error) {
