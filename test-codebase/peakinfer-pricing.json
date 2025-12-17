@@ -1,0 +1,404 @@
+{
+  "estimatedRange": {
+    "low": 20.911000000000005,
+    "high": 900.0200000000002
+  },
+  "mostExpensiveModel": "gpt-4o",
+  "byProvider": [
+    {
+      "provider": "anthropic",
+      "cost": 564,
+      "percentage": 63
+    },
+    {
+      "provider": "openai",
+      "cost": 335.59999999999997,
+      "percentage": 37
+    },
+    {
+      "provider": "nscale",
+      "cost": 0.42,
+      "percentage": 0
+    },
+    {
+      "provider": "vllm",
+      "cost": 0,
+      "percentage": 0
+    },
+    {
+      "provider": "sglang",
+      "cost": 0,
+      "percentage": 0
+    }
+  ],
+  "byModel": [
+    {
+      "model": "gpt-4o",
+      "cost": 325
+    },
+    {
+      "model": "claude-sonnet-4-20250514",
+      "cost": 315
+    },
+    {
+      "model": "claude-3-opus-20240229",
+      "cost": 225
+    },
+    {
+      "model": "claude-3-5-haiku-20241022",
+      "cost": 24
+    },
+    {
+      "model": "gpt-4o-mini",
+      "cost": 9.75
+    },
+    {
+      "model": "text-embedding-3-large",
+      "cost": 0.6500000000000001
+    },
+    {
+      "model": "meta-llama/Llama-3.1-8B-Instruct",
+      "cost": 0.42
+    },
+    {
+      "model": "text-embedding-3-small",
+      "cost": 0.2
+    },
+    {
+      "model": "dynamic",
+      "cost": 0
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "cost": 0
+    },
+    {
+      "model": "TheBloke/Llama-2-70B-Chat-AWQ",
+      "cost": 0
+    },
+    {
+      "model": "unknown",
+      "cost": 0
+    }
+  ],
+  "hotspots": [
+    {
+      "file": "src/services/anthropic_service.py",
+      "line": 155,
+      "model": "claude-3-opus-20240229",
+      "estimatedMonthlyLow": 5.25,
+      "estimatedMonthlyHigh": 225,
+      "suggestion": "(AI Analysis) Opus is most expensive. For complex analysis, test Claude Sonnet 4 first (3x cheaper, often similar quality). Reserve Opus for tasks requiring absolute best reasoning."
+    },
+    {
+      "file": "src/services/anthropic_service.py",
+      "line": 21,
+      "model": "claude-sonnet-4-20250514",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Claude Sonnet 4 is premium tier. For general queries, switch to Claude Haiku (10x cheaper) or Gemini Flash 2.0 (similar cost, faster)."
+    },
+    {
+      "file": "src/services/anthropic_service.py",
+      "line": 56,
+      "model": "claude-sonnet-4-20250514",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Streaming with premium model. If latency is priority, keep Claude. For cost optimization on simple streaming tasks, test Claude Haiku or Llama-3.1-70B via Groq."
+    },
+    {
+      "file": "src/services/anthropic_service.py",
+      "line": 74,
+      "model": "claude-sonnet-4-20250514",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Good use of prompt caching (90% cost reduction on cached tokens). Ensure cache hits are maximized by maintaining stable context prefixes."
+    },
+    {
+      "file": "src/services/anthropic_service.py",
+      "line": 120,
+      "model": "claude-sonnet-4-20250514",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Tool use with premium model. Test Claude Haiku for simpler tool schemas (10x cheaper). For complex multi-step tool chains, Claude Sonnet is justified."
+    },
+    {
+      "file": "src/services/anthropic_service.py",
+      "line": 194,
+      "model": "claude-sonnet-4-20250514",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Claude Sonnet has excellent vision capabilities. For cost optimization on simple image tasks, test Gemini 2.0 Flash (10x cheaper) or GPT-4o-mini."
+    },
+    {
+      "file": "src/agents/langchain_agent.py",
+      "line": 25,
+      "model": "claude-sonnet-4-20250514",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Premium model in LangChain. Consider routing logic: use Claude Haiku for simple chains, reserve Sonnet for complex reasoning chains."
+    },
+    {
+      "file": "src/utils/inference_patterns.py",
+      "line": 200,
+      "model": "claude-sonnet-4-20250514",
+      "estimatedMonthlyLow": 1.05,
+      "estimatedMonthlyHigh": 45,
+      "suggestion": "(AI Analysis) Fallback to Anthropic. Consider adding cheaper models (Haiku, Gemini Flash) in fallback chain before premium models."
+    },
+    {
+      "file": "src/services/openai_service.py",
+      "line": 22,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) For general assistant tasks, consider switching to gpt-4o-mini (60% cheaper), Gemini Flash 2.0 (10x cheaper), or Claude Haiku (similar cost but faster) if quality requirements allow."
+    },
+    {
+      "file": "src/services/openai_service.py",
+      "line": 79,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) Function calling requires robust model. GPT-4o is appropriate, but test gpt-4o-mini for simpler tool schemas (60% cost reduction)."
+    },
+    {
+      "file": "src/services/openai_service.py",
+      "line": 138,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) For structured extraction tasks, test gpt-4o-mini (60% cheaper) or Llama-3.1-70B-Instruct with JSON mode via Together AI (5x cheaper)."
+    },
+    {
+      "file": "src/services/openai_service.py",
+      "line": 152,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) Vision tasks require multimodal models. Consider Gemini 2.0 Flash (10x cheaper) or Claude Sonnet for better vision performance at similar cost."
+    },
+    {
+      "file": "src/agents/langchain_agent.py",
+      "line": 24,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) LangChain chain with GPT-4o. For cost optimization, use gpt-4o-mini for simpler chains or implement routing logic to select model based on query complexity."
+    },
+    {
+      "file": "src/utils/inference_patterns.py",
+      "line": 40,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) Retry-wrapped call. Good pattern. For cost optimization, consider gpt-4o-mini or implement provider fallback to cheaper alternatives on rate limit."
+    },
+    {
+      "file": "src/utils/inference_patterns.py",
+      "line": 85,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) Redis caching implemented. Excellent pattern for deterministic queries. Ensure cache hit rate >80% for ROI. Consider using gpt-4o-mini for cached workloads."
+    },
+    {
+      "file": "src/utils/inference_patterns.py",
+      "line": 188,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) Fallback chain implemented. Excellent reliability pattern. Consider adding Groq or Fireworks as third fallback for additional redundancy at low cost."
+    },
+    {
+      "file": "src/utils/inference_patterns.py",
+      "line": 288,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) Rate limiting implemented. Good for compliance. Consider gpt-4o-mini to reduce cost per request within rate limits."
+    },
+    {
+      "file": "src/utils/inference_patterns.py",
+      "line": 339,
+      "model": "gpt-4o",
+      "estimatedMonthlyLow": 0.75,
+      "estimatedMonthlyHigh": 32.5,
+      "suggestion": "(AI Analysis) Circuit breaker pattern. Excellent for preventing cascade failures. Consider adding cheaper fallback when circuit opens."
+    },
+    {
+      "file": "src/services/anthropic_service.py",
+      "line": 136,
+      "model": "claude-3-5-haiku-20241022",
+      "estimatedMonthlyLow": 0.28,
+      "estimatedMonthlyHigh": 12,
+      "suggestion": "(AI Analysis) Excellent model choice for classification. Already cost-optimized. For even lower cost at scale, consider Llama-3.1-8B via Groq or fine-tuned classifier."
+    },
+    {
+      "file": "src/services/anthropic_service.py",
+      "line": 175,
+      "model": "claude-3-5-haiku-20241022",
+      "estimatedMonthlyLow": 0.28,
+      "estimatedMonthlyHigh": 12,
+      "suggestion": "(AI Analysis) Batch processing with cost-effective model. Well-optimized. For even higher throughput, consider Groq for Llama models (10x faster, similar cost)."
+    },
+    {
+      "file": "src/services/openai_service.py",
+      "line": 41,
+      "model": "gpt-4o-mini",
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "(AI Analysis) Already using cost-effective model. Consider Llama-3.1-8B via Groq or Together AI for 5-10x cheaper alternative with similar quality for simple tasks."
+    },
+    {
+      "file": "src/services/openai_service.py",
+      "line": 119,
+      "model": "gpt-4o-mini",
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "(AI Analysis) Batch processing detected. Already using cost-effective model. For higher throughput at lower cost, batch via OpenAI Batch API (50% discount) or switch to Groq for 10x faster inference."
+    },
+    {
+      "file": "src/agents/langchain_agent.py",
+      "line": 186,
+      "model": "gpt-4o-mini",
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "(AI Analysis) Good use of routing pattern. Already cost-optimized. Consider adding Llama-3.1-8B via Groq as even cheaper fast option."
+    },
+    {
+      "file": "src/utils/inference_patterns.py",
+      "line": 56,
+      "model": "gpt-4o-mini",
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "(AI Analysis) Manual retry with backoff. Good cost-effective model choice. Pattern is well-implemented."
+    },
+    {
+      "file": "src/utils/inference_patterns.py",
+      "line": 105,
+      "model": "gpt-4o-mini",
+      "estimatedMonthlyLow": 0.045,
+      "estimatedMonthlyHigh": 1.95,
+      "suggestion": "(AI Analysis) LRU cache + cost-effective model. Well-optimized for repeated queries. Good pattern."
+    },
+    {
+      "file": "src/services/openai_service.py",
+      "line": 104,
+      "model": "text-embedding-3-large",
+      "estimatedMonthlyLow": 0.013000000000000001,
+      "estimatedMonthlyHigh": 0.6500000000000001,
+      "suggestion": "(AI Analysis) For large-scale embedding workloads, consider switching to Cohere embed-english-v3.0 (similar quality, lower cost) or self-hosted BGE-large-en-v1.5 for maximum cost savings."
+    },
+    {
+      "file": "src/serving/vllm_server.py",
+      "line": 59,
+      "model": "meta-llama/Llama-3.1-8B-Instruct",
+      "estimatedMonthlyLow": 0.0045000000000000005,
+      "estimatedMonthlyHigh": 0.21,
+      "suggestion": "(AI Analysis) Prefix caching enabled. Excellent for repeated system prompts. Llama-3.1-8B is very cost-effective for simple tasks. Well-optimized."
+    },
+    {
+      "file": "src/serving/vllm_server.py",
+      "line": 84,
+      "model": "meta-llama/Llama-3.1-8B-Instruct",
+      "estimatedMonthlyLow": 0.0045000000000000005,
+      "estimatedMonthlyHigh": 0.21,
+      "suggestion": "(AI Analysis) High-throughput batch configuration. Well-optimized for offline workloads. Consider continuous batching for online serving to improve GPU utilization."
+    },
+    {
+      "file": "src/services/openai_service.py",
+      "line": 95,
+      "model": "text-embedding-3-small",
+      "estimatedMonthlyLow": 0.002,
+      "estimatedMonthlyHigh": 0.1,
+      "suggestion": "(AI Analysis) Already using cost-effective embedding model. For even lower cost, consider Cohere embed-english-light-v3.0 or open-source sentence-transformers/all-MiniLM-L6-v2 via self-hosting."
+    },
+    {
+      "file": "src/agents/langchain_agent.py",
+      "line": 47,
+      "model": "text-embedding-3-small",
+      "estimatedMonthlyLow": 0.002,
+      "estimatedMonthlyHigh": 0.1,
+      "suggestion": "(AI Analysis) Cost-effective embedding for RAG. For higher volume, consider Cohere embeddings or self-hosted sentence-transformers models."
+    },
+    {
+      "file": "src/utils/inference_patterns.py",
+      "line": 134,
+      "model": "dynamic",
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "pricing data unavailable for this model"
+    },
+    {
+      "file": "src/utils/inference_patterns.py",
+      "line": 142,
+      "model": "dynamic",
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "pricing data unavailable for this model"
+    },
+    {
+      "file": "src/utils/inference_patterns.py",
+      "line": 172,
+      "model": "dynamic",
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "pricing data unavailable for this model"
+    },
+    {
+      "file": "src/utils/inference_patterns.py",
+      "line": 230,
+      "model": "dynamic",
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "pricing data unavailable for this model"
+    },
+    {
+      "file": "src/utils/inference_patterns.py",
+      "line": 236,
+      "model": "dynamic",
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "pricing data unavailable for this model"
+    },
+    {
+      "file": "src/serving/vllm_server.py",
+      "line": 29,
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "pricing data unavailable for this model"
+    },
+    {
+      "file": "src/serving/vllm_server.py",
+      "line": 109,
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "pricing data unavailable for this model"
+    },
+    {
+      "file": "src/serving/vllm_server.py",
+      "line": 128,
+      "model": "TheBloke/Llama-2-70B-Chat-AWQ",
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0,
+      "suggestion": "pricing data unavailable for this model"
+    },
+    {
+      "file": "src/serving/sglang_server.py",
+      "line": 16,
+      "model": "unknown",
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0
+    },
+    {
+      "file": "src/serving/sglang_server.py",
+      "line": 24,
+      "model": "unknown",
+      "estimatedMonthlyLow": 0,
+      "estimatedMonthlyHigh": 0
+    }
+  ]
+}
