@@ -7,6 +7,14 @@ import { Agent } from './agent.js';
 import { createRenderer } from './renderer.js';
 import { VERSION } from './version.js';
 
+// v1.6 Command imports
+import { registerTemplateCommands } from './commands/template.js';
+import { registerConfigCommands } from './commands/config.js';
+import { registerHistoryCommands } from './commands/history.js';
+import { registerCICommand } from './commands/ci.js';
+import { registerExportCommand } from './commands/export.js';
+import { registerWhatIfCommand } from './commands/whatif.js';
+
 // =============================================================================
 // CONSTANTS
 // =============================================================================
@@ -149,12 +157,31 @@ program
     }
   });
 
+// =============================================================================
+// REGISTER v1.6 COMMANDS
+// =============================================================================
+
+registerTemplateCommands(program);
+registerConfigCommands(program);
+registerHistoryCommands(program);
+registerCICommand(program);
+registerExportCommand(program);
+registerWhatIfCommand(program);
+
 // Custom help text (PRD-aligned, Julie Zhou style)
 program.addHelpText('after', `
 analyze modes:
   peakinfer analyze .                  # static: scan codebase for LLM calls
   peakinfer analyze events.jsonl       # runtime: analyze inference telemetry
   peakinfer analyze . --events prod.jsonl  # combined: static + runtime
+
+v1.6 commands:
+  peakinfer template list              # browse optimization templates
+  peakinfer config show                # view configuration
+  peakinfer history                    # view analysis history
+  peakinfer export                     # export results (json, prometheus)
+  peakinfer whatif --model gpt-4o-mini # counterfactual analysis
+  peakinfer ci ./src --baseline base.json  # CI/CD integration
 
 quick start:
   peakinfer analyze .

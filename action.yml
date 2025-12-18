@@ -1,0 +1,52 @@
+name: 'PeakInfer Analysis'
+description: 'Analyze LLM inference for cost, latency, throughput, reliability. Uses managed API - no Anthropic key required.'
+author: 'Kalmantic AI Labs'
+
+branding:
+  icon: 'zap'
+  color: 'blue'
+
+inputs:
+  path:
+    description: 'Path to analyze'
+    default: './src'
+  github-token:
+    description: 'GitHub token for PR comments (defaults to GITHUB_TOKEN)'
+    required: false
+  inline-comments:
+    description: 'Add inline PR comments (max 10)'
+    default: 'true'
+  fail-on-regression:
+    description: 'Fail if metrics regress beyond thresholds'
+    default: 'false'
+  runtime:
+    description: 'Path to runtime events file (JSONL format)'
+    required: false
+  runtime-source:
+    description: 'Source for runtime data: file, artifact'
+    required: false
+    default: 'file'
+  baseline:
+    description: 'Path to baseline file for comparison'
+    required: false
+  target-p95:
+    description: 'Target p95 latency in milliseconds'
+    required: false
+  predict:
+    description: 'Run deploy-time prediction analysis'
+    required: false
+    default: 'false'
+
+outputs:
+  summary:
+    description: 'Analysis summary JSON'
+  status:
+    description: 'pass, warning, or fail'
+  inference-points:
+    description: 'Number of inference points detected'
+  exit-code:
+    description: 'Exit code (0=pass, 1=warning, 2=fail)'
+
+runs:
+  using: 'node20'
+  main: 'dist/action/index.js'

@@ -1,0 +1,44 @@
+# PeakInfer Analysis Workflow
+# Add this to your repository to analyze LLM inference on every PR
+
+name: PeakInfer Analysis
+
+on:
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'src/**'
+      - 'lib/**'
+      - 'app/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  analyze:
+    name: Analyze Inference
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run PeakInfer
+        uses: kalmantic/peakinfer-action@v1
+        with:
+          path: './src'
+          inline-comments: 'true'
+          fail-on-regression: 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      # Optional: Upload artifacts
+      - name: Upload Analysis
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: peakinfer-results
+          path: .peakinfer/
+          retention-days: 30
