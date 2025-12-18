@@ -75,7 +75,9 @@ function formatNewIssues(newIssues) {
         if (issues.length > 0) {
             lines.push(`\n**${severity.toUpperCase()}** (${issues.length}):\n`);
             for (const issue of issues.slice(0, 5)) {
-                lines.push(`- ${issue.headline}`);
+                // Support both 'headline' (CLI) and 'title' (API) formats
+                const title = issue.headline || issue.title || 'Issue';
+                lines.push(`- ${title}`);
                 if (issue.location) {
                     lines.push(`  \`${issue.location}\``);
                 }
