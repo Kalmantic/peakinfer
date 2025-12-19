@@ -48,113 +48,47 @@ function getVerdict(issues) {
         message: 'No issues found',
     };
 }
-/**
- * Get the single most important issue to highlight.
- * User acts on one thing at a time - show them which one.
- */
-function getTopIssue(issues) {
-    if (issues.length === 0)
-        return null;
-    // Priority: critical > warning > info
-    const critical = issues.filter(i => i.severity === 'critical');
-    if (critical.length > 0)
-        return critical[0];
-    const warnings = issues.filter(i => i.severity === 'warning');
-    if (warnings.length > 0)
-        return warnings[0];
-    return issues[0];
-}
-/**
- * Get issue title, supporting both formats.
- */
-function getIssueTitle(issue) {
-    return issue.headline || issue.title || 'Issue';
-}
-// =============================================================================
-// FORMATTING
-// =============================================================================
-/**
- * Format the collapsible details section.
- * Most users need verdict + top issue. Power users can expand.
- */
-function formatDetailsSection(issues) {
-    if (issues.length <= 1)
-        return '';
-    const lines = [];
-    const remaining = issues.slice(1); // Skip top issue (already shown)
-    lines.push(`\n<details>`);
-    lines.push(`<summary>See all ${issues.length} issues</summary>\n`);
-    const bySeverity = {
-        critical: remaining.filter(i => i.severity === 'critical'),
-        warning: remaining.filter(i => i.severity === 'warning'),
-        info: remaining.filter(i => i.severity === 'info'),
-    };
-    for (const [severity, items] of Object.entries(bySeverity)) {
-        if (items.length > 0) {
-            lines.push(`\n**${severity.charAt(0).toUpperCase() + severity.slice(1)}** (${items.length})`);
-            for (const issue of items.slice(0, 5)) {
-                const title = getIssueTitle(issue);
-                const location = issue.location ? ` — \`${issue.location}\`` : '';
-                lines.push(`- ${title}${location}`);
-            }
-            if (items.length > 5) {
-                lines.push(`- _...${items.length - 5} more_`);
-            }
-        }
-    }
-    lines.push('\n</details>');
-    return lines.join('\n');
-}
+// Note: With Option A, details are shown in inline comments, not in summary.
+// The getTopIssue, getIssueTitle, and formatDetailsSection functions have been
+// removed as they're no longer needed for the minimal summary format.
 // =============================================================================
 // MAIN
 // =============================================================================
 /**
- * Generate PR comment markdown with verdict-first UX.
+ * Generate PR comment markdown with minimal summary UX (Option A).
  *
- * Design: User decides in 5 seconds, acts in 30.
- * - Verdict first (Safe/Review/Changes Requested)
- * - Top issue highlighted (what to fix first)
- * - Details collapsed (for power users)
- * - Inline suggestions posted separately
+ * Design: Verdict only, details in inline comments.
+ * - Summary shows ONLY verdict + issue count
+ * - User goes to "Files changed" tab for inline suggestions
+ * - Click "Apply suggestion" in GitHub's native UI
  */
 export function generatePRComment(data) {
     const { results, newIssues } = data;
     const lines = [];
     const verdict = getVerdict(newIssues);
-    const topIssue = getTopIssue(newIssues);
     const inferencePoints = results.inferenceMap?.summary?.totalCallsites || 0;
+    const criticalCount = newIssues.filter(i => i.severity === 'critical').length;
+    const warningCount = newIssues.filter(i => i.severity === 'warning').length;
     // Header with verdict - user knows in 5 seconds
     lines.push('## PeakInfer Analysis\n');
-    lines.push(`**${verdict.emoji} ${verdict.label}** — ${verdict.message}\n`);
-    // Top issue highlight - what to fix first
-    if (topIssue) {
-        const title = getIssueTitle(topIssue);
-        lines.push('| | |');
-        lines.push('|---|---|');
-        lines.push(`| **Top Issue** | ${title} |`);
-        if (topIssue.location) {
-            lines.push(`| **Location** | \`${topIssue.location}\` |`);
-        }
-        if (topIssue.evidence) {
-            lines.push(`| **Why it matters** | ${topIssue.evidence} |`);
-        }
+    lines.push(`**${verdict.emoji} ${verdict.label}**\n`);
+    if (newIssues.length > 0) {
+        // Issue summary - minimal
+        const parts = [];
+        if (criticalCount > 0)
+            parts.push(`${criticalCount} critical`);
+        if (warningCount > 0)
+            parts.push(`${warningCount} warning${warningCount > 1 ? 's' : ''}`);
+        lines.push(`Found ${parts.join(', ')} in ${inferencePoints} inference point${inferencePoints !== 1 ? 's' : ''}.\n`);
+        // Direct user to inline comments
+        lines.push('**→ See inline comments in "Files changed" tab**\n');
+        lines.push('Each issue has a suggested fix. Click "Apply suggestion" to commit.\n');
     }
     else {
         // Zero state - clean and simple
-        lines.push(`Analyzed ${inferencePoints} inference point${inferencePoints !== 1 ? 's' : ''}, all following best practices.`);
+        lines.push(`Analyzed ${inferencePoints} inference point${inferencePoints !== 1 ? 's' : ''}, all following best practices.\n`);
     }
-    // Collapsible details - for power users who want to see everything
-    if (newIssues.length > 1) {
-        lines.push(formatDetailsSection(newIssues));
-    }
-    // Commands footer - enable user interaction
-    if (newIssues.length > 0) {
-        lines.push('\n---');
-        lines.push('**Commands:** `/fix 1` · `/dismiss 1` · `/fix all` · `/peakinfer`');
-        lines.push('');
-        lines.push('<sub>See inline comments for suggested fixes</sub>');
-    }
-    lines.push('\n<sub>Generated by [PeakInfer](https://github.com/Kalmantic/peakinfer)</sub>');
+    lines.push('<sub>Generated by [PeakInfer](https://github.com/Kalmantic/peakinfer)</sub>');
     return lines.join('\n');
 }
 /**

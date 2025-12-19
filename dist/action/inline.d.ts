@@ -1,9 +1,11 @@
 /**
- * Inline PR Comments (v1.6)
+ * Inline PR Comments (v1.6 - Option A)
  *
- * Posts inline comments with suggested fixes on specific files/lines.
- * Design: User clicks "Apply suggestion" → fixed. No copy-paste.
- * Throttled to max 5 comments per PR (focus on top issues).
+ * With Option A, the summary comment is minimal (verdict only).
+ * All details are in inline comments on specific files/lines.
+ *
+ * Design: User goes to "Files changed" tab, sees issues in context,
+ * clicks "Apply suggestion" → fixed. No copy-paste.
  */
 import type { Insight } from '../types.js';
 type Octokit = any;

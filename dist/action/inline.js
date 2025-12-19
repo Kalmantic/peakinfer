@@ -1,9 +1,11 @@
 /**
- * Inline PR Comments (v1.6)
+ * Inline PR Comments (v1.6 - Option A)
  *
- * Posts inline comments with suggested fixes on specific files/lines.
- * Design: User clicks "Apply suggestion" → fixed. No copy-paste.
- * Throttled to max 5 comments per PR (focus on top issues).
+ * With Option A, the summary comment is minimal (verdict only).
+ * All details are in inline comments on specific files/lines.
+ *
+ * Design: User goes to "Files changed" tab, sees issues in context,
+ * clicks "Apply suggestion" → fixed. No copy-paste.
  */
 /**
  * Parse location string to file and line
@@ -20,8 +22,9 @@ function parseLocation(location) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-// Reduced from 10 to 5: focus on top issues, reduce noise
-const MAX_INLINE_COMMENTS = 5;
+// With Option A (minimal summary), inline comments carry all the detail
+// Increased to 10 to cover most issues
+const MAX_INLINE_COMMENTS = 10;
 // =============================================================================
 // HELPERS
 // =============================================================================
@@ -43,34 +46,50 @@ function getIssueTitle(insight) {
     return insight.headline || insight.title || 'Issue';
 }
 /**
+ * Get severity emoji for visual indication.
+ */
+function getSeverityEmoji(severity) {
+    switch (severity) {
+        case 'critical': return '🔴';
+        case 'warning': return '🟡';
+        default: return '⚪';
+    }
+}
+/**
  * Format insight as inline comment body with optional suggested fix.
  * Uses GitHub's suggestion syntax when a fix is available.
+ *
+ * With Option A, these comments carry all the detail (summary is minimal).
  */
 function formatInlineComment(insight) {
     const lines = [];
     const title = getIssueTitle(insight);
-    // Clear headline - what's the problem
-    lines.push(`**${title}**`);
+    const emoji = getSeverityEmoji(insight.severity);
+    // Clear headline with severity - what's the problem
+    lines.push(`${emoji} **${title}**`);
     lines.push('');
     // Why it matters - not just "this is bad"
     if (insight.evidence) {
-        lines.push(insight.evidence);
+        lines.push(`> ${insight.evidence}`);
         lines.push('');
     }
     // Suggested fix using GitHub's suggestion syntax
     // When user clicks "Apply suggestion", it's committed automatically
     const suggestedFix = insight.suggestedFix;
     if (suggestedFix) {
+        lines.push('**Suggested fix:**');
         lines.push('```suggestion');
         lines.push(suggestedFix);
         lines.push('```');
         lines.push('');
+        lines.push('Click **Apply suggestion** to commit this fix.');
     }
     else if (insight.recommendation) {
         // Fallback to text recommendation if no code fix available
-        lines.push(`**Fix:** ${insight.recommendation}`);
+        lines.push(`**Recommendation:** ${insight.recommendation}`);
         lines.push('');
     }
+    lines.push('');
     lines.push('<sub>PeakInfer</sub>');
     return lines.join('\n');
 }

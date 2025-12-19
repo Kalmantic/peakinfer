@@ -37,13 +37,12 @@ interface CommentData {
     };
 }
 /**
- * Generate PR comment markdown with verdict-first UX.
+ * Generate PR comment markdown with minimal summary UX (Option A).
  *
- * Design: User decides in 5 seconds, acts in 30.
- * - Verdict first (Safe/Review/Changes Requested)
- * - Top issue highlighted (what to fix first)
- * - Details collapsed (for power users)
- * - Inline suggestions posted separately
+ * Design: Verdict only, details in inline comments.
+ * - Summary shows ONLY verdict + issue count
+ * - User goes to "Files changed" tab for inline suggestions
+ * - Click "Apply suggestion" in GitHub's native UI
  */
 export declare function generatePRComment(data: CommentData): string;
 /**
