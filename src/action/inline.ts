@@ -1,8 +1,9 @@
 /**
  * Inline PR Comments (v1.6)
  *
- * Posts inline comments on specific files/lines in PRs.
- * Throttled to max 10 comments per PR.
+ * Posts inline comments with suggested fixes on specific files/lines.
+ * Design: User clicks "Apply suggestion" → fixed. No copy-paste.
+ * Throttled to max 5 comments per PR (focus on top issues).
  */
 
 import type { Insight } from '../types.js';
@@ -23,7 +24,8 @@ function parseLocation(location?: string): { file?: string; line?: number } {
 // CONSTANTS
 // =============================================================================
 
-const MAX_INLINE_COMMENTS = 10;
+// Reduced from 10 to 5: focus on top issues, reduce noise
+const MAX_INLINE_COMMENTS = 5;
 
 // =============================================================================
 // TYPES
@@ -52,31 +54,44 @@ function severityScore(insight: Insight): number {
 }
 
 /**
- * Format insight as inline comment body
+ * Get issue title, supporting both formats.
+ */
+function getIssueTitle(insight: Insight): string {
+  return insight.headline || (insight as unknown as { title?: string }).title || 'Issue';
+}
+
+/**
+ * Format insight as inline comment body with optional suggested fix.
+ * Uses GitHub's suggestion syntax when a fix is available.
  */
 function formatInlineComment(insight: Insight): string {
   const lines: string[] = [];
+  const title = getIssueTitle(insight);
 
-  // Severity badge
-  const badges: Record<string, string> = {
-    critical: '[!] CRITICAL',
-    warning: '[*] WARNING',
-    info: '[-] INFO',
-  };
-
-  lines.push(`**${badges[insight.severity] || insight.severity}**: ${insight.headline}`);
+  // Clear headline - what's the problem
+  lines.push(`**${title}**`);
   lines.push('');
 
+  // Why it matters - not just "this is bad"
   if (insight.evidence) {
-    lines.push(`> ${insight.evidence}`);
+    lines.push(insight.evidence);
     lines.push('');
   }
 
-  if (insight.recommendation) {
-    lines.push(`**Recommendation:** ${insight.recommendation}`);
+  // Suggested fix using GitHub's suggestion syntax
+  // When user clicks "Apply suggestion", it's committed automatically
+  const suggestedFix = (insight as unknown as { suggestedFix?: string }).suggestedFix;
+  if (suggestedFix) {
+    lines.push('```suggestion');
+    lines.push(suggestedFix);
+    lines.push('```');
+    lines.push('');
+  } else if (insight.recommendation) {
+    // Fallback to text recommendation if no code fix available
+    lines.push(`**Fix:** ${insight.recommendation}`);
+    lines.push('');
   }
 
-  lines.push('');
   lines.push('<sub>PeakInfer</sub>');
 
   return lines.join('\n');

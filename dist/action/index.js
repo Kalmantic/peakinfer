@@ -1,4 +1,4 @@
-import { createRequire as __WEBPACK_EXTERNAL_createRequire } from "module";
+import './sourcemap-register.cjs';import { createRequire as __WEBPACK_EXTERNAL_createRequire } from "module";
 /******/ var __webpack_modules__ = ({
 
 /***/ 4914:
@@ -32698,142 +32698,163 @@ var github = __nccwpck_require__(3228);
 var external_fs_ = __nccwpck_require__(9896);
 // EXTERNAL MODULE: external "path"
 var external_path_ = __nccwpck_require__(6928);
-;// CONCATENATED MODULE: ./src/action/comments.ts
+;// CONCATENATED MODULE: ./dist/action/comments.js
 /**
  * PR Comment Generation (v1.6)
  *
- * Generates markdown PR comments for analysis results.
+ * Generates markdown PR comments with verdict-first UX.
+ * Design principle: User decides in 5 seconds, acts in 30.
  */
+// =============================================================================
+// VERDICT LOGIC
+// =============================================================================
 /**
- * Parse location string to file and line
+ * Determine verdict based on issues found.
+ * Verdict is the first thing user sees - enables 5-second decision.
  */
-function parseLocation(location) {
-    if (!location)
-        return {};
-    const match = location.match(/^(.+):(\d+)$/);
-    if (match) {
-        return { file: match[1], line: parseInt(match[2], 10) };
+function getVerdict(issues) {
+    const critical = issues.filter(i => i.severity === 'critical');
+    const warnings = issues.filter(i => i.severity === 'warning');
+    if (critical.length >= 2) {
+        return {
+            label: 'Changes Requested',
+            emoji: '🔴',
+            message: `${critical.length} issues need attention before merge`,
+        };
     }
-    return { file: location };
-}
-// =============================================================================
-// HELPERS
-// =============================================================================
-/**
- * Format status indicator
- */
-function formatStatus(status) {
-    const indicators = {
-        pass: '[PASS]',
-        warning: '[WARN]',
-        fail: '[FAIL]',
+    if (critical.length === 1) {
+        return {
+            label: 'Review Recommended',
+            emoji: '🟡',
+            message: '1 issue needs attention',
+        };
+    }
+    if (warnings.length > 5) {
+        return {
+            label: 'Review Recommended',
+            emoji: '🟡',
+            message: `${warnings.length} improvements suggested`,
+        };
+    }
+    if (warnings.length > 0) {
+        return {
+            label: 'Mostly Good',
+            emoji: '🟢',
+            message: `${warnings.length} optional improvement${warnings.length > 1 ? 's' : ''}`,
+        };
+    }
+    return {
+        label: 'Safe to Merge',
+        emoji: '✅',
+        message: 'No issues found',
     };
-    return indicators[status] || status;
 }
 /**
- * Format baseline comparison
+ * Get the single most important issue to highlight.
+ * User acts on one thing at a time - show them which one.
  */
-function formatBaselineComparison(results, baseline) {
-    if (!baseline || typeof baseline !== 'object')
+function getTopIssue(issues) {
+    if (issues.length === 0)
+        return null;
+    // Priority: critical > warning > info
+    const critical = issues.filter(i => i.severity === 'critical');
+    if (critical.length > 0)
+        return critical[0];
+    const warnings = issues.filter(i => i.severity === 'warning');
+    if (warnings.length > 0)
+        return warnings[0];
+    return issues[0];
+}
+/**
+ * Get issue title, supporting both formats.
+ */
+function getIssueTitle(issue) {
+    return issue.headline || issue.title || 'Issue';
+}
+// =============================================================================
+// FORMATTING
+// =============================================================================
+/**
+ * Format the collapsible details section.
+ * Most users need verdict + top issue. Power users can expand.
+ */
+function formatDetailsSection(issues) {
+    if (issues.length <= 1)
         return '';
-    const base = baseline;
     const lines = [];
-    lines.push('\n### Changes vs Baseline\n');
-    lines.push('| Metric | Previous | Current | Delta |');
-    lines.push('|--------|----------|---------|-------|');
-    // Inference points
-    const currentPoints = results.inferenceMap?.summary?.totalCallsites || 0;
-    if (base.inferencePoints !== undefined) {
-        const delta = currentPoints - base.inferencePoints;
-        const deltaStr = delta >= 0 ? `+${delta}` : `${delta}`;
-        lines.push(`| Inference Points | ${base.inferencePoints} | ${currentPoints} | ${deltaStr} |`);
-    }
-    // p95 Latency
-    const currentLatency = results.runtime?.global?.p95;
-    if (base.p95Latency !== undefined && currentLatency !== undefined) {
-        const delta = currentLatency - base.p95Latency;
-        const deltaPercent = (delta / base.p95Latency) * 100;
-        const status = deltaPercent > 25 ? ' [!]' : '';
-        lines.push(`| p95 Latency | ${base.p95Latency}ms | ${currentLatency}ms | ${deltaPercent >= 0 ? '+' : ''}${deltaPercent.toFixed(0)}%${status} |`);
-    }
-    return lines.join('\n');
-}
-/**
- * Format new issues section
- */
-function formatNewIssues(newIssues) {
-    if (newIssues.length === 0) {
-        return '\n### Changes in This PR\n\nNo new issues introduced.\n';
-    }
-    const lines = [];
-    lines.push('\n### Changes in This PR\n');
+    const remaining = issues.slice(1); // Skip top issue (already shown)
+    lines.push(`\n<details>`);
+    lines.push(`<summary>See all ${issues.length} issues</summary>\n`);
     const bySeverity = {
-        critical: newIssues.filter(i => i.severity === 'critical'),
-        warning: newIssues.filter(i => i.severity === 'warning'),
-        info: newIssues.filter(i => i.severity === 'info'),
+        critical: remaining.filter(i => i.severity === 'critical'),
+        warning: remaining.filter(i => i.severity === 'warning'),
+        info: remaining.filter(i => i.severity === 'info'),
     };
-    for (const [severity, issues] of Object.entries(bySeverity)) {
-        if (issues.length > 0) {
-            lines.push(`\n**${severity.toUpperCase()}** (${issues.length}):\n`);
-            for (const issue of issues.slice(0, 5)) {
-                // Support both 'headline' (CLI) and 'title' (API) formats
-                const title = issue.headline || issue.title || 'Issue';
-                lines.push(`- ${title}`);
-                if (issue.location) {
-                    lines.push(`  \`${issue.location}\``);
-                }
+    for (const [severity, items] of Object.entries(bySeverity)) {
+        if (items.length > 0) {
+            lines.push(`\n**${severity.charAt(0).toUpperCase() + severity.slice(1)}** (${items.length})`);
+            for (const issue of items.slice(0, 5)) {
+                const title = getIssueTitle(issue);
+                const location = issue.location ? ` — \`${issue.location}\`` : '';
+                lines.push(`- ${title}${location}`);
             }
-            if (issues.length > 5) {
-                lines.push(`\n_...and ${issues.length - 5} more_`);
+            if (items.length > 5) {
+                lines.push(`- _...${items.length - 5} more_`);
             }
         }
     }
+    lines.push('\n</details>');
     return lines.join('\n');
 }
 // =============================================================================
 // MAIN
 // =============================================================================
 /**
- * Generate PR comment markdown
+ * Generate PR comment markdown with verdict-first UX.
+ *
+ * Design: User decides in 5 seconds, acts in 30.
+ * - Verdict first (Safe/Review/Changes Requested)
+ * - Top issue highlighted (what to fix first)
+ * - Details collapsed (for power users)
+ * - Inline suggestions posted separately
  */
 function generatePRComment(data) {
-    const { results, baseline, status, regressions, newIssues } = data;
+    const { results, newIssues } = data;
     const lines = [];
-    // Header
-    lines.push('## PeakInfer Analysis\n');
-    // Summary table
-    lines.push('### Summary\n');
-    lines.push('| Metric | Value | Status |');
-    lines.push('|--------|-------|--------|');
+    const verdict = getVerdict(newIssues);
+    const topIssue = getTopIssue(newIssues);
     const inferencePoints = results.inferenceMap?.summary?.totalCallsites || 0;
-    lines.push(`| Inference Points | ${inferencePoints} | - |`);
-    if (results.runtime?.global?.p95) {
-        const p95Status = regressions.some(r => r.includes('latency')) ? '[!]' : '[OK]';
-        lines.push(`| p95 Latency | ${results.runtime.global.p95}ms | ${p95Status} |`);
-    }
-    if (results.joined?.drift && Array.isArray(results.joined.drift)) {
-        const driftCount = results.joined.drift.length;
-        const driftStatus = driftCount > 0 ? '[*]' : '[OK]';
-        lines.push(`| Drift Signals | ${driftCount} | ${driftStatus} |`);
-    }
-    const insightCount = results.insights?.length || 0;
-    lines.push(`| Insights | ${insightCount} | - |`);
-    // Baseline comparison
-    if (baseline) {
-        lines.push(formatBaselineComparison(results, baseline));
-    }
-    // New issues
-    lines.push(formatNewIssues(newIssues));
-    // Regressions
-    if (regressions.length > 0) {
-        lines.push('\n### Regressions\n');
-        for (const r of regressions) {
-            lines.push(`- ${r}`);
+    // Header with verdict - user knows in 5 seconds
+    lines.push('## PeakInfer Analysis\n');
+    lines.push(`**${verdict.emoji} ${verdict.label}** — ${verdict.message}\n`);
+    // Top issue highlight - what to fix first
+    if (topIssue) {
+        const title = getIssueTitle(topIssue);
+        lines.push('| | |');
+        lines.push('|---|---|');
+        lines.push(`| **Top Issue** | ${title} |`);
+        if (topIssue.location) {
+            lines.push(`| **Location** | \`${topIssue.location}\` |`);
+        }
+        if (topIssue.evidence) {
+            lines.push(`| **Why it matters** | ${topIssue.evidence} |`);
         }
     }
-    // Status
-    lines.push(`\n---\n**Status:** ${formatStatus(status)}`);
-    // Footer
+    else {
+        // Zero state - clean and simple
+        lines.push(`Analyzed ${inferencePoints} inference point${inferencePoints !== 1 ? 's' : ''}, all following best practices.`);
+    }
+    // Collapsible details - for power users who want to see everything
+    if (newIssues.length > 1) {
+        lines.push(formatDetailsSection(newIssues));
+    }
+    // Commands footer - enable user interaction
+    if (newIssues.length > 0) {
+        lines.push('\n---');
+        lines.push('**Commands:** `/fix 1` · `/dismiss 1` · `/fix all` · `/peakinfer`');
+        lines.push('');
+        lines.push('<sub>See inline comments for suggested fixes</sub>');
+    }
     lines.push('\n<sub>Generated by [PeakInfer](https://github.com/Kalmantic/peakinfer)</sub>');
     return lines.join('\n');
 }
@@ -32857,18 +32878,19 @@ function generateExhaustedComment(used, limit) {
     lines.push('<sub>Generated by [PeakInfer](https://github.com/Kalmantic/peakinfer)</sub>');
     return lines.join('\n');
 }
-
-;// CONCATENATED MODULE: ./src/action/inline.ts
+//# sourceMappingURL=comments.js.map
+;// CONCATENATED MODULE: ./dist/action/inline.js
 /**
  * Inline PR Comments (v1.6)
  *
- * Posts inline comments on specific files/lines in PRs.
- * Throttled to max 10 comments per PR.
+ * Posts inline comments with suggested fixes on specific files/lines.
+ * Design: User clicks "Apply suggestion" → fixed. No copy-paste.
+ * Throttled to max 5 comments per PR (focus on top issues).
  */
 /**
  * Parse location string to file and line
  */
-function inline_parseLocation(location) {
+function parseLocation(location) {
     if (!location)
         return {};
     const match = location.match(/^(.+):(\d+)$/);
@@ -32880,7 +32902,8 @@ function inline_parseLocation(location) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-const MAX_INLINE_COMMENTS = 10;
+// Reduced from 10 to 5: focus on top issues, reduce noise
+const MAX_INLINE_COMMENTS = 5;
 // =============================================================================
 // HELPERS
 // =============================================================================
@@ -32896,26 +32919,40 @@ function severityScore(insight) {
     return scores[insight.severity] || 0;
 }
 /**
- * Format insight as inline comment body
+ * Get issue title, supporting both formats.
+ */
+function inline_getIssueTitle(insight) {
+    return insight.headline || insight.title || 'Issue';
+}
+/**
+ * Format insight as inline comment body with optional suggested fix.
+ * Uses GitHub's suggestion syntax when a fix is available.
  */
 function formatInlineComment(insight) {
     const lines = [];
-    // Severity badge
-    const badges = {
-        critical: '[!] CRITICAL',
-        warning: '[*] WARNING',
-        info: '[-] INFO',
-    };
-    lines.push(`**${badges[insight.severity] || insight.severity}**: ${insight.headline}`);
+    const title = inline_getIssueTitle(insight);
+    // Clear headline - what's the problem
+    lines.push(`**${title}**`);
     lines.push('');
+    // Why it matters - not just "this is bad"
     if (insight.evidence) {
-        lines.push(`> ${insight.evidence}`);
+        lines.push(insight.evidence);
         lines.push('');
     }
-    if (insight.recommendation) {
-        lines.push(`**Recommendation:** ${insight.recommendation}`);
+    // Suggested fix using GitHub's suggestion syntax
+    // When user clicks "Apply suggestion", it's committed automatically
+    const suggestedFix = insight.suggestedFix;
+    if (suggestedFix) {
+        lines.push('```suggestion');
+        lines.push(suggestedFix);
+        lines.push('```');
+        lines.push('');
     }
-    lines.push('');
+    else if (insight.recommendation) {
+        // Fallback to text recommendation if no code fix available
+        lines.push(`**Fix:** ${insight.recommendation}`);
+        lines.push('');
+    }
     lines.push('<sub>PeakInfer</sub>');
     return lines.join('\n');
 }
@@ -32935,14 +32972,14 @@ async function postInlineComments(octokit, context, insights) {
     // Sort by severity and take top N (only those with valid locations)
     const topInsights = insights
         .filter(i => {
-        const loc = inline_parseLocation(i.location);
+        const loc = parseLocation(i.location);
         return loc.file && loc.line;
     })
         .sort((a, b) => severityScore(b) - severityScore(a))
         .slice(0, MAX_INLINE_COMMENTS);
     let posted = 0;
     for (const insight of topInsights) {
-        const loc = inline_parseLocation(insight.location);
+        const loc = parseLocation(insight.location);
         if (!loc.file || !loc.line)
             continue;
         try {
@@ -32966,8 +33003,8 @@ async function postInlineComments(octokit, context, insights) {
     const omitted = Math.max(0, insights.length - MAX_INLINE_COMMENTS);
     return { posted, omitted };
 }
-
-;// CONCATENATED MODULE: ./src/action/diff.ts
+//# sourceMappingURL=inline.js.map
+;// CONCATENATED MODULE: ./dist/action/diff.js
 /**
  * Diff-Aware Filtering (v1.6)
  *
@@ -33038,8 +33075,8 @@ function filterToChangedFiles(insights, changedFiles) {
     }
     return { newIssues, preExisting };
 }
-
-;// CONCATENATED MODULE: ./src/action/baseline.ts
+//# sourceMappingURL=diff.js.map
+;// CONCATENATED MODULE: ./dist/action/baseline.js
 /**
  * Baseline Comparison (v1.6)
  *
@@ -33104,14 +33141,317 @@ function compareToBaseline(results, baseline) {
     }
     return comparison;
 }
+//# sourceMappingURL=baseline.js.map
+;// CONCATENATED MODULE: ./dist/action/commands.js
+/**
+ * PR Comment Commands (v1.6)
+ *
+ * Handles commands from PR comments:
+ * - /peakinfer - Re-run analysis
+ * - /fix <id> - Apply fix for issue
+ * - /fix all - Apply all fixes
+ * - /dismiss <id> - Dismiss issue
+ *
+ * Design: User types command in comment → workflow triggers → action taken
+ */
 
-;// CONCATENATED MODULE: ./src/action/index.ts
+// =============================================================================
+// COMMAND PARSING
+// =============================================================================
+/**
+ * Parse command from comment body
+ */
+function parseCommand(body) {
+    const trimmed = body.trim().toLowerCase();
+    // /peakinfer or /peakinfer rerun
+    if (trimmed === '/peakinfer' || trimmed === '/peakinfer rerun') {
+        return { type: 'rerun' };
+    }
+    // /fix all
+    if (trimmed === '/fix all' || trimmed === '/peakinfer fix all') {
+        return { type: 'fix-all' };
+    }
+    // /fix <id>
+    const fixMatch = trimmed.match(/^\/(?:peakinfer\s+)?fix\s+(\d+)$/);
+    if (fixMatch) {
+        return { type: 'fix', issueId: parseInt(fixMatch[1], 10) };
+    }
+    // /dismiss <id>
+    const dismissMatch = trimmed.match(/^\/(?:peakinfer\s+)?dismiss\s+(\d+)$/);
+    if (dismissMatch) {
+        return { type: 'dismiss', issueId: parseInt(dismissMatch[1], 10) };
+    }
+    return null;
+}
+// =============================================================================
+// STATE MANAGEMENT
+// =============================================================================
+const STATE_COMMENT_MARKER = '<!-- peakinfer-state:';
+/**
+ * Store PR state in a hidden comment
+ */
+async function storePRState(octokit, context, state) {
+    const stateJson = JSON.stringify(state);
+    const body = `${STATE_COMMENT_MARKER}${stateJson}-->`;
+    // Find existing state comment
+    const comments = await octokit.rest.issues.listComments({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        issue_number: state.prNumber,
+    });
+    const stateComment = comments.data.find(c => c.body?.startsWith(STATE_COMMENT_MARKER));
+    if (stateComment) {
+        await octokit.rest.issues.updateComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            comment_id: stateComment.id,
+            body,
+        });
+    }
+    else {
+        await octokit.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: state.prNumber,
+            body,
+        });
+    }
+}
+/**
+ * Load PR state from hidden comment
+ */
+async function loadPRState(octokit, context, prNumber) {
+    const comments = await octokit.rest.issues.listComments({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        issue_number: prNumber,
+    });
+    const stateComment = comments.data.find(c => c.body?.startsWith(STATE_COMMENT_MARKER));
+    if (!stateComment?.body)
+        return null;
+    try {
+        const jsonStart = stateComment.body.indexOf(STATE_COMMENT_MARKER) + STATE_COMMENT_MARKER.length;
+        const jsonEnd = stateComment.body.indexOf('-->');
+        const json = stateComment.body.slice(jsonStart, jsonEnd);
+        return JSON.parse(json);
+    }
+    catch {
+        return null;
+    }
+}
+// =============================================================================
+// COMMAND HANDLERS
+// =============================================================================
+/**
+ * Handle /fix <id> command - apply a specific fix
+ */
+async function handleFix(octokit, context, issueId) {
+    const prNumber = context.payload.issue?.number;
+    if (!prNumber) {
+        return { success: false, message: 'Not in a PR context' };
+    }
+    // Load state
+    const state = await loadPRState(octokit, context, prNumber);
+    if (!state) {
+        return { success: false, message: 'No analysis found. Run /peakinfer first.' };
+    }
+    const issue = state.issues.find(i => i.id === issueId);
+    if (!issue) {
+        return { success: false, message: `Issue #${issueId} not found` };
+    }
+    if (issue.status !== 'pending') {
+        return { success: false, message: `Issue #${issueId} already ${issue.status}` };
+    }
+    if (!issue.suggestedFix || !issue.location) {
+        return { success: false, message: `Issue #${issueId} has no automated fix available` };
+    }
+    // Parse location
+    const locMatch = issue.location.match(/^(.+):(\d+)$/);
+    if (!locMatch) {
+        return { success: false, message: `Invalid location format: ${issue.location}` };
+    }
+    const [, filePath, lineStr] = locMatch;
+    const line = parseInt(lineStr, 10);
+    try {
+        // Get PR details
+        const pr = await octokit.rest.pulls.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: prNumber,
+        });
+        // Get file content from PR branch
+        const { data: fileContent } = await octokit.rest.repos.getContent({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            path: filePath,
+            ref: pr.data.head.ref,
+        });
+        if (!('content' in fileContent)) {
+            return { success: false, message: `Could not read file: ${filePath}` };
+        }
+        // Decode and apply fix
+        const content = Buffer.from(fileContent.content, 'base64').toString('utf-8');
+        const lines = content.split('\n');
+        // Simple line replacement (for now)
+        // TODO: More sophisticated patching
+        lines[line - 1] = issue.suggestedFix;
+        const newContent = lines.join('\n');
+        // Create commit
+        await octokit.rest.repos.createOrUpdateFileContents({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            path: filePath,
+            message: `fix: ${issue.headline}\n\nApplied PeakInfer suggestion #${issueId}`,
+            content: Buffer.from(newContent).toString('base64'),
+            sha: fileContent.sha,
+            branch: pr.data.head.ref,
+        });
+        // Update state
+        issue.status = 'fixed';
+        await storePRState(octokit, context, state);
+        return {
+            success: true,
+            message: `Fixed issue #${issueId}: ${issue.headline}`,
+        };
+    }
+    catch (error) {
+        const msg = error instanceof Error ? error.message : 'Unknown error';
+        return { success: false, message: `Failed to apply fix: ${msg}` };
+    }
+}
+/**
+ * Handle /dismiss <id> command
+ */
+async function handleDismiss(octokit, context, issueId) {
+    const prNumber = context.payload.issue?.number;
+    if (!prNumber) {
+        return { success: false, message: 'Not in a PR context' };
+    }
+    const state = await loadPRState(octokit, context, prNumber);
+    if (!state) {
+        return { success: false, message: 'No analysis found. Run /peakinfer first.' };
+    }
+    const issue = state.issues.find(i => i.id === issueId);
+    if (!issue) {
+        return { success: false, message: `Issue #${issueId} not found` };
+    }
+    if (issue.status !== 'pending') {
+        return { success: false, message: `Issue #${issueId} already ${issue.status}` };
+    }
+    issue.status = 'dismissed';
+    await storePRState(octokit, context, state);
+    return {
+        success: true,
+        message: `Dismissed issue #${issueId}: ${issue.headline}`,
+    };
+}
+/**
+ * Handle /fix all command
+ */
+async function handleFixAll(octokit, context) {
+    const prNumber = context.payload.issue?.number;
+    if (!prNumber) {
+        return { success: false, message: 'Not in a PR context' };
+    }
+    const state = await loadPRState(octokit, context, prNumber);
+    if (!state) {
+        return { success: false, message: 'No analysis found. Run /peakinfer first.' };
+    }
+    const pendingWithFixes = state.issues.filter(i => i.status === 'pending' && i.suggestedFix && i.location);
+    if (pendingWithFixes.length === 0) {
+        return { success: false, message: 'No pending issues with fixes available' };
+    }
+    let fixed = 0;
+    let failed = 0;
+    for (const issue of pendingWithFixes) {
+        const result = await handleFix(octokit, context, issue.id);
+        if (result.success) {
+            fixed++;
+        }
+        else {
+            failed++;
+            core.warning(`Failed to fix #${issue.id}: ${result.message}`);
+        }
+    }
+    return {
+        success: fixed > 0,
+        message: `Applied ${fixed} fixes${failed > 0 ? `, ${failed} failed` : ''}`,
+    };
+}
+// =============================================================================
+// RESPONSE POSTING
+// =============================================================================
+/**
+ * Post command response as a reply
+ */
+async function postCommandResponse(octokit, context, success, message) {
+    const prNumber = context.payload.issue?.number;
+    if (!prNumber)
+        return;
+    const emoji = success ? '✅' : '❌';
+    const body = `${emoji} ${message}\n\n<sub>PeakInfer</sub>`;
+    await octokit.rest.issues.createComment({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        issue_number: prNumber,
+        body,
+    });
+}
+// =============================================================================
+// MAIN HANDLER
+// =============================================================================
+/**
+ * Handle comment command
+ * Returns true if a command was found and handled
+ */
+async function handleCommentCommand(octokit, context) {
+    const comment = context.payload.comment;
+    if (!comment?.body)
+        return false;
+    const command = parseCommand(comment.body);
+    if (!command)
+        return false;
+    core.info(`Handling command: ${command.type}`);
+    let result;
+    switch (command.type) {
+        case 'rerun':
+            // Rerun is handled by re-running the analysis workflow
+            result = { success: true, message: 'Re-running analysis...' };
+            break;
+        case 'fix':
+            if (command.issueId === undefined) {
+                result = { success: false, message: 'Missing issue ID' };
+            }
+            else {
+                result = await handleFix(octokit, context, command.issueId);
+            }
+            break;
+        case 'fix-all':
+            result = await handleFixAll(octokit, context);
+            break;
+        case 'dismiss':
+            if (command.issueId === undefined) {
+                result = { success: false, message: 'Missing issue ID' };
+            }
+            else {
+                result = await handleDismiss(octokit, context, command.issueId);
+            }
+            break;
+        default:
+            return false;
+    }
+    await postCommandResponse(octokit, context, result.success, result.message);
+    return true;
+}
+//# sourceMappingURL=commands.js.map
+;// CONCATENATED MODULE: ./dist/action/index.js
 /**
  * PeakInfer GitHub Action Entry Point (v1.6)
  *
  * Uses managed API - no Anthropic key required from user.
  * Credits are tracked and deducted via peakinfer.com API.
  */
+
 
 
 
@@ -33239,6 +33579,35 @@ function determineStatus(analysis, inputs) {
 // =============================================================================
 async function run() {
     try {
+        // Get GitHub context first to check for command events
+        const context = github.context;
+        const token = process.env.GITHUB_TOKEN || core.getInput('github-token');
+        if (!token) {
+            core.setFailed('GITHUB_TOKEN is required for PR comments');
+            return;
+        }
+        const octokit = github.getOctokit(token);
+        // Check if this is a command event (issue_comment)
+        const eventType = core.getInput('event-type') || context.eventName;
+        const commentBody = core.getInput('comment-body') || '';
+        if (eventType === 'issue_comment' && commentBody) {
+            core.info('Processing comment command...');
+            const command = parseCommand(commentBody);
+            if (command) {
+                if (command.type === 'rerun') {
+                    // For rerun, continue to normal analysis
+                    core.info('Re-running analysis...');
+                }
+                else {
+                    // For fix/dismiss commands, handle and exit
+                    const handled = await handleCommentCommand(octokit, context);
+                    if (handled) {
+                        core.info('Command handled successfully');
+                        return;
+                    }
+                }
+            }
+        }
         const inputs = getInputs();
         core.info(`Analyzing path: ${inputs.path}`);
         // Validate path
@@ -33246,17 +33615,9 @@ async function run() {
             core.setFailed(`Path not found: ${inputs.path}`);
             return;
         }
-        // Get GitHub context
-        const context = github.context;
-        const token = process.env.GITHUB_TOKEN || core.getInput('github-token');
         const orgId = context.repo.owner;
         const repo = `${context.repo.owner}/${context.repo.repo}`;
-        const prNumber = context.payload.pull_request?.number || 0;
-        if (!token) {
-            core.setFailed('GITHUB_TOKEN is required for PR comments');
-            return;
-        }
-        const octokit = github.getOctokit(token);
+        const prNumber = context.payload.pull_request?.number || context.payload.issue?.number || 0;
         // Collect files for analysis
         core.info('Collecting files for analysis...');
         const files = collectFiles(inputs.path);
@@ -33374,4 +33735,6 @@ async function run() {
     }
 }
 run();
+//# sourceMappingURL=index.js.map
 
+//# sourceMappingURL=index.js.map

@@ -1,7 +1,8 @@
 /**
  * PR Comment Generation (v1.6)
  *
- * Generates markdown PR comments for analysis results.
+ * Generates markdown PR comments with verdict-first UX.
+ * Design principle: User decides in 5 seconds, acts in 30.
  */
 import type { Insight } from '../types.js';
 interface CommentData {
@@ -36,7 +37,13 @@ interface CommentData {
     };
 }
 /**
- * Generate PR comment markdown
+ * Generate PR comment markdown with verdict-first UX.
+ *
+ * Design: User decides in 5 seconds, acts in 30.
+ * - Verdict first (Safe/Review/Changes Requested)
+ * - Top issue highlighted (what to fix first)
+ * - Details collapsed (for power users)
+ * - Inline suggestions posted separately
  */
 export declare function generatePRComment(data: CommentData): string;
 /**

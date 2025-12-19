@@ -13,6 +13,7 @@ import { generatePRComment, generateExhaustedComment } from './comments.js';
 import { postInlineComments } from './inline.js';
 import { getChangedFiles, filterToChangedFiles } from './diff.js';
 import { getBaseline, compareToBaseline } from './baseline.js';
+import { parseCommand, handleCommentCommand } from './commands.js';
 import type { Insight } from '../types.js';
 
 // API endpoint
@@ -215,6 +216,40 @@ function determineStatus(
 
 async function run(): Promise<void> {
   try {
+    // Get GitHub context first to check for command events
+    const context = github.context;
+    const token = process.env.GITHUB_TOKEN || core.getInput('github-token');
+
+    if (!token) {
+      core.setFailed('GITHUB_TOKEN is required for PR comments');
+      return;
+    }
+
+    const octokit = github.getOctokit(token);
+
+    // Check if this is a command event (issue_comment)
+    const eventType = core.getInput('event-type') || context.eventName;
+    const commentBody = core.getInput('comment-body') || '';
+
+    if (eventType === 'issue_comment' && commentBody) {
+      core.info('Processing comment command...');
+      const command = parseCommand(commentBody);
+
+      if (command) {
+        if (command.type === 'rerun') {
+          // For rerun, continue to normal analysis
+          core.info('Re-running analysis...');
+        } else {
+          // For fix/dismiss commands, handle and exit
+          const handled = await handleCommentCommand(octokit, context);
+          if (handled) {
+            core.info('Command handled successfully');
+            return;
+          }
+        }
+      }
+    }
+
     const inputs = getInputs();
     core.info(`Analyzing path: ${inputs.path}`);
 
@@ -224,19 +259,9 @@ async function run(): Promise<void> {
       return;
     }
 
-    // Get GitHub context
-    const context = github.context;
-    const token = process.env.GITHUB_TOKEN || core.getInput('github-token');
     const orgId = context.repo.owner;
     const repo = `${context.repo.owner}/${context.repo.repo}`;
-    const prNumber = context.payload.pull_request?.number || 0;
-
-    if (!token) {
-      core.setFailed('GITHUB_TOKEN is required for PR comments');
-      return;
-    }
-
-    const octokit = github.getOctokit(token);
+    const prNumber = context.payload.pull_request?.number || context.payload.issue?.number || 0;
 
     // Collect files for analysis
     core.info('Collecting files for analysis...');

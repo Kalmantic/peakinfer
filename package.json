@@ -1,6 +1,6 @@
 {
   "name": "@kalmantic/peakinfer",
-  "version": "1.0.91",
+  "version": "1.0.93",
   "description": "LLM inference performance analysis CLI",
   "type": "module",
   "main": "dist/cli.js",
@@ -9,8 +9,9 @@
   },
   "scripts": {
     "prebuild": "npm version patch --no-git-tag-version",
-    "build": "tsc",
-    "build:noversion": "tsc",
+    "build": "tsc && npm run build:action",
+    "build:noversion": "tsc && npm run build:action",
+    "build:action": "ncc build dist/action/index.js -o dist/action-bundle --source-map && cp dist/action-bundle/index.js dist/action/index.js",
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
     "test": "vitest",

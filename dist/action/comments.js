@@ -1,138 +1,159 @@
 /**
  * PR Comment Generation (v1.6)
  *
- * Generates markdown PR comments for analysis results.
+ * Generates markdown PR comments with verdict-first UX.
+ * Design principle: User decides in 5 seconds, acts in 30.
  */
+// =============================================================================
+// VERDICT LOGIC
+// =============================================================================
 /**
- * Parse location string to file and line
+ * Determine verdict based on issues found.
+ * Verdict is the first thing user sees - enables 5-second decision.
  */
-function parseLocation(location) {
-    if (!location)
-        return {};
-    const match = location.match(/^(.+):(\d+)$/);
-    if (match) {
-        return { file: match[1], line: parseInt(match[2], 10) };
+function getVerdict(issues) {
+    const critical = issues.filter(i => i.severity === 'critical');
+    const warnings = issues.filter(i => i.severity === 'warning');
+    if (critical.length >= 2) {
+        return {
+            label: 'Changes Requested',
+            emoji: '🔴',
+            message: `${critical.length} issues need attention before merge`,
+        };
     }
-    return { file: location };
-}
-// =============================================================================
-// HELPERS
-// =============================================================================
-/**
- * Format status indicator
- */
-function formatStatus(status) {
-    const indicators = {
-        pass: '[PASS]',
-        warning: '[WARN]',
-        fail: '[FAIL]',
+    if (critical.length === 1) {
+        return {
+            label: 'Review Recommended',
+            emoji: '🟡',
+            message: '1 issue needs attention',
+        };
+    }
+    if (warnings.length > 5) {
+        return {
+            label: 'Review Recommended',
+            emoji: '🟡',
+            message: `${warnings.length} improvements suggested`,
+        };
+    }
+    if (warnings.length > 0) {
+        return {
+            label: 'Mostly Good',
+            emoji: '🟢',
+            message: `${warnings.length} optional improvement${warnings.length > 1 ? 's' : ''}`,
+        };
+    }
+    return {
+        label: 'Safe to Merge',
+        emoji: '✅',
+        message: 'No issues found',
     };
-    return indicators[status] || status;
 }
 /**
- * Format baseline comparison
+ * Get the single most important issue to highlight.
+ * User acts on one thing at a time - show them which one.
  */
-function formatBaselineComparison(results, baseline) {
-    if (!baseline || typeof baseline !== 'object')
+function getTopIssue(issues) {
+    if (issues.length === 0)
+        return null;
+    // Priority: critical > warning > info
+    const critical = issues.filter(i => i.severity === 'critical');
+    if (critical.length > 0)
+        return critical[0];
+    const warnings = issues.filter(i => i.severity === 'warning');
+    if (warnings.length > 0)
+        return warnings[0];
+    return issues[0];
+}
+/**
+ * Get issue title, supporting both formats.
+ */
+function getIssueTitle(issue) {
+    return issue.headline || issue.title || 'Issue';
+}
+// =============================================================================
+// FORMATTING
+// =============================================================================
+/**
+ * Format the collapsible details section.
+ * Most users need verdict + top issue. Power users can expand.
+ */
+function formatDetailsSection(issues) {
+    if (issues.length <= 1)
         return '';
-    const base = baseline;
     const lines = [];
-    lines.push('\n### Changes vs Baseline\n');
-    lines.push('| Metric | Previous | Current | Delta |');
-    lines.push('|--------|----------|---------|-------|');
-    // Inference points
-    const currentPoints = results.inferenceMap?.summary?.totalCallsites || 0;
-    if (base.inferencePoints !== undefined) {
-        const delta = currentPoints - base.inferencePoints;
-        const deltaStr = delta >= 0 ? `+${delta}` : `${delta}`;
-        lines.push(`| Inference Points | ${base.inferencePoints} | ${currentPoints} | ${deltaStr} |`);
-    }
-    // p95 Latency
-    const currentLatency = results.runtime?.global?.p95;
-    if (base.p95Latency !== undefined && currentLatency !== undefined) {
-        const delta = currentLatency - base.p95Latency;
-        const deltaPercent = (delta / base.p95Latency) * 100;
-        const status = deltaPercent > 25 ? ' [!]' : '';
-        lines.push(`| p95 Latency | ${base.p95Latency}ms | ${currentLatency}ms | ${deltaPercent >= 0 ? '+' : ''}${deltaPercent.toFixed(0)}%${status} |`);
-    }
-    return lines.join('\n');
-}
-/**
- * Format new issues section
- */
-function formatNewIssues(newIssues) {
-    if (newIssues.length === 0) {
-        return '\n### Changes in This PR\n\nNo new issues introduced.\n';
-    }
-    const lines = [];
-    lines.push('\n### Changes in This PR\n');
+    const remaining = issues.slice(1); // Skip top issue (already shown)
+    lines.push(`\n<details>`);
+    lines.push(`<summary>See all ${issues.length} issues</summary>\n`);
     const bySeverity = {
-        critical: newIssues.filter(i => i.severity === 'critical'),
-        warning: newIssues.filter(i => i.severity === 'warning'),
-        info: newIssues.filter(i => i.severity === 'info'),
+        critical: remaining.filter(i => i.severity === 'critical'),
+        warning: remaining.filter(i => i.severity === 'warning'),
+        info: remaining.filter(i => i.severity === 'info'),
     };
-    for (const [severity, issues] of Object.entries(bySeverity)) {
-        if (issues.length > 0) {
-            lines.push(`\n**${severity.toUpperCase()}** (${issues.length}):\n`);
-            for (const issue of issues.slice(0, 5)) {
-                // Support both 'headline' (CLI) and 'title' (API) formats
-                const title = issue.headline || issue.title || 'Issue';
-                lines.push(`- ${title}`);
-                if (issue.location) {
-                    lines.push(`  \`${issue.location}\``);
-                }
+    for (const [severity, items] of Object.entries(bySeverity)) {
+        if (items.length > 0) {
+            lines.push(`\n**${severity.charAt(0).toUpperCase() + severity.slice(1)}** (${items.length})`);
+            for (const issue of items.slice(0, 5)) {
+                const title = getIssueTitle(issue);
+                const location = issue.location ? ` — \`${issue.location}\`` : '';
+                lines.push(`- ${title}${location}`);
             }
-            if (issues.length > 5) {
-                lines.push(`\n_...and ${issues.length - 5} more_`);
+            if (items.length > 5) {
+                lines.push(`- _...${items.length - 5} more_`);
             }
         }
     }
+    lines.push('\n</details>');
     return lines.join('\n');
 }
 // =============================================================================
 // MAIN
 // =============================================================================
 /**
- * Generate PR comment markdown
+ * Generate PR comment markdown with verdict-first UX.
+ *
+ * Design: User decides in 5 seconds, acts in 30.
+ * - Verdict first (Safe/Review/Changes Requested)
+ * - Top issue highlighted (what to fix first)
+ * - Details collapsed (for power users)
+ * - Inline suggestions posted separately
  */
 export function generatePRComment(data) {
-    const { results, baseline, status, regressions, newIssues } = data;
+    const { results, newIssues } = data;
     const lines = [];
-    // Header
-    lines.push('## PeakInfer Analysis\n');
-    // Summary table
-    lines.push('### Summary\n');
-    lines.push('| Metric | Value | Status |');
-    lines.push('|--------|-------|--------|');
+    const verdict = getVerdict(newIssues);
+    const topIssue = getTopIssue(newIssues);
     const inferencePoints = results.inferenceMap?.summary?.totalCallsites || 0;
-    lines.push(`| Inference Points | ${inferencePoints} | - |`);
-    if (results.runtime?.global?.p95) {
-        const p95Status = regressions.some(r => r.includes('latency')) ? '[!]' : '[OK]';
-        lines.push(`| p95 Latency | ${results.runtime.global.p95}ms | ${p95Status} |`);
-    }
-    if (results.joined?.drift && Array.isArray(results.joined.drift)) {
-        const driftCount = results.joined.drift.length;
-        const driftStatus = driftCount > 0 ? '[*]' : '[OK]';
-        lines.push(`| Drift Signals | ${driftCount} | ${driftStatus} |`);
-    }
-    const insightCount = results.insights?.length || 0;
-    lines.push(`| Insights | ${insightCount} | - |`);
-    // Baseline comparison
-    if (baseline) {
-        lines.push(formatBaselineComparison(results, baseline));
-    }
-    // New issues
-    lines.push(formatNewIssues(newIssues));
-    // Regressions
-    if (regressions.length > 0) {
-        lines.push('\n### Regressions\n');
-        for (const r of regressions) {
-            lines.push(`- ${r}`);
+    // Header with verdict - user knows in 5 seconds
+    lines.push('## PeakInfer Analysis\n');
+    lines.push(`**${verdict.emoji} ${verdict.label}** — ${verdict.message}\n`);
+    // Top issue highlight - what to fix first
+    if (topIssue) {
+        const title = getIssueTitle(topIssue);
+        lines.push('| | |');
+        lines.push('|---|---|');
+        lines.push(`| **Top Issue** | ${title} |`);
+        if (topIssue.location) {
+            lines.push(`| **Location** | \`${topIssue.location}\` |`);
+        }
+        if (topIssue.evidence) {
+            lines.push(`| **Why it matters** | ${topIssue.evidence} |`);
         }
     }
-    // Status
-    lines.push(`\n---\n**Status:** ${formatStatus(status)}`);
-    // Footer
+    else {
+        // Zero state - clean and simple
+        lines.push(`Analyzed ${inferencePoints} inference point${inferencePoints !== 1 ? 's' : ''}, all following best practices.`);
+    }
+    // Collapsible details - for power users who want to see everything
+    if (newIssues.length > 1) {
+        lines.push(formatDetailsSection(newIssues));
+    }
+    // Commands footer - enable user interaction
+    if (newIssues.length > 0) {
+        lines.push('\n---');
+        lines.push('**Commands:** `/fix 1` · `/dismiss 1` · `/fix all` · `/peakinfer`');
+        lines.push('');
+        lines.push('<sub>See inline comments for suggested fixes</sub>');
+    }
     lines.push('\n<sub>Generated by [PeakInfer](https://github.com/Kalmantic/peakinfer)</sub>');
     return lines.join('\n');
 }
