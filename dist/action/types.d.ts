@@ -491,20 +491,15 @@ export declare const RuntimeSummary: z.ZodObject<{
         p95: z.ZodNumber;
         p99: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
-        p95: number;
         p50: number;
+        p95: number;
         p99: number;
     }, {
-        p95: number;
         p50: number;
+        p95: number;
         p99: number;
     }>;
 }, "strip", z.ZodTypeAny, {
-    global: {
-        p95: number;
-        p50: number;
-        p99: number;
-    };
     totalEvents: number;
     byProvider: Record<string, {
         calls: number;
@@ -522,12 +517,12 @@ export declare const RuntimeSummary: z.ZodObject<{
         latency_p95: number;
         latency_p99: number;
     }>;
+    global: {
+        p50: number;
+        p95: number;
+        p99: number;
+    };
 }, {
-    global: {
-        p95: number;
-        p50: number;
-        p99: number;
-    };
     totalEvents: number;
     byProvider: Record<string, {
         calls: number;
@@ -545,6 +540,11 @@ export declare const RuntimeSummary: z.ZodObject<{
         latency_p95: number;
         latency_p99: number;
     }>;
+    global: {
+        p50: number;
+        p95: number;
+        p99: number;
+    };
 }>;
 export declare const UsageStats: z.ZodObject<{
     calls: z.ZodNumber;
@@ -2377,12 +2377,12 @@ export declare const LatencyPercentiles: z.ZodObject<{
     p95: z.ZodNumber;
     p99: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
-    p95: number;
     p50: number;
+    p95: number;
     p99: number;
 }, {
-    p95: number;
     p50: number;
+    p95: number;
     p99: number;
 }>;
 /**
@@ -2399,12 +2399,12 @@ export declare const InferencePointPrediction: z.ZodObject<{
         p95: z.ZodNumber;
         p99: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
-        p95: number;
         p50: number;
+        p95: number;
         p99: number;
     }, {
-        p95: number;
         p50: number;
+        p95: number;
         p99: number;
     }>>;
     predictedLatency: z.ZodObject<{
@@ -2412,12 +2412,12 @@ export declare const InferencePointPrediction: z.ZodObject<{
         p95: z.ZodNumber;
         p99: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
-        p95: number;
         p50: number;
+        p95: number;
         p99: number;
     }, {
-        p95: number;
         p50: number;
+        p95: number;
         p99: number;
     }>;
     risk: z.ZodEnum<["high", "medium", "low", "neutral"]>;
@@ -2445,8 +2445,8 @@ export declare const InferencePointPrediction: z.ZodObject<{
     confidence: "high" | "medium" | "low";
     inferencePointId: string;
     predictedLatency: {
-        p95: number;
         p50: number;
+        p95: number;
         p99: number;
     };
     risk: "high" | "medium" | "low" | "neutral";
@@ -2460,8 +2460,8 @@ export declare const InferencePointPrediction: z.ZodObject<{
     model?: string | undefined;
     provider?: string | undefined;
     currentLatency?: {
-        p95: number;
         p50: number;
+        p95: number;
         p99: number;
     } | undefined;
     confidenceReason?: string | undefined;
@@ -2470,8 +2470,8 @@ export declare const InferencePointPrediction: z.ZodObject<{
     confidence: "high" | "medium" | "low";
     inferencePointId: string;
     predictedLatency: {
-        p95: number;
         p50: number;
+        p95: number;
         p99: number;
     };
     risk: "high" | "medium" | "low" | "neutral";
@@ -2485,8 +2485,8 @@ export declare const InferencePointPrediction: z.ZodObject<{
     model?: string | undefined;
     provider?: string | undefined;
     currentLatency?: {
-        p95: number;
         p50: number;
+        p95: number;
         p99: number;
     } | undefined;
     confidenceReason?: string | undefined;
@@ -2533,12 +2533,12 @@ export declare const PredictionResult: z.ZodObject<{
             p95: z.ZodNumber;
             p99: z.ZodNumber;
         }, "strip", z.ZodTypeAny, {
-            p95: number;
             p50: number;
+            p95: number;
             p99: number;
         }, {
-            p95: number;
             p50: number;
+            p95: number;
             p99: number;
         }>>;
         predictedLatency: z.ZodObject<{
@@ -2546,12 +2546,12 @@ export declare const PredictionResult: z.ZodObject<{
             p95: z.ZodNumber;
             p99: z.ZodNumber;
         }, "strip", z.ZodTypeAny, {
-            p95: number;
             p50: number;
+            p95: number;
             p99: number;
         }, {
-            p95: number;
             p50: number;
+            p95: number;
             p99: number;
         }>;
         risk: z.ZodEnum<["high", "medium", "low", "neutral"]>;
@@ -2579,8 +2579,8 @@ export declare const PredictionResult: z.ZodObject<{
         confidence: "high" | "medium" | "low";
         inferencePointId: string;
         predictedLatency: {
-            p95: number;
             p50: number;
+            p95: number;
             p99: number;
         };
         risk: "high" | "medium" | "low" | "neutral";
@@ -2594,8 +2594,8 @@ export declare const PredictionResult: z.ZodObject<{
         model?: string | undefined;
         provider?: string | undefined;
         currentLatency?: {
-            p95: number;
             p50: number;
+            p95: number;
             p99: number;
         } | undefined;
         confidenceReason?: string | undefined;
@@ -2604,8 +2604,8 @@ export declare const PredictionResult: z.ZodObject<{
         confidence: "high" | "medium" | "low";
         inferencePointId: string;
         predictedLatency: {
-            p95: number;
             p50: number;
+            p95: number;
             p99: number;
         };
         risk: "high" | "medium" | "low" | "neutral";
@@ -2619,8 +2619,8 @@ export declare const PredictionResult: z.ZodObject<{
         model?: string | undefined;
         provider?: string | undefined;
         currentLatency?: {
-            p95: number;
             p50: number;
+            p95: number;
             p99: number;
         } | undefined;
         confidenceReason?: string | undefined;
@@ -2669,8 +2669,8 @@ export declare const PredictionResult: z.ZodObject<{
         confidence: "high" | "medium" | "low";
         inferencePointId: string;
         predictedLatency: {
-            p95: number;
             p50: number;
+            p95: number;
             p99: number;
         };
         risk: "high" | "medium" | "low" | "neutral";
@@ -2684,8 +2684,8 @@ export declare const PredictionResult: z.ZodObject<{
         model?: string | undefined;
         provider?: string | undefined;
         currentLatency?: {
-            p95: number;
             p50: number;
+            p95: number;
             p99: number;
         } | undefined;
         confidenceReason?: string | undefined;
@@ -2708,8 +2708,8 @@ export declare const PredictionResult: z.ZodObject<{
         confidence: "high" | "medium" | "low";
         inferencePointId: string;
         predictedLatency: {
-            p95: number;
             p50: number;
+            p95: number;
             p99: number;
         };
         risk: "high" | "medium" | "low" | "neutral";
@@ -2723,8 +2723,8 @@ export declare const PredictionResult: z.ZodObject<{
         model?: string | undefined;
         provider?: string | undefined;
         currentLatency?: {
-            p95: number;
             p50: number;
+            p95: number;
             p99: number;
         } | undefined;
         confidenceReason?: string | undefined;
