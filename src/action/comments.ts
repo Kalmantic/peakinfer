@@ -121,36 +121,27 @@ function getIssueTitle(issue: Insight): string {
 
 /**
  * Format the collapsible details section.
- * Most users need verdict + top issue. Power users can expand.
+ * Shows ALL issues with locations and issue numbers for /fix commands.
  */
 function formatDetailsSection(issues: Insight[]): string {
   if (issues.length <= 1) return '';
 
   const lines: string[] = [];
-  const remaining = issues.slice(1); // Skip top issue (already shown)
 
-  lines.push(`\n<details>`);
-  lines.push(`<summary>See all ${issues.length} issues</summary>\n`);
+  lines.push(`\n<details open>`);
+  lines.push(`<summary><strong>All ${issues.length} issues</strong> (click to collapse)</summary>\n`);
+  lines.push('');
+  lines.push('| # | Issue | Location | Fix |');
+  lines.push('|---|-------|----------|-----|');
 
-  const bySeverity = {
-    critical: remaining.filter(i => i.severity === 'critical'),
-    warning: remaining.filter(i => i.severity === 'warning'),
-    info: remaining.filter(i => i.severity === 'info'),
-  };
-
-  for (const [severity, items] of Object.entries(bySeverity)) {
-    if (items.length > 0) {
-      lines.push(`\n**${severity.charAt(0).toUpperCase() + severity.slice(1)}** (${items.length})`);
-      for (const issue of items.slice(0, 5)) {
-        const title = getIssueTitle(issue);
-        const location = issue.location ? ` — \`${issue.location}\`` : '';
-        lines.push(`- ${title}${location}`);
-      }
-      if (items.length > 5) {
-        lines.push(`- _...${items.length - 5} more_`);
-      }
-    }
-  }
+  // Show ALL issues with numbers for /fix command
+  issues.forEach((issue, index) => {
+    const num = index + 1;
+    const title = getIssueTitle(issue);
+    const location = issue.location ? `\`${issue.location}\`` : '-';
+    const severity = issue.severity === 'critical' ? '🔴' : issue.severity === 'warning' ? '🟡' : '⚪';
+    lines.push(`| ${severity} ${num} | ${title} | ${location} | \`/fix ${num}\` |`);
+  });
 
   lines.push('\n</details>');
   return lines.join('\n');
