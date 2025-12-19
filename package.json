@@ -11,7 +11,7 @@
     "prebuild": "npm version patch --no-git-tag-version",
     "build": "tsc && npm run build:action",
     "build:noversion": "tsc && npm run build:action",
-    "build:action": "ncc build dist/action/index.js -o dist/action-bundle --source-map && cp dist/action-bundle/index.js dist/action/index.js",
+    "build:action": "ncc build dist/action/index.js -o dist/action-bundle && cp dist/action-bundle/* dist/action/",
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
     "test": "vitest",
