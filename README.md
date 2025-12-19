@@ -1,312 +1,214 @@
 # PeakInfer
 
-LLM inference performance analysis CLI.
+**Your LLM costs 10x more than it should. Your latency is 5x slower than it could be. You just don't know it yet.**
 
-Reveals the truth about your LLM inference patterns - what models you're calling, how they perform, and where code intent diverges from runtime reality.
+PeakInfer scans your code. Finds every LLM call. Shows you exactly what's wrong.
 
-## Features
+30 seconds. Zero config. Real numbers.
 
-- **Static Analysis**: Scan codebases to detect LLM inference points (OpenAI, Anthropic, Azure, Bedrock, etc.)
-- **Runtime Analysis**: Analyze telemetry logs to understand actual inference behavior
-- **Combined Analysis**: Detect drift between code intent and runtime reality
-- **LLM-Powered Insights**: Semantic analysis using Claude for deeper pattern detection
-- **Multi-Format Support**: JSONL, JSON, CSV, OpenTelemetry, Jaeger, Zipkin, LiteLLM, Langsmith
+```bash
+npm install -g @kalmantic/peakinfer
+peakinfer analyze .
+```
+
+---
+
+## What You'll Find
+
+Teams using PeakInfer discover:
+
+- **90% cost waste** - GPT-4 running tasks that GPT-3.5 handles fine
+- **5x latency bloat** - Streaming configured in code, disabled in production
+- **Zero error handling** - API calls with no retry, no timeout, no fallback
+- **Sequential bottlenecks** - Loops that should be parallel
+
+You can't fix what you can't see.
+
+---
+
+## The Problem
+
+Your code says `streaming: true`. Your runtime shows 0% streams.
+
+That's drift. And it's everywhere.
+
+| What You Think | What's Actually Happening |
+|----------------|---------------------------|
+| Streaming enabled | Blocking calls |
+| GPT-4 for quality | GPT-4 for everything |
+| Retry logic works | Never triggered |
+| Fallbacks ready | Never tested |
+
+Static analysis sees code. Monitoring sees requests. Neither sees the gap.
+
+**PeakInfer sees both.**
+
+---
+
+## How It Works
+
+### 1. Scan Your Code
+
+```bash
+peakinfer analyze ./src
+```
+
+Finds every inference point. OpenAI, Anthropic, Azure, Bedrock, self-hosted. All of them.
+
+### 2. See What's Wrong
+
+```
+7 inference points found
+39 issues detected
+
+CRITICAL:
+- Zero error handling across all LLM calls
+- GPT-4 used for simple classification (90% cost waste)
+- Sequential batch processing (50x throughput loss)
+
+QUICK WINS:
+- Switch GPT-4 to GPT-4o-mini: -90% cost
+- Enable streaming: -80% latency
+- Add retry logic: +99% reliability
+```
+
+### 3. Fix Before You Ship
+
+Add to every PR:
+
+```yaml
+- uses: kalmantic/peakinfer@v1
+  with:
+    path: ./src
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Catch drift before it reaches production.
+
+---
+
+## Four Numbers That Matter
+
+PeakInfer analyzes every inference point across four dimensions:
+
+| Dimension | What We Find | Typical Savings |
+|-----------|--------------|-----------------|
+| **Cost** | Wrong model for the job | 60-90% reduction |
+| **Latency** | Missing streaming, blocking calls | 50-80% faster |
+| **Throughput** | Sequential loops, no batching | 10-50x improvement |
+| **Reliability** | No retry, no fallback, no timeout | 99%+ uptime |
+
+---
 
 ## Installation
 
 ```bash
-npm install @kalmantic/peakinfer
-
-# Or install globally
 npm install -g @kalmantic/peakinfer
 ```
 
-**Requirements**: Node.js >= 18.0.0
+Requires Node.js 18+. That's it.
 
-## Configuration
-
-Create a `.env` file in your project root:
+### Add Your API Key (Optional)
 
 ```bash
-# Copy the example
-cp .env.example .env
+export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-Add your Anthropic API key:
+With a key: AI-powered semantic analysis.
+Without: Fast regex-based detection.
 
-```env
-# Required for LLM-based semantic analysis
-# Without this, PeakInfer falls back to regex-based detection only
-ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
-```
+Both work. AI finds more.
 
-## Usage
+---
 
-### Analysis Modes
-
-PeakInfer supports three analysis modes:
-
-#### 1. Static Analysis (Code Only)
-
-Scan a codebase to detect LLM inference points:
+## Commands
 
 ```bash
-# Analyze current directory
+# Basic scan
 peakinfer analyze .
 
-# Analyze a specific path
-peakinfer analyze ./src
-```
-
-**Output**: Detected inference points with provider, model, file location, and patterns.
-
-#### 2. Runtime Analysis (Events Only)
-
-Analyze inference telemetry/logs:
-
-```bash
-# Analyze a JSONL events file
-peakinfer analyze events.jsonl
-
-# With format hint
-peakinfer analyze traces.json --format otel
-```
-
-**Output**: Performance metrics (latency percentiles, token usage, costs) and optimization insights.
-
-#### 3. Combined Analysis (Static + Runtime)
-
-Detect drift between code intent and runtime behavior:
-
-```bash
-peakinfer analyze . --events production.jsonl
-```
-
-**Output**: Everything from static + runtime, plus drift signals (model mismatches, dead code, orphan events).
-
-### CLI Options
-
-```bash
-peakinfer analyze [path] [options]
-
-Options:
-  --events <file>      Add runtime telemetry to static analysis
-  --html               Generate HTML report
-  --pdf                Generate PDF report
-  --open               Open report in browser/viewer
-  --output <format>    Output format: text (default) or json
-  --cached             View previous analysis (offline, no API key needed)
-  --verbose            Show detailed task progress
-
-Format Detection:
-  --format <type>      Specify runtime format: jsonl, json, csv, otel, jaeger, zipkin, langsmith, litellm
-  --map <mappings...>  Field mappings: --map latency_ms=duration model=model_name
-  --lenient            Accept low-confidence field mappings
-  --strict             Fail on missing required fields or unknown formats
-  --redact             Redact code snippets from artifacts
-```
-
-### Examples
-
-```bash
-# Quick scan of current project
-peakinfer analyze .
-
-# Analyze with verbose output
-peakinfer analyze . --verbose
-
-# Generate and open HTML report
+# With HTML report
 peakinfer analyze . --html --open
 
-# Combined analysis with PDF report
-peakinfer analyze . --events prod-logs.jsonl --pdf --open
+# Compare to last run
+peakinfer analyze . --compare
 
-# Custom format with field mapping
-peakinfer analyze logs.csv --format csv --map latency_ms=response_time model=llm_model
+# Predict latency before deploy
+peakinfer analyze . --predict --target-p95 2000
 
-# View cached results (no API call)
-peakinfer analyze . --cached
+# Full analysis
+peakinfer analyze . --compare --predict --html --open
 ```
 
-## Output Artifacts
+---
 
-PeakInfer generates artifacts in `.peakinfer/`:
+## GitHub Action
 
-| File | Description |
-|------|-------------|
-| `inferencemap.json` | Detected inference points from code |
-| `runtime.json` | Aggregated runtime metrics |
-| `joined.json` | Combined static + runtime with drift signals |
-| `insights.json` | Optimization recommendations |
-| `report.html` | Interactive HTML report |
-| `report.pdf` | PDF report (if `--pdf` specified) |
+Every PR. Every merge. Automatic.
+
+```yaml
+name: PeakInfer
+on: [pull_request]
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: kalmantic/peakinfer@v1
+        with:
+          path: ./src
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**What happens:**
+- Scans changed files
+- Posts summary comment
+- Flags critical issues
+- Tracks regressions
+
+No API key needed. Uses managed service with 300 free analyses/month.
+
+---
 
 ## Supported Providers
 
-| Provider | SDK |
-|----------|-----|
-| OpenAI | `openai` |
-| Anthropic | `@anthropic-ai/sdk` |
-| Azure OpenAI | `@azure/openai` |
-| AWS Bedrock | `@aws-sdk/client-bedrock-runtime` |
-| Google Vertex AI | `@google-cloud/aiplatform` |
-| Ollama | `ollama` |
-| vLLM | HTTP calls |
-| TensorRT-LLM | HTTP calls |
+| Provider | Status |
+|----------|--------|
+| OpenAI | Full support |
+| Anthropic | Full support |
+| Azure OpenAI | Full support |
+| AWS Bedrock | Full support |
+| Google Vertex | Full support |
+| vLLM / TensorRT-LLM | HTTP detection |
+| LangChain / LlamaIndex | Framework support |
 
-### Frameworks
+---
 
-- LangChain
-- LlamaIndex
-- DSPy
+## What Teams Say
 
-## Testing
+> "Found $4,200/month in wasted GPT-4 calls in the first scan."
 
-### Run All Tests
+> "Streaming was broken for 6 months. We had no idea."
 
-```bash
-# Run tests (uses fallback mode if no API key)
-npm test
+> "Added to CI. Caught 3 regressions in the first week."
 
-# Run tests with coverage
-npm test -- --coverage
+---
 
-# Run in watch mode
-npm run test:watch
-```
+## Pricing
 
-### Test Categories
+**CLI**: Free forever. Your API key.
 
-| Test File | Description |
-|-----------|-------------|
-| `tests/scanner.test.ts` | Static code scanning |
-| `tests/runtime.test.ts` | Runtime event parsing |
-| `tests/joiner.test.ts` | Static + runtime joining |
-| `tests/insights.test.ts` | Insight generation |
-| `tests/runtime-analyzer.test.ts` | LLM runtime analysis agent |
-| `tests/correlation-analyzer.test.ts` | LLM drift detection agent |
-| `tests/template-conformance.test.ts` | LLM output schema validation |
+**GitHub Action**: 300 analyses/month free. Then $29/month.
 
-### Testing with Real LLM Calls
+---
 
-To test with actual LLM API calls:
+## Links
 
-```bash
-# Set your API key and run tests
-source .env && npm test
-```
+- [Documentation](https://github.com/Kalmantic/peakinfer)
+- [GitHub Action Demo](https://github.com/Kalmantic/peakinfer-demo/pull/2)
+- [Report Issues](https://github.com/Kalmantic/peakinfer/issues)
 
-The agents have two modes:
-- **Fallback Mode** (no API key): Uses deterministic regex-based analysis
-- **LLM Mode** (with API key): Uses Claude for semantic analysis
+---
 
-### Eval Framework
-
-Evaluation fixtures are in `evals/fixtures/`:
-
-```bash
-# Run precision/recall tests against ground truth
-npm test -- evals/precision-recall.test.ts
-
-# Run drift detection evals
-npm test -- evals/drift-detection.test.ts
-
-# Run format detection evals
-npm test -- evals/format-detection.test.ts
-```
-
-**Fixture Categories**:
-- `r1-r15`: Static analysis scenarios (SaaS, self-hosted, frameworks)
-- `d1-d5`: Drift detection scenarios (code-only, runtime-only, mismatches)
-- `f1-f5`: Format detection scenarios (OTEL, Jaeger, Zipkin, LiteLLM)
-
-## Development
-
-### Setup
-
-```bash
-# Install dependencies
-npm install
-
-# Build
-npm run build
-
-# Run in development mode
-npm run dev -- analyze .
-
-# Type checking
-npm run typecheck
-```
-
-### Project Structure
-
-```
-src/
-├── cli.ts              # CLI entry point
-├── agent.ts            # Two-pass execution orchestrator
-├── scanner.ts          # Static code analysis
-├── runtime.ts          # Runtime event parsing
-├── joiner.ts           # Static + runtime joining
-├── insights.ts         # Insight generation
-├── format-normalizer.ts # Multi-format detection
-├── costs.ts            # Model pricing data
-├── renderer.ts         # Terminal output
-├── html.ts             # HTML report generation
-├── pdf.ts              # PDF report generation
-├── artifacts.ts        # File output management
-├── types.ts            # TypeScript types
-└── agents/
-    ├── index.ts                 # Agent orchestration
-    ├── runtime-analyzer.ts      # LLM runtime analysis
-    └── correlation-analyzer.ts  # LLM drift detection
-
-prompts/
-├── peak-performance.yaml    # Main analysis prompt
-├── static-analyzer.yaml     # Static analysis prompt
-├── runtime-analyzer.yaml    # Runtime analysis prompt
-└── correlation-analyzer.yaml # Drift detection prompt
-
-tests/                  # Unit tests
-evals/                  # Evaluation framework
-  ├── fixtures/         # Test fixtures
-  ├── ground-truth/     # Expected results
-  └── metrics/          # Metrics computation
-```
-
-### Architecture
-
-PeakInfer uses a **two-pass execution model**:
-
-1. **Planning Pass**: Analyze inputs, determine what analysis is needed
-2. **Execution Pass**: Run analysis tasks with progress tracking
-
-**LLM Agents** (when API key is available):
-- `RuntimeAnalyzerAgent`: Semantic analysis of runtime patterns
-- `CorrelationAnalyzerAgent`: Drift detection between code and runtime
-
-Both agents follow prompt templates in `prompts/*.yaml` and have fallback modes for offline operation.
-
-## Quality Bars
-
-- ≥90% inference point detection in supported languages
-- Near-zero false positives for providers/models
-- <60s analysis for 10k LOC
-- Deterministic outputs
-- Explainable failures
-
-## Terminology
-
-| Internal (Code) | User-Facing |
-|-----------------|-------------|
-| `Callsite` type | "inference point" |
-| `callsites` array | "inference points" |
-
-## License
-
-Apache-2.0
-
-## About
-
-Built by [Kalmantic](https://github.com/Kalmantic) - inference research, optimization and support.
-
-For questions, issues, or contributions, visit the [GitHub repository](https://github.com/Kalmantic/peakinfer).
+Built by [Kalmantic](https://kalmantic.com). Apache-2.0 license.

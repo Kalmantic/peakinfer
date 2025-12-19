@@ -7,6 +7,14 @@ import { Agent } from './agent.js';
 import { createRenderer } from './renderer.js';
 import { VERSION } from './version.js';
 
+// v1.6 Command imports
+import { registerTemplateCommands } from './commands/template.js';
+import { registerConfigCommands } from './commands/config.js';
+import { registerHistoryCommands } from './commands/history.js';
+import { registerCICommand } from './commands/ci.js';
+import { registerExportCommand } from './commands/export.js';
+import { registerWhatIfCommand } from './commands/whatif.js';
+
 // =============================================================================
 // CONSTANTS
 // =============================================================================
@@ -40,6 +48,11 @@ program
   .option('--lenient', 'accept low-confidence field mappings')
   .option('--strict', 'fail on missing required fields or unknown formats')
   .option('--redact', 'redact code snippets from artifacts')
+  // History options (v1.5)
+  .option('--no-history', 'skip saving run to history (disables comparison/prediction)')
+  .option('--compare [runId]', 'compare with previous run (default: latest)')
+  .option('--predict', 'generate deploy-time latency predictions')
+  .option('--target-p95 <ms>', 'target p95 latency for budget calculation (use with --predict)')
   .action(async (path: string, options: {
     events?: string;
     html?: boolean;
@@ -54,6 +67,11 @@ program
     lenient?: boolean;
     strict?: boolean;
     redact?: boolean;
+    // History options (v1.5)
+    history?: boolean; // Commander negates --no-history to history: false
+    compare?: string | boolean; // --compare or --compare <runId>
+    predict?: boolean; // --predict flag
+    targetP95?: string; // --target-p95 <ms>
   }) => {
     try {
       // Validate path exists
@@ -119,6 +137,12 @@ program
         lenient: options.lenient,
         strict: options.strict,
         redact: options.redact,
+        // History options (v1.5)
+        noHistory: options.history === false, // --no-history sets history to false
+        compare: options.compare !== undefined, // --compare flag was used
+        compareRunId: typeof options.compare === 'string' ? options.compare : undefined, // specific run ID
+        predict: options.predict, // --predict flag
+        targetP95: options.targetP95 ? parseInt(options.targetP95, 10) : undefined, // --target-p95 <ms>
       });
     } catch (error) {
       if (error instanceof Error) {
@@ -133,12 +157,31 @@ program
     }
   });
 
+// =============================================================================
+// REGISTER v1.6 COMMANDS
+// =============================================================================
+
+registerTemplateCommands(program);
+registerConfigCommands(program);
+registerHistoryCommands(program);
+registerCICommand(program);
+registerExportCommand(program);
+registerWhatIfCommand(program);
+
 // Custom help text (PRD-aligned, Julie Zhou style)
 program.addHelpText('after', `
 analyze modes:
   peakinfer analyze .                  # static: scan codebase for LLM calls
   peakinfer analyze events.jsonl       # runtime: analyze inference telemetry
   peakinfer analyze . --events prod.jsonl  # combined: static + runtime
+
+v1.6 commands:
+  peakinfer template list              # browse optimization templates
+  peakinfer config show                # view configuration
+  peakinfer history                    # view analysis history
+  peakinfer export                     # export results (json, prometheus)
+  peakinfer whatif --model gpt-4o-mini # counterfactual analysis
+  peakinfer ci ./src --baseline base.json  # CI/CD integration
 
 quick start:
   peakinfer analyze .

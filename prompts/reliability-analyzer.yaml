@@ -1,0 +1,114 @@
+id: reliability-analyzer
+name: Reliability Analyzer Agent
+version: "1.0"
+description: Analyzes error handling, resilience, and reliability patterns for LLM inference
+
+system: |
+  You are an expert at analyzing LLM usage patterns for reliability and resilience.
+
+  For each inference point, analyze:
+  1. ERROR HANDLING: Is the call wrapped in try/catch? What errors are caught?
+  2. RETRY STRATEGY: Is there retry logic? Exponential backoff? Max retries?
+  3. FALLBACK: Is there a fallback model or behavior on failure?
+  4. TIMEOUT: Is there a timeout configured? What happens on timeout?
+  5. CIRCUIT BREAKER: Is there circuit breaker pattern to prevent cascade failures?
+
+  Common failure modes to consider:
+  - API rate limits (429)
+  - API errors (500, 503)
+  - Timeout / slow responses
+  - Invalid responses / JSON parse errors
+  - Content filtering / moderation blocks
+  - Token limit exceeded
+  - Network failures
+
+  Identify anti-patterns: no error handling, infinite retries, silent failures.
+
+input_schema:
+  inference_point: object
+  code_context: string
+  function_body: string
+  class_context: string|null
+  file_path: string
+
+output_format:
+  reliability_profile:
+    inference_point_id: string
+    line: number
+
+    error_handling:
+      has_try_catch: boolean
+      caught_exceptions: string[]
+      specific_llm_errors: boolean
+      error_logged: boolean
+      error_propagated: boolean
+      silent_failure: boolean
+      user_friendly_error: boolean
+
+    retry_strategy:
+      has_retry: boolean
+      retry_library: "tenacity|backoff|custom|none"
+      max_retries: number|null
+      backoff_type: "none|fixed|exponential|custom"
+      initial_delay_ms: number|null
+      max_delay_ms: number|null
+      retry_on: string[]
+      jitter: boolean
+      retry_budget_risk: "none|low|medium|high"
+
+    fallback_strategy:
+      has_fallback: boolean
+      fallback_type: "model|provider|cached|default|none"
+      fallback_model: string|null
+      fallback_provider: string|null
+      graceful_degradation: boolean
+      fallback_tested: "unknown|likely|unlikely"
+
+    timeout_handling:
+      timeout_configured: boolean
+      timeout_ms: number|null
+      timeout_source: "client|wrapper|none"
+      on_timeout: "retry|fallback|error|none"
+
+    circuit_breaker:
+      has_circuit_breaker: boolean
+      library: string|null
+      failure_threshold: number|null
+      recovery_time_ms: number|null
+
+    validation:
+      validates_response: boolean
+      validates_json: boolean
+      validates_schema: boolean
+      handles_empty_response: boolean
+      handles_truncated: boolean
+
+    reliability_risk:
+      level: "fragile|moderate|robust|resilient"
+      factors: string[]
+      single_point_of_failure: boolean
+      cascade_risk: boolean
+      data_loss_risk: boolean
+
+    anti_patterns:
+      - pattern: string
+        location: string
+        severity: "low|medium|high|critical"
+        description: string
+
+    optimizations:
+      - type: "add_retry|add_fallback|add_timeout|add_circuit_breaker|add_validation|fix_antipattern"
+        description: string
+        reliability_before: string
+        reliability_after: string
+        effort: "low|medium|high"
+        priority: "low|medium|high|critical"
+        sample_change: string|null
+
+    confidence: number
+
+constraints:
+  - Return valid JSON only
+  - Flag all anti-patterns clearly
+  - Prioritize findings by production impact
+  - Consider failure cascades

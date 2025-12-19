@@ -253,7 +253,11 @@ export const PerformanceEnvelope = z.object({
 
 export const TaskType = z.enum([
   'scan', 'analyze', 'parse_events', 'join',
-  'load_templates', 'generate_insights', 'render', 'generate_html', 'generate_pdf', 'save_artifacts'
+  'load_templates', 'generate_insights', 'render', 'generate_html', 'generate_pdf', 'save_artifacts',
+  'save_history',     // v1.5: Save run to history for comparison/prediction
+  'compare',          // v1.5: Compare with previous run
+  'predict',          // v1.5: Generate deploy-time predictions
+  'counterfactuals',  // v1.5: Generate what-if optimization scenarios
 ]);
 
 export const PlannedTask = z.object({
@@ -425,3 +429,312 @@ export type FieldMapping = z.infer<typeof FieldMapping>;
 export type FormatDetectionResult = z.infer<typeof FormatDetectionResult>;
 export type NormalizationResult = z.infer<typeof NormalizationResult>;
 export type NormalizationOptions = z.infer<typeof NormalizationOptions>;
+
+// =============================================================================
+// HISTORY STORAGE (v1.5)
+// =============================================================================
+
+/**
+ * Analysis type for categorizing runs.
+ */
+export const AnalysisType = z.enum(['static', 'runtime', 'combined']);
+
+/**
+ * History manifest for tracking analysis runs over time.
+ * Distinct from runid.ts RunManifest which focuses on caching/resumability.
+ * This schema enables historical comparison and deploy-time prediction features.
+ */
+export const HistoryManifest = z.object({
+  runId: z.string(),                              // Unique run identifier
+  timestamp: z.string().datetime(),               // ISO timestamp when analysis completed
+  path: z.string(),                               // Analyzed path (absolute, for matching)
+  pathHash: z.string(),                           // Hash of normalized path for efficient lookup
+  analysisType: AnalysisType,                     // Type of analysis performed
+  version: z.string(),                            // PeakInfer version that produced this run
+
+  // Summary metrics for quick comparison
+  inferencePointCount: z.number(),                // Number of inference points detected
+  eventCount: z.number().optional(),              // Number of runtime events (if runtime/combined)
+  driftCount: z.number().optional(),              // Number of drift signals (if combined)
+  insightCount: z.number().optional(),            // Number of insights generated
+
+  // Performance context
+  durationMs: z.number().optional(),              // Analysis duration in milliseconds
+
+  // Artifact paths relative to history directory
+  artifacts: z.object({
+    inferenceMap: z.string().optional(),          // inference-map.json
+    analysis: z.string().optional(),              // analysis.json (full results)
+    html: z.string().optional(),                  // report.html
+    pdf: z.string().optional(),                   // report.pdf
+  }).optional(),
+});
+
+/**
+ * Index of all historical runs for a project path.
+ * Stored at .peakinfer/history/index.json
+ */
+export const HistoryIndex = z.object({
+  version: z.string(),                            // History format version
+  lastUpdated: z.string().datetime(),             // Last index update
+  runs: z.array(z.object({
+    runId: z.string(),
+    timestamp: z.string().datetime(),
+    pathHash: z.string(),
+    analysisType: AnalysisType,
+    inferencePointCount: z.number(),
+  })),
+});
+
+// Type exports for history
+export type AnalysisType = z.infer<typeof AnalysisType>;
+export type HistoryManifest = z.infer<typeof HistoryManifest>;
+export type HistoryIndex = z.infer<typeof HistoryIndex>;
+
+// =============================================================================
+// HISTORICAL COMPARISON (v1.5)
+// =============================================================================
+
+/**
+ * Change type for tracking what changed between runs.
+ */
+export const ChangeType = z.enum(['added', 'removed', 'modified']);
+
+/**
+ * A single field change within an inference point.
+ */
+export const FieldChange = z.object({
+  field: z.string(),                            // Field name that changed
+  before: z.unknown(),                          // Previous value
+  after: z.unknown(),                           // New value
+});
+
+/**
+ * An inference point that changed between runs.
+ */
+export const ChangedInferencePoint = z.object({
+  point: Callsite,                              // The inference point
+  changes: z.array(FieldChange),                // List of field changes
+});
+
+/**
+ * Result of comparing two analysis runs.
+ * Enables "what changed" insights for pre-deploy validation.
+ */
+export const ComparisonResult = z.object({
+  baseRunId: z.string(),                        // The baseline run ID
+  baseTimestamp: z.string().datetime(),         // When baseline was created
+  currentRunId: z.string(),                     // The current run ID
+  currentTimestamp: z.string().datetime(),      // When current was created
+
+  // Inference point changes
+  added: z.array(Callsite),                     // New inference points
+  removed: z.array(Callsite),                   // Removed inference points
+  changed: z.array(ChangedInferencePoint),      // Modified inference points
+
+  // Summary metrics
+  metrics: z.object({
+    totalBefore: z.number(),                    // Inference points in baseline
+    totalAfter: z.number(),                     // Inference points in current
+    addedCount: z.number(),                     // Count of added points
+    removedCount: z.number(),                   // Count of removed points
+    changedCount: z.number(),                   // Count of modified points
+    netChange: z.number(),                      // Net change (added - removed)
+  }),
+
+  // Insight deltas
+  insightDeltas: z.object({
+    newCritical: z.number(),                    // New critical insights
+    resolvedCritical: z.number(),               // Resolved critical insights
+    newWarnings: z.number(),                    // New warnings
+    resolvedWarnings: z.number(),               // Resolved warnings
+  }).optional(),
+});
+
+// Type exports for comparison
+export type ChangeType = z.infer<typeof ChangeType>;
+export type FieldChange = z.infer<typeof FieldChange>;
+export type ChangedInferencePoint = z.infer<typeof ChangedInferencePoint>;
+export type ComparisonResult = z.infer<typeof ComparisonResult>;
+
+// =============================================================================
+// DEPLOY-TIME PREDICTION (v1.5)
+// =============================================================================
+
+/**
+ * Risk level for predictions.
+ */
+export const RiskLevel = z.enum(['high', 'medium', 'low', 'neutral']);
+
+/**
+ * Impact direction for a prediction factor.
+ */
+export const ImpactDirection = z.enum(['positive', 'negative', 'neutral']);
+
+/**
+ * A factor contributing to a latency prediction.
+ */
+export const PredictionFactor = z.object({
+  name: z.string(),                             // Factor name (e.g., "model complexity")
+  impact: ImpactDirection,                       // How it affects latency
+  description: z.string(),                      // Human-readable explanation
+  weight: z.number().min(0).max(1).optional(),  // Relative importance (0-1)
+});
+
+/**
+ * Latency percentile values.
+ */
+export const LatencyPercentiles = z.object({
+  p50: z.number(),                              // Median latency (ms)
+  p95: z.number(),                              // 95th percentile (ms)
+  p99: z.number(),                              // 99th percentile (ms)
+});
+
+/**
+ * Prediction for a single inference point.
+ * Surfaces potential performance risks before deployment.
+ */
+export const InferencePointPrediction = z.object({
+  inferencePointId: z.string(),                 // ID of the inference point
+  location: z.string(),                         // file:line location
+  provider: z.string().optional(),              // Provider (e.g., openai)
+  model: z.string().optional(),                 // Model name
+
+  // Current performance (from historical data if available)
+  currentLatency: LatencyPercentiles.optional(),
+
+  // Predicted performance
+  predictedLatency: LatencyPercentiles,
+
+  // Risk assessment
+  risk: RiskLevel,                              // Overall risk level
+  riskScore: z.number().min(0).max(100),        // Numeric risk score (0-100)
+
+  // Factors contributing to prediction
+  factors: z.array(PredictionFactor),
+
+  // Confidence in prediction
+  confidence: z.enum(['high', 'medium', 'low']),
+  confidenceReason: z.string().optional(),      // Why confidence is high/low
+});
+
+/**
+ * Summary of all predictions.
+ */
+export const PredictionSummary = z.object({
+  totalPoints: z.number(),                      // Total inference points analyzed
+  highRiskCount: z.number(),                    // High risk predictions
+  mediumRiskCount: z.number(),                  // Medium risk predictions
+  lowRiskCount: z.number(),                     // Low risk predictions
+  averageP95: z.number(),                       // Average predicted p95 latency
+  worstP95: z.number(),                         // Worst predicted p95 latency
+  budgetExceeded: z.boolean().optional(),       // True if exceeds target latency
+});
+
+/**
+ * Full prediction result for deploy-time analysis.
+ */
+export const PredictionResult = z.object({
+  predictions: z.array(InferencePointPrediction),
+  summary: PredictionSummary,
+  targetP95: z.number().optional(),             // User-specified target p95 (ms)
+  generatedAt: z.string().datetime(),           // When predictions were generated
+  basedOnRuns: z.number(),                      // Number of historical runs used
+});
+
+// Type exports for prediction
+export type RiskLevel = z.infer<typeof RiskLevel>;
+export type ImpactDirection = z.infer<typeof ImpactDirection>;
+export type PredictionFactor = z.infer<typeof PredictionFactor>;
+export type LatencyPercentiles = z.infer<typeof LatencyPercentiles>;
+export type InferencePointPrediction = z.infer<typeof InferencePointPrediction>;
+export type PredictionSummary = z.infer<typeof PredictionSummary>;
+export type PredictionResult = z.infer<typeof PredictionResult>;
+
+// =============================================================================
+// COUNTERFACTUAL INSIGHTS (v1.5)
+// =============================================================================
+
+/**
+ * Type of counterfactual optimization scenario.
+ */
+export const CounterfactualType = z.enum([
+  'model_swap',        // Swap to a different model (e.g., cheaper or faster)
+  'batch_optimization', // Add batching to reduce per-request overhead
+  'cache_addition',    // Add caching to bypass LLM for repeated queries
+  'provider_change',   // Change provider (e.g., cloud → self-hosted)
+  'streaming_enable',  // Enable streaming for better perceived latency
+]);
+
+/**
+ * Current and proposed state for a counterfactual.
+ */
+export const CounterfactualState = z.object({
+  model: z.string().optional(),           // Model name
+  provider: z.string().optional(),        // Provider name
+  pattern: z.string().optional(),         // Pattern (streaming, batching, etc.)
+  estimatedLatency: z.number(),           // p95 latency estimate (ms)
+  estimatedCost: z.number(),              // Cost per 1K calls ($)
+});
+
+/**
+ * Impact assessment for a counterfactual.
+ */
+export const CounterfactualImpact = z.object({
+  latencyDelta: z.number(),              // Change in p95 latency (ms, negative = improvement)
+  latencyDeltaPercent: z.number(),       // Percentage change in latency
+  costDelta: z.number(),                 // Change in cost per 1K calls ($, negative = savings)
+  costDeltaPercent: z.number(),          // Percentage change in cost
+  tradeoffs: z.array(z.string()),        // Tradeoffs to consider
+});
+
+/**
+ * A single counterfactual "what if" scenario.
+ * Shows the road not taken and its potential impact.
+ */
+export const Counterfactual = z.object({
+  id: z.string(),                        // Unique identifier
+  type: CounterfactualType,              // Type of optimization
+  headline: z.string(),                  // Short description (e.g., "Switch to GPT-4o-mini")
+  description: z.string(),               // Detailed explanation
+
+  currentState: CounterfactualState,     // Current configuration
+  proposedState: CounterfactualState,    // Proposed configuration
+
+  impact: CounterfactualImpact,          // Estimated impact
+
+  confidence: z.enum(['high', 'medium', 'low']),
+  confidenceReason: z.string().optional(),
+
+  affectedPoints: z.array(z.string()),   // Inference point IDs affected
+  effort: z.enum(['low', 'medium', 'high']), // Implementation effort
+});
+
+/**
+ * Summary of counterfactual opportunities.
+ */
+export const CounterfactualSummary = z.object({
+  totalOpportunities: z.number(),        // Total counterfactuals identified
+  maxLatencySavingsMs: z.number(),       // Max latency reduction achievable (ms)
+  maxLatencySavingsPercent: z.number(),  // Max latency reduction percentage
+  maxCostSavings: z.number(),            // Max cost savings achievable ($)
+  maxCostSavingsPercent: z.number(),     // Max cost savings percentage
+  byType: z.record(z.number()),          // Count by counterfactual type
+});
+
+/**
+ * Full counterfactual analysis result.
+ */
+export const CounterfactualResult = z.object({
+  counterfactuals: z.array(Counterfactual),
+  summary: CounterfactualSummary,
+  generatedAt: z.string().datetime(),    // When analysis was performed
+});
+
+// Type exports for counterfactuals
+export type CounterfactualType = z.infer<typeof CounterfactualType>;
+export type CounterfactualState = z.infer<typeof CounterfactualState>;
+export type CounterfactualImpact = z.infer<typeof CounterfactualImpact>;
+export type Counterfactual = z.infer<typeof Counterfactual>;
+export type CounterfactualSummary = z.infer<typeof CounterfactualSummary>;
+export type CounterfactualResult = z.infer<typeof CounterfactualResult>;

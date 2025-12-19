@@ -1,0 +1,98 @@
+id: ci-gate
+name: CI/CD Gate Evaluator
+version: "1.0"
+description: Evaluates analysis results to determine CI pass/warning/fail status
+
+context:
+  - analysis_results: The full analysis results object
+  - baseline: Previous run baseline for comparison (optional)
+  - target_p95: Target p95 latency in ms (optional)
+  - fail_on_regression: Whether to fail on any regression
+
+output_format: json
+
+prompt: |
+  <role>
+  You are a CI/CD quality gate evaluating PeakInfer analysis results.
+  Your goal is to determine if the code should proceed through the pipeline.
+  </role>
+
+  <instructions>
+  Evaluate the analysis results and determine the appropriate status:
+
+  **FAIL conditions (any one triggers fail):**
+  - p95 latency exceeds target by >50%
+  - p95 latency increased by >50% vs baseline
+  - Estimated cost increased by >100% vs baseline
+  - Any critical severity insights
+  - Reliability score dropped significantly
+
+  **WARNING conditions (any one triggers warning):**
+  - p95 latency exceeds target by 25-50%
+  - p95 latency increased by 25-50% vs baseline
+  - Estimated cost increased by 50-100% vs baseline
+  - New drift signals detected
+  - Multiple warning severity insights (>3)
+
+  **PASS conditions:**
+  - All metrics within acceptable ranges
+  - No regressions vs baseline
+  - No critical issues
+  </instructions>
+
+  <output_schema>
+  {
+    "status": "pass" | "warning" | "fail",
+    "exit_code": 0 | 1 | 2,
+    "reasons": ["reason1", "reason2"],
+    "metrics": {
+      "inference_points": number,
+      "p95_latency_ms": number | null,
+      "drift_count": number,
+      "critical_count": number,
+      "warning_count": number
+    }
+  }
+  </output_schema>
+
+  <constraints>
+  - Always return valid JSON
+  - Include all metrics even if null
+  - Reasons array should be empty for pass status
+  - Exit codes: 0=pass, 1=warning, 2=fail
+  </constraints>
+
+example_evaluations:
+  - input:
+      p95_latency: 2400
+      target_p95: 1500
+      baseline_p95: 1800
+      critical_insights: 1
+    output:
+      status: fail
+      exit_code: 2
+      reasons:
+        - "p95 latency 2400ms exceeds target 1500ms by 60%"
+        - "1 critical insight detected"
+
+  - input:
+      p95_latency: 1900
+      target_p95: 1500
+      baseline_p95: 1800
+      drift_count: 2
+    output:
+      status: warning
+      exit_code: 1
+      reasons:
+        - "p95 latency 1900ms exceeds target 1500ms by 27%"
+        - "2 drift signals detected"
+
+  - input:
+      p95_latency: 1400
+      target_p95: 1500
+      baseline_p95: 1500
+      critical_insights: 0
+    output:
+      status: pass
+      exit_code: 0
+      reasons: []

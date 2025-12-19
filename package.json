@@ -1,6 +1,6 @@
 {
   "name": "@kalmantic/peakinfer",
-  "version": "1.0.50",
+  "version": "1.0.93",
   "description": "LLM inference performance analysis CLI",
   "type": "module",
   "main": "dist/cli.js",
@@ -9,8 +9,9 @@
   },
   "scripts": {
     "prebuild": "npm version patch --no-git-tag-version",
-    "build": "tsc",
-    "build:noversion": "tsc",
+    "build": "tsc && npm run build:action",
+    "build:noversion": "tsc && npm run build:action",
+    "build:action": "ncc build src/action/index.ts -o dist/action --minify --no-source-map-register",
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
     "test": "vitest",
@@ -37,6 +38,8 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@actions/core": "^2.0.1",
+    "@actions/github": "^6.0.1",
     "@anthropic-ai/sdk": "^0.27.0",
     "chalk": "^5.6.2",
     "commander": "^12.0.0",
@@ -50,6 +53,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
+    "@vercel/ncc": "^0.38.4",
     "tsx": "^4.7.0",
     "typescript": "^5.3.0",
     "vitest": "^1.2.0"

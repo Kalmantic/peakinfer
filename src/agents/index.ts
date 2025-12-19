@@ -24,9 +24,20 @@ import { evaluate } from '../insights.js';
 import { ENVELOPES } from '../envelopes.js';
 import type { ScanResult, Callsite, InferenceEvent, JoinedOutput, Insight, InsightTemplate } from '../types.js';
 
-// Re-export new agents
+// Re-export agents
 export { RuntimeAnalyzerAgent, type RuntimeAnalyzerInput, type RuntimeAnalyzerOutput } from './runtime-analyzer.js';
 export { CorrelationAnalyzerAgent, type CorrelationAnalyzerInput, type CorrelationAnalyzerOutput } from './correlation-analyzer.js';
+
+// Static analysis agents (6-agent parallel architecture)
+export { ImportAnalyzerAgent, type ImportAnalyzerInput, type ImportAnalyzerOutput } from './import-analyzer.js';
+export { CallSiteFinderAgent, type CallSiteFinderInput, type CallSiteFinderOutput, type InferencePoint } from './callsite-finder.js';
+export { CostAnalyzerAgent, type CostAnalyzerInput, type CostAnalyzerOutput, type CostProfile } from './cost-analyzer.js';
+export { LatencyAnalyzerAgent, type LatencyAnalyzerInput, type LatencyAnalyzerOutput, type LatencyProfile } from './latency-analyzer.js';
+export { ThroughputAnalyzerAgent, type ThroughputAnalyzerInput, type ThroughputAnalyzerOutput, type ThroughputProfile } from './throughput-analyzer.js';
+export { ReliabilityAnalyzerAgent, type ReliabilityAnalyzerInput, type ReliabilityAnalyzerOutput, type ReliabilityProfile } from './reliability-analyzer.js';
+
+// Static analysis orchestrator
+export { StaticAnalysisOrchestrator, runStaticAnalysis, type StaticAnalysisInput, type StaticAnalysisOutput, type PerformanceProfile } from './static-orchestrator.js';
 
 // =============================================================================
 // AGENT INTERFACE (from Patterns v0.1 Section 4)

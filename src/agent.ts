@@ -1,4 +1,4 @@
-import { existsSync, statSync } from 'fs';
+import { existsSync, statSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import type { ExecutionPlan, PlannedTask, TaskResult, ScanResult, Callsite, InferenceEvent, JoinedOutput, Insight, RuntimeSummary, InferenceMap, ImpactEstimate, EnrichedCallsite } from './types.js';
 import { scan } from './scanner.js';
@@ -14,6 +14,11 @@ import { generateHTML } from './html.js';
 import { generatePDF } from './pdf.js';
 import { VERSION } from './version.js';
 import { enrichInsightsWithImpact, generateImpactSummary, type ImpactSummary } from './impact.js';
+import { saveRun, getLatestRun, loadRun, type AnalysisData } from './history.js';
+import { compareSnapshots, formatComparisonSummary, type AnalysisSnapshot } from './comparison.js';
+import { generatePredictions } from './prediction.js';
+import { generateCounterfactuals } from './counterfactuals.js';
+import type { ComparisonResult, PredictionResult, CounterfactualResult } from './types.js';
 // Agent SDK pattern (DESIGN.md v2.0 Section 2.1, Patterns v0.2)
 import {
   DiscoveryAgent,
@@ -22,6 +27,9 @@ import {
   InsightAgent,
   RuntimeAnalyzerAgent,
   CorrelationAnalyzerAgent,
+  StaticAnalysisOrchestrator,
+  type StaticAnalysisOutput,
+  type PerformanceProfile,
 } from './agents/index.js';
 import { getPricingContext } from './costs.js';
 
@@ -93,6 +101,106 @@ function createSyntheticCallsitesFromEvents(events: InferenceEvent[]): EnrichedC
   return callsites;
 }
 
+/**
+ * Convert StaticAnalysisOutput to LLM insights for display.
+ * Maps optimizations from all dimensions (cost, latency, throughput, reliability) to insights.
+ */
+function convertPerformanceToInsights(analysis: StaticAnalysisOutput): Array<{
+  severity: 'critical' | 'warning' | 'info';
+  category: string;
+  headline: string;
+  evidence: string;
+  location?: string;
+  recommendation: string;
+  impact?: {
+    layer: string;
+    impactType: string;
+    estimatedImpactPercent: number;
+    effort: string;
+  };
+}> {
+  const insights: Array<{
+    severity: 'critical' | 'warning' | 'info';
+    category: string;
+    headline: string;
+    evidence: string;
+    location?: string;
+    recommendation: string;
+    impact?: {
+      layer: string;
+      impactType: string;
+      estimatedImpactPercent: number;
+      effort: string;
+    };
+  }> = [];
+
+  // Convert all optimizations to insights
+  for (const opt of analysis.all_optimizations) {
+    const severity = opt.priority === 'critical' || opt.priority === 'high' ? 'critical' :
+                     opt.priority === 'medium' ? 'warning' : 'info';
+
+    const categoryMap: Record<string, string> = {
+      cost: 'Cost Optimization',
+      latency: 'Latency Optimization',
+      throughput: 'Throughput Optimization',
+      reliability: 'Reliability Improvement',
+    };
+
+    const impactTypeMap: Record<string, string> = {
+      cost: 'cost',
+      latency: 'latency',
+      throughput: 'throughput',
+      reliability: 'improvement',
+    };
+
+    // Parse impact percentage from the impact string (e.g., "90% savings" or "50% improvement")
+    const impactMatch = opt.impact.match(/(\d+)%/);
+    const impactPercent = impactMatch ? parseInt(impactMatch[1]) : 20;
+
+    insights.push({
+      severity,
+      category: categoryMap[opt.dimension] || opt.dimension,
+      headline: opt.description,
+      evidence: `${opt.type}: ${opt.impact}`,
+      location: `${opt.file}:${opt.line}`,
+      recommendation: opt.description,
+      impact: {
+        layer: opt.dimension,
+        impactType: impactTypeMap[opt.dimension] || 'improvement',
+        estimatedImpactPercent: impactPercent,
+        effort: opt.effort,
+      },
+    });
+  }
+
+  // Add reliability anti-pattern insights
+  for (const profile of analysis.performance_profiles) {
+    if (profile.reliability?.anti_patterns) {
+      for (const antiPattern of profile.reliability.anti_patterns) {
+        const severity = antiPattern.severity === 'high' ? 'critical' :
+                        antiPattern.severity === 'medium' ? 'warning' : 'info';
+
+        insights.push({
+          severity,
+          category: 'Reliability Issue',
+          headline: antiPattern.pattern,
+          evidence: antiPattern.description,
+          location: antiPattern.location,
+          recommendation: `Fix: ${antiPattern.pattern}`,
+          impact: {
+            layer: 'reliability',
+            impactType: 'improvement',
+            estimatedImpactPercent: antiPattern.severity === 'high' ? 40 : 20,
+            effort: 'low',
+          },
+        });
+      }
+    }
+  }
+
+  return insights;
+}
+
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -112,10 +220,16 @@ export interface AgentOptions {
   lenient?: boolean;              // Accept low-confidence mappings
   strict?: boolean;               // Fail on missing fields
   redact?: boolean;               // Redact code snippets from artifacts
+  // History options (v1.5)
+  noHistory?: boolean;            // Skip saving run to history
+  compare?: boolean;              // Compare with previous run
+  compareRunId?: string;          // Specific run ID to compare with
+  predict?: boolean;              // Generate deploy-time predictions
+  targetP95?: number;             // Target p95 latency for budget calculation
 }
 
 // Progress phases - Julie Zhou aligned (DD Section 6.4)
-export type ProgressPhase = 'scanning' | 'analyzing' | 'parsing' | 'correlating' | 'generating';
+export type ProgressPhase = 'scanning' | 'analyzing' | 'profiling' | 'parsing' | 'correlating' | 'generating';
 
 export interface ProgressData {
   phase: ProgressPhase;
@@ -147,6 +261,10 @@ export interface AgentResults {
   insights: Insight[];
   impactSummary?: ImpactSummary; // Stack-ranked impact analysis
   inferenceMap?: InferenceMap;
+  staticAnalysis?: StaticAnalysisOutput; // 6-agent performance profiling
+  comparison?: ComparisonResult; // v1.5: Historical comparison
+  prediction?: PredictionResult; // v1.5: Deploy-time predictions
+  counterfactuals?: CounterfactualResult; // v1.5: What-if optimization scenarios
   htmlPath?: string;
   pdfPath?: string;
   warnings?: string[]; // Partial state warnings
@@ -169,6 +287,10 @@ interface AgentContext {
   llmInsights?: LLMInsight[]; // Phase 1: LLM-generated semantic insights
   impactSummary?: ImpactSummary; // Stack-ranked impact analysis
   inferenceMap?: InferenceMap;
+  staticAnalysis?: StaticAnalysisOutput; // 6-agent performance profiling
+  comparison?: ComparisonResult; // v1.5: Historical comparison result
+  prediction?: PredictionResult; // v1.5: Deploy-time predictions
+  counterfactuals?: CounterfactualResult; // v1.5: What-if scenarios
   htmlContent?: string;
   pdfPath?: string;
   warnings: string[]; // Track partial state warnings
@@ -256,10 +378,11 @@ export function plan(opts: AgentOptions): PlanResult {
         type: 'scan',
         description: 'Scan repository',
       });
+      // Unified analysis: discovery + profiling in single LLM call
       tasks.push({
         id: id++,
         type: 'analyze',
-        description: 'Analyze inference points',
+        description: 'Analyze and profile inference points',
         depends_on: [id - 1],
       });
     }
@@ -308,6 +431,31 @@ export function plan(opts: AgentOptions): PlanResult {
       description: 'Generate findings',
     });
 
+    // v1.5: Compare with previous run if requested
+    if (opts.compare) {
+      tasks.push({
+        id: id++,
+        type: 'compare',
+        description: 'Compare with previous run',
+      });
+    }
+
+    // v1.5: Generate deploy-time predictions if requested
+    if (opts.predict) {
+      tasks.push({
+        id: id++,
+        type: 'predict',
+        description: 'Generate latency predictions',
+      });
+    }
+
+    // v1.5: Always generate counterfactual insights (show optimization opportunities)
+    tasks.push({
+      id: id++,
+      type: 'counterfactuals',
+      description: 'Identify optimization opportunities',
+    });
+
     if (opts.html) {
       tasks.push({
         id: id++,
@@ -329,6 +477,15 @@ export function plan(opts: AgentOptions): PlanResult {
       type: 'save_artifacts',
       description: 'Save artifacts',
     });
+
+    // v1.5: Save to history for comparison/prediction (unless --no-history)
+    if (!opts.noHistory) {
+      tasks.push({
+        id: id++,
+        type: 'save_history',
+        description: 'Save to history',
+      });
+    }
   } else {
     // Resuming - just need to load cached artifacts
     tasks.push({
@@ -419,7 +576,7 @@ async function executeTask(
       break;
 
     case 'analyze':
-      // Handle both static code analysis AND runtime pattern analysis
+      // Handle static code analysis, runtime pattern analysis, AND performance profiling
       if (task.description === 'Analyze runtime patterns') {
         // NEW: LLM-based runtime analysis (Patterns v0.2)
         if (!ctx.events || !ctx.runtimeSummary) {
@@ -448,6 +605,85 @@ async function executeTask(
         } catch (error) {
           ctx.warnings.push(`Runtime analysis warning: ${error instanceof Error ? error.message : String(error)}`);
         }
+      } else if (task.description === 'Analyze and profile inference points') {
+        // UNIFIED: Discovery + Profiling in single LLM call
+        if (!ctx.scanResult) throw new Error('Scan result required');
+        try {
+          const scanRoot = ctx.scanResult.root;
+
+          // Read all source files
+          const filesToAnalyze = ctx.scanResult.files
+            .slice(0, 20) // Limit for performance
+            .map(f => {
+              const fullPath = resolve(scanRoot, f.path);
+              try {
+                return {
+                  path: fullPath,
+                  content: readFileSync(fullPath, 'utf-8'),
+                  language: f.language,
+                };
+              } catch {
+                return null;
+              }
+            })
+            .filter((f): f is { path: string; content: string; language: string } => f !== null);
+
+          if (filesToAnalyze.length === 0) {
+            ctx.warnings.push('Analysis skipped: no source files available');
+            ctx.callsites = [];
+            ctx.llmInsights = [];
+            break;
+          }
+
+          // Run unified analysis (discovery + profiling in one LLM call)
+          const orchestrator = new StaticAnalysisOrchestrator();
+          ctx.staticAnalysis = await orchestrator.analyze({ files: filesToAnalyze });
+
+          // Extract callsites from unified analysis for rest of pipeline
+          const callsitesFromAnalysis: Callsite[] = [];
+          for (const profile of ctx.staticAnalysis.performance_profiles) {
+            callsitesFromAnalysis.push({
+              id: profile.inference_point_id,
+              file: profile.file.replace(scanRoot + '/', '').replace(scanRoot, ''),
+              line: profile.line,
+              provider: profile.provider as Callsite['provider'],
+              model: profile.model ?? null,
+              framework: null,
+              runtime: null,
+              patterns: {},
+              confidence: 0.9,
+            });
+          }
+          ctx.callsites = callsitesFromAnalysis;
+
+          // Convert performance profiles to insights
+          const performanceInsights = convertPerformanceToInsights(ctx.staticAnalysis);
+          ctx.llmInsights = performanceInsights as LLMInsight[];
+
+          // Build inference map
+          let promptMeta: MapMetadata = { llmUsed: true };
+          try {
+            const prompt = getDefaultPrompt();
+            promptMeta.promptId = prompt.id;
+            promptMeta.promptVersion = prompt.version;
+          } catch {
+            // Prompt not found, use defaults
+          }
+          ctx.inferenceMap = buildInferenceMap(ctx.opts.path, ctx.callsites, promptMeta);
+
+          onProgress?.({
+            phase: 'profiling',
+            detail: `${ctx.staticAnalysis.summary.total_optimizations} optimizations found`,
+          });
+        } catch (error) {
+          ctx.warnings.push(`Analysis warning: ${error instanceof Error ? error.message : String(error)}`);
+          ctx.callsites = [];
+          ctx.llmInsights = [];
+          ctx.inferenceMap = buildInferenceMap(ctx.opts.path, [], { llmUsed: false });
+        }
+      } else if (task.description === 'Profile performance') {
+        // Legacy: Skip - now handled by unified analysis above
+        break;
       } else {
         // Original static code analysis
         if (!ctx.scanResult) throw new Error('Scan result required');
@@ -669,6 +905,120 @@ async function executeTask(
       );
       break;
     }
+
+    case 'save_history': {
+      // v1.5: Save run to history for comparison/prediction features
+      const mode = ctx.joined ? 'combined' : (ctx.events?.length ? 'runtime' : 'static');
+
+      // Prepare analysis data for history storage
+      const historyData: AnalysisData = {
+        inferenceMap: ctx.inferenceMap,
+        insights: ctx.insights,
+        joined: ctx.joined,
+        runtime: ctx.runtimeSummary,
+      };
+
+      // Generate human-friendly HTML path if generated
+      const absolutePath = ctx.inferenceMap?.metadata?.absolutePath || ctx.opts.path;
+      const projectName = absolutePath.split('/').filter(Boolean).pop() || 'project';
+      const projectSlug = projectName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').substring(0, 50);
+
+      saveRun({
+        path: ctx.opts.path,
+        analysisType: mode,
+        data: historyData,
+        htmlPath: ctx.htmlContent ? `.peakinfer/${projectSlug}_peakinfer_report.html` : undefined,
+        pdfPath: ctx.pdfPath,
+      });
+      break;
+    }
+
+    case 'compare': {
+      // v1.5: Compare with previous run
+      // Build current snapshot
+      const currentSnapshot: AnalysisSnapshot = {
+        runId: ctx.runId,
+        timestamp: new Date().toISOString(),
+        callsites: ctx.callsites || [],
+        insights: ctx.insights,
+      };
+
+      // Get baseline (specific run or latest)
+      let baselineRun;
+      if (ctx.opts.compareRunId) {
+        baselineRun = loadRun(ctx.opts.compareRunId);
+        if (!baselineRun) {
+          ctx.warnings.push(`Comparison skipped: run ${ctx.opts.compareRunId} not found`);
+          break;
+        }
+      } else {
+        baselineRun = getLatestRun(ctx.opts.path);
+        if (!baselineRun) {
+          ctx.warnings.push('Comparison skipped: no previous runs found');
+          break;
+        }
+      }
+
+      // Build baseline snapshot
+      const baselineSnapshot: AnalysisSnapshot = {
+        runId: baselineRun.manifest.runId,
+        timestamp: baselineRun.manifest.timestamp,
+        callsites: baselineRun.data.inferenceMap?.callsites || [],
+        insights: baselineRun.data.insights,
+      };
+
+      // Perform comparison
+      ctx.comparison = compareSnapshots(baselineSnapshot, currentSnapshot);
+
+      // Log summary for progress
+      const summary = formatComparisonSummary(ctx.comparison);
+      onProgress?.({ phase: 'generating', detail: `compared with ${baselineRun.manifest.runId.slice(0, 8)}` });
+      break;
+    }
+
+    case 'predict': {
+      // v1.5: Generate deploy-time latency predictions
+      if (!ctx.inferenceMap) {
+        ctx.warnings.push('Prediction skipped: no inference map available');
+        break;
+      }
+
+      // Generate predictions based on inference points
+      const predictionResult = generatePredictions(
+        ctx.inferenceMap,
+        0, // Historical run count (can be enhanced later with actual history)
+        { targetP95: ctx.opts.targetP95 }
+      );
+
+      ctx.prediction = predictionResult;
+
+      // Log summary for progress
+      const riskCount = predictionResult.summary.highRiskCount + predictionResult.summary.mediumRiskCount;
+      onProgress?.({
+        phase: 'generating',
+        detail: `${predictionResult.predictions.length} predictions, ${riskCount} at risk`,
+      });
+      break;
+    }
+
+    case 'counterfactuals': {
+      // v1.5: Generate what-if optimization scenarios
+      if (!ctx.inferenceMap) {
+        ctx.warnings.push('Counterfactuals skipped: no inference map available');
+        break;
+      }
+
+      // Generate counterfactual insights
+      const counterfactualResult = generateCounterfactuals(ctx.inferenceMap);
+      ctx.counterfactuals = counterfactualResult;
+
+      // Log summary for progress
+      onProgress?.({
+        phase: 'generating',
+        detail: `${counterfactualResult.summary.totalOpportunities} optimization opportunities`,
+      });
+      break;
+    }
   }
 }
 
@@ -806,6 +1156,10 @@ export class Agent {
       insights: ctx.insights || [],
       impactSummary: ctx.impactSummary,
       inferenceMap: ctx.inferenceMap,
+      staticAnalysis: ctx.staticAnalysis,
+      comparison: ctx.comparison, // v1.5: Historical comparison
+      prediction: ctx.prediction, // v1.5: Deploy-time predictions
+      counterfactuals: ctx.counterfactuals, // v1.5: What-if scenarios
       htmlPath: reportFileName,
       pdfPath: ctx.pdfPath,
       warnings: ctx.warnings.length > 0 ? ctx.warnings : undefined,
