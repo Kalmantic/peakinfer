@@ -172,6 +172,61 @@ async function callAnalysisAPI(
 }
 
 /**
+ * Generate insights with locations from inference points.
+ * This ensures inline comments can be posted to specific lines.
+ */
+function generateLocationAwareInsights(
+  inferencePoints: AnalysisResponse['analysis']['inferencePoints']
+): Insight[] {
+  const insights: Insight[] = [];
+
+  for (const point of inferencePoints) {
+    const location = `${point.file}:${point.line}`;
+
+    // High-cost model warning
+    if (point.costTier === 'high') {
+      insights.push({
+        severity: 'warning',
+        category: 'cost',
+        headline: 'Expensive model for this use case',
+        evidence: `Using ${point.model} which is a high-cost model. Consider if a smaller model would suffice.`,
+        recommendation: 'Consider using gpt-4o-mini or claude-3-haiku for simpler tasks.',
+        location,
+        source: 'template',
+      });
+    }
+
+    // No streaming
+    if (!point.streaming) {
+      insights.push({
+        severity: 'warning',
+        category: 'latency',
+        headline: 'Streaming not enabled',
+        evidence: 'This endpoint could benefit from streaming for better perceived latency.',
+        recommendation: 'Enable streaming: stream=True',
+        location,
+        source: 'template',
+      });
+    }
+
+    // No error handling
+    if (!point.hasRetry && !point.hasFallback) {
+      insights.push({
+        severity: 'critical',
+        category: 'reliability',
+        headline: 'No error handling',
+        evidence: 'This LLM call has no retry logic or fallback model configured.',
+        recommendation: 'Add retry with exponential backoff and/or a fallback model.',
+        location,
+        source: 'template',
+      });
+    }
+  }
+
+  return insights;
+}
+
+/**
  * Determine status based on analysis results
  */
 function determineStatus(
@@ -336,8 +391,15 @@ async function run(): Promise<void> {
       // Get changed files
       const changedFiles = await getChangedFiles(octokit, context);
 
+      // Generate location-aware insights from inference points
+      // These have file:line locations for inline comments
+      const locationAwareInsights = generateLocationAwareInsights(analysis.inferencePoints);
+
+      // Combine API insights with location-aware ones
+      const allInsights = [...analysis.insights, ...locationAwareInsights];
+
       // Filter insights to changed files
-      const { newIssues } = filterToChangedFiles(analysis.insights, changedFiles);
+      const { newIssues } = filterToChangedFiles(allInsights, changedFiles);
 
       // Generate and post comment
       const comment = generatePRComment({
@@ -350,7 +412,7 @@ async function run(): Promise<void> {
               models: [...new Set(analysis.inferencePoints.map(p => p.model))],
             },
           },
-          insights: analysis.insights,
+          insights: allInsights,
         },
         baseline,
         status,
