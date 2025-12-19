@@ -1,8 +1,9 @@
 /**
  * PR Comment Generation (v1.6)
  *
- * Generates markdown PR comments with verdict-first UX.
- * Design principle: User decides in 5 seconds, acts in 30.
+ * Generates markdown PR comments aligned with CLI UX and DD v1.6.
+ * Structure: Summary → Issues → Verdict
+ * Design: Clean, accessible, text labels not colors.
  */
 import type { Insight } from '../types.js';
 interface CommentData {
@@ -35,14 +36,19 @@ interface CommentData {
         limit: number;
         remaining: number;
     };
+    repoContext?: {
+        owner: string;
+        repo: string;
+        sha: string;
+    };
 }
 /**
- * Generate PR comment markdown with minimal summary UX (Option A).
+ * Generate PR comment markdown aligned with CLI UX and DD v1.6.
  *
- * Design: Verdict only, details in inline comments.
- * - Summary shows ONLY verdict + issue count
- * - User goes to "Files changed" tab for inline suggestions
- * - Click "Apply suggestion" in GitHub's native UI
+ * Structure: Summary → Issues → Verdict
+ * - Summary: inference points, issue counts
+ * - Issues: table with location first (like CLI), critical shown, warnings collapsed
+ * - Verdict: text label, not emoji
  */
 export declare function generatePRComment(data: CommentData): string;
 /**

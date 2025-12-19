@@ -1,11 +1,8 @@
 /**
- * Inline PR Comments (v1.6 - Option A)
+ * Inline PR Comments (v1.6)
  *
- * With Option A, the summary comment is minimal (verdict only).
- * All details are in inline comments on specific files/lines.
- *
- * Design: User goes to "Files changed" tab, sees issues in context,
- * clicks "Apply suggestion" → fixed. No copy-paste.
+ * Posts inline comments with suggested fixes on specific files/lines.
+ * Design aligned with DD v1.6: Clean, text labels, no emoji clutter.
  */
 import type { Insight } from '../types.js';
 type Octokit = any;

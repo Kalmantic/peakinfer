@@ -1,11 +1,8 @@
 /**
- * Inline PR Comments (v1.6 - Option A)
+ * Inline PR Comments (v1.6)
  *
- * With Option A, the summary comment is minimal (verdict only).
- * All details are in inline comments on specific files/lines.
- *
- * Design: User goes to "Files changed" tab, sees issues in context,
- * clicks "Apply suggestion" → fixed. No copy-paste.
+ * Posts inline comments with suggested fixes on specific files/lines.
+ * Design aligned with DD v1.6: Clean, text labels, no emoji clutter.
  */
 
 import type { Insight } from '../types.js';
@@ -64,51 +61,46 @@ function getIssueTitle(insight: Insight): string {
 }
 
 /**
- * Get severity emoji for visual indication.
+ * Get severity label for accessible indication.
+ * Uses text labels per DD Section 3.7 (don't rely on color alone).
  */
-function getSeverityEmoji(severity: string): string {
+function getSeverityLabel(severity: string): string {
   switch (severity) {
-    case 'critical': return '🔴';
-    case 'warning': return '🟡';
-    default: return '⚪';
+    case 'critical': return 'CRITICAL';
+    case 'warning': return 'WARNING';
+    default: return 'INFO';
   }
 }
 
 /**
  * Format insight as inline comment body with optional suggested fix.
  * Uses GitHub's suggestion syntax when a fix is available.
- *
- * With Option A, these comments carry all the detail (summary is minimal).
+ * Design: Clean, text labels, no emoji clutter.
  */
 function formatInlineComment(insight: Insight): string {
   const lines: string[] = [];
   const title = getIssueTitle(insight);
-  const emoji = getSeverityEmoji(insight.severity);
+  const label = getSeverityLabel(insight.severity);
 
-  // Clear headline with severity - what's the problem
-  lines.push(`${emoji} **${title}**`);
+  // Clear headline with severity label
+  lines.push(`**${label}:** ${title}`);
   lines.push('');
 
-  // Why it matters - not just "this is bad"
+  // Why it matters
   if (insight.evidence) {
-    lines.push(`> ${insight.evidence}`);
+    lines.push(insight.evidence);
     lines.push('');
   }
 
   // Suggested fix using GitHub's suggestion syntax
-  // When user clicks "Apply suggestion", it's committed automatically
   const suggestedFix = (insight as unknown as { suggestedFix?: string }).suggestedFix;
   if (suggestedFix) {
-    lines.push('**Suggested fix:**');
+    lines.push('**Fix:**');
     lines.push('```suggestion');
     lines.push(suggestedFix);
     lines.push('```');
-    lines.push('');
-    lines.push('Click **Apply suggestion** to commit this fix.');
   } else if (insight.recommendation) {
-    // Fallback to text recommendation if no code fix available
-    lines.push(`**Recommendation:** ${insight.recommendation}`);
-    lines.push('');
+    lines.push(`**Fix:** ${insight.recommendation}`);
   }
 
   lines.push('');

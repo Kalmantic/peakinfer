@@ -358,6 +358,11 @@ async function run(): Promise<void> {
         newIssues,
         changedFiles,
         credits,
+        repoContext: {
+          owner: context.repo.owner,
+          repo: context.repo.repo,
+          sha: context.payload.pull_request.head.sha,
+        },
       });
 
       await octokit.rest.issues.createComment({

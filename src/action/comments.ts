@@ -1,8 +1,9 @@
 /**
  * PR Comment Generation (v1.6)
  *
- * Generates markdown PR comments with verdict-first UX.
- * Design principle: User decides in 5 seconds, acts in 30.
+ * Generates markdown PR comments aligned with CLI UX and DD v1.6.
+ * Structure: Summary → Issues → Verdict
+ * Design: Clean, accessible, text labels not colors.
  */
 
 import type { Insight } from '../types.js';
@@ -27,116 +28,147 @@ interface CommentData {
   newIssues: Insight[];
   changedFiles: string[];
   credits?: { used: number; limit: number; remaining: number };
-}
-
-interface Verdict {
-  label: string;
-  message: string;
-  emoji: string;
-}
-
-interface BaselineData {
-  inferencePoints?: number;
-  p95Latency?: number;
-}
-
-// =============================================================================
-// VERDICT LOGIC
-// =============================================================================
-
-/**
- * Determine verdict based on issues found.
- * Verdict is the first thing user sees - enables 5-second decision.
- */
-function getVerdict(issues: Insight[]): Verdict {
-  const critical = issues.filter(i => i.severity === 'critical');
-  const warnings = issues.filter(i => i.severity === 'warning');
-
-  if (critical.length >= 2) {
-    return {
-      label: 'Changes Requested',
-      emoji: '🔴',
-      message: `${critical.length} issues need attention before merge`,
-    };
-  }
-
-  if (critical.length === 1) {
-    return {
-      label: 'Review Recommended',
-      emoji: '🟡',
-      message: '1 issue needs attention',
-    };
-  }
-
-  if (warnings.length > 5) {
-    return {
-      label: 'Review Recommended',
-      emoji: '🟡',
-      message: `${warnings.length} improvements suggested`,
-    };
-  }
-
-  if (warnings.length > 0) {
-    return {
-      label: 'Mostly Good',
-      emoji: '🟢',
-      message: `${warnings.length} optional improvement${warnings.length > 1 ? 's' : ''}`,
-    };
-  }
-
-  return {
-    label: 'Safe to Merge',
-    emoji: '✅',
-    message: 'No issues found',
+  repoContext?: {
+    owner: string;
+    repo: string;
+    sha: string;
   };
 }
 
-// Note: With Option A, details are shown in inline comments, not in summary.
-// The getTopIssue, getIssueTitle, and formatDetailsSection functions have been
-// removed as they're no longer needed for the minimal summary format.
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Get issue title, supporting both formats.
+ */
+function getIssueTitle(issue: Insight): string {
+  return issue.headline || (issue as unknown as { title?: string }).title || 'Issue';
+}
+
+/**
+ * Generate GitHub blob link for file:line
+ */
+function formatLocation(
+  location: string | undefined,
+  repoContext?: { owner: string; repo: string; sha: string }
+): string {
+  if (!location) return '-';
+
+  // Parse file:line format
+  const match = location.match(/^(.+):(\d+)$/);
+  if (!match) return `\`${location}\``;
+
+  const [, file, line] = match;
+
+  // If we have repo context, make it a clickable link
+  if (repoContext) {
+    const { owner, repo, sha } = repoContext;
+    const url = `https://github.com/${owner}/${repo}/blob/${sha}/${file}#L${line}`;
+    return `[${file}:${line}](${url})`;
+  }
+
+  return `\`${file}:${line}\``;
+}
+
+/**
+ * Determine verdict text based on issues found.
+ * Uses text labels per DD Section 3.7 (Accessible by Design).
+ */
+function getVerdictText(critical: number, warnings: number): string {
+  if (critical >= 2) {
+    return `**Review required** — ${critical} critical issues need attention before merge.`;
+  }
+  if (critical === 1) {
+    return `**Review recommended** — 1 critical issue needs attention.`;
+  }
+  if (warnings > 5) {
+    return `**Review recommended** — ${warnings} warnings found.`;
+  }
+  if (warnings > 0) {
+    return `**Safe to merge** — ${warnings} optional improvement${warnings > 1 ? 's' : ''} found.`;
+  }
+  return `**Safe to merge** — No issues found.`;
+}
 
 // =============================================================================
 // MAIN
 // =============================================================================
 
 /**
- * Generate PR comment markdown with minimal summary UX (Option A).
+ * Generate PR comment markdown aligned with CLI UX and DD v1.6.
  *
- * Design: Verdict only, details in inline comments.
- * - Summary shows ONLY verdict + issue count
- * - User goes to "Files changed" tab for inline suggestions
- * - Click "Apply suggestion" in GitHub's native UI
+ * Structure: Summary → Issues → Verdict
+ * - Summary: inference points, issue counts
+ * - Issues: table with location first (like CLI), critical shown, warnings collapsed
+ * - Verdict: text label, not emoji
  */
 export function generatePRComment(data: CommentData): string {
-  const { results, newIssues } = data;
+  const { results, newIssues, credits, repoContext } = data;
 
   const lines: string[] = [];
-  const verdict = getVerdict(newIssues);
   const inferencePoints = results.inferenceMap?.summary?.totalCallsites || 0;
-  const criticalCount = newIssues.filter(i => i.severity === 'critical').length;
-  const warningCount = newIssues.filter(i => i.severity === 'warning').length;
+  const criticalIssues = newIssues.filter(i => i.severity === 'critical');
+  const warningIssues = newIssues.filter(i => i.severity === 'warning');
 
-  // Header with verdict - user knows in 5 seconds
+  // Header
   lines.push('## PeakInfer Analysis\n');
-  lines.push(`**${verdict.emoji} ${verdict.label}**\n`);
 
+  // Summary section (like CLI)
+  lines.push('### Summary\n');
+  lines.push(`Inference Points: ${inferencePoints}  `);
   if (newIssues.length > 0) {
-    // Issue summary - minimal
     const parts: string[] = [];
-    if (criticalCount > 0) parts.push(`${criticalCount} critical`);
-    if (warningCount > 0) parts.push(`${warningCount} warning${warningCount > 1 ? 's' : ''}`);
-
-    lines.push(`Found ${parts.join(', ')} in ${inferencePoints} inference point${inferencePoints !== 1 ? 's' : ''}.\n`);
-
-    // Direct user to inline comments
-    lines.push('**→ See inline comments in "Files changed" tab**\n');
-    lines.push('Each issue has a suggested fix. Click "Apply suggestion" to commit.\n');
+    if (criticalIssues.length > 0) parts.push(`${criticalIssues.length} critical`);
+    if (warningIssues.length > 0) parts.push(`${warningIssues.length} warning${warningIssues.length > 1 ? 's' : ''}`);
+    lines.push(`Issues: ${parts.join(', ')}\n`);
   } else {
-    // Zero state - clean and simple
-    lines.push(`Analyzed ${inferencePoints} inference point${inferencePoints !== 1 ? 's' : ''}, all following best practices.\n`);
+    lines.push('Issues: None\n');
   }
 
-  lines.push('<sub>Generated by [PeakInfer](https://github.com/Kalmantic/peakinfer)</sub>');
+  // Issues section
+  if (newIssues.length > 0) {
+    lines.push('### Issues\n');
+
+    // Critical issues shown in table
+    if (criticalIssues.length > 0) {
+      lines.push('| Location | Issue |');
+      lines.push('|----------|-------|');
+      for (const issue of criticalIssues) {
+        const location = formatLocation(issue.location, repoContext);
+        const title = getIssueTitle(issue);
+        lines.push(`| CRITICAL ${location} | ${title} |`);
+      }
+      lines.push('');
+    }
+
+    // Warnings collapsed
+    if (warningIssues.length > 0) {
+      lines.push('<details>');
+      lines.push(`<summary>${warningIssues.length} warning${warningIssues.length > 1 ? 's' : ''}</summary>\n`);
+      lines.push('| Location | Issue |');
+      lines.push('|----------|-------|');
+      for (const issue of warningIssues) {
+        const location = formatLocation(issue.location, repoContext);
+        const title = getIssueTitle(issue);
+        lines.push(`| ${location} | ${title} |`);
+      }
+      lines.push('\n</details>\n');
+    }
+  }
+
+  // Verdict section
+  lines.push('### Verdict\n');
+  lines.push(getVerdictText(criticalIssues.length, warningIssues.length));
+  lines.push('');
+
+  // Footer
+  lines.push('---');
+  if (credits) {
+    lines.push(`<sub>${credits.used}/${credits.limit} free analyses this month</sub>`);
+  } else {
+    lines.push('<sub>Generated by [PeakInfer](https://github.com/Kalmantic/peakinfer)</sub>');
+  }
 
   return lines.join('\n');
 }
@@ -151,8 +183,8 @@ export function generateExhaustedComment(used: number, limit: number): string {
   lines.push('### Free Tier Limit Reached\n');
   lines.push(`You've used **${used}/${limit}** free analyses this month.\n`);
   lines.push('**Options:**\n');
-  lines.push('1. **Wait** - Limit resets at the start of next month');
-  lines.push('2. **Use CLI (always free)** - Run with your own API key:');
+  lines.push('1. **Wait** — Limit resets at the start of next month');
+  lines.push('2. **Use CLI (always free)** — Run with your own API key:');
   lines.push('   ```bash');
   lines.push('   npm i -g @kalmantic/peakinfer');
   lines.push('   export ANTHROPIC_API_KEY=your-key');
