@@ -172,8 +172,22 @@ async function callAnalysisAPI(
 }
 
 /**
+ * Get model downgrade suggestion
+ */
+function getModelDowngrade(model: string): string | null {
+  const downgrades: Record<string, string> = {
+    'gpt-4': 'gpt-4o-mini',
+    'gpt-4-turbo': 'gpt-4o-mini',
+    'gpt-4o': 'gpt-4o-mini',
+    'claude-3-opus-20240229': 'claude-3-haiku-20240307',
+    'claude-3-sonnet-20240229': 'claude-3-haiku-20240307',
+  };
+  return downgrades[model] || null;
+}
+
+/**
  * Generate insights with locations from inference points.
- * This ensures inline comments can be posted to specific lines.
+ * Includes suggestedFix for one-click apply in GitHub.
  */
 function generateLocationAwareInsights(
   inferencePoints: AnalysisResponse['analysis']['inferencePoints']
@@ -183,40 +197,47 @@ function generateLocationAwareInsights(
   for (const point of inferencePoints) {
     const location = `${point.file}:${point.line}`;
 
-    // High-cost model warning
+    // High-cost model warning with suggested fix
     if (point.costTier === 'high') {
+      const downgrade = getModelDowngrade(point.model);
+      const suggestedFix = downgrade
+        ? `    model: '${downgrade}',`
+        : undefined;
+
       insights.push({
         severity: 'warning',
         category: 'cost',
-        headline: 'Expensive model for this use case',
-        evidence: `Using ${point.model} which is a high-cost model. Consider if a smaller model would suffice.`,
-        recommendation: 'Consider using gpt-4o-mini or claude-3-haiku for simpler tasks.',
+        headline: 'Expensive model',
+        evidence: `${point.model} is expensive. Consider a smaller model for this task.`,
+        recommendation: downgrade ? `Use ${downgrade} instead` : 'Consider a smaller model',
         location,
         source: 'template',
-      });
+        suggestedFix,
+      } as Insight & { suggestedFix?: string });
     }
 
-    // No streaming
+    // No streaming with suggested fix
     if (!point.streaming) {
       insights.push({
         severity: 'warning',
         category: 'latency',
-        headline: 'Streaming not enabled',
-        evidence: 'This endpoint could benefit from streaming for better perceived latency.',
-        recommendation: 'Enable streaming: stream=True',
+        headline: 'No streaming',
+        evidence: 'Streaming improves perceived latency for users.',
+        recommendation: 'Add stream: true',
         location,
         source: 'template',
-      });
+        suggestedFix: '    stream: true,',
+      } as Insight & { suggestedFix?: string });
     }
 
-    // No error handling
+    // No error handling - suggest try-catch wrapper
     if (!point.hasRetry && !point.hasFallback) {
       insights.push({
         severity: 'critical',
         category: 'reliability',
         headline: 'No error handling',
-        evidence: 'This LLM call has no retry logic or fallback model configured.',
-        recommendation: 'Add retry with exponential backoff and/or a fallback model.',
+        evidence: 'LLM calls can fail. Add retry logic or fallback.',
+        recommendation: 'Wrap in try-catch with retry logic',
         location,
         source: 'template',
       });
