@@ -91,22 +91,40 @@ export function generatePRComment(data) {
         // Show issues with locations and fixes
         const issuesWithLocations = newIssues.filter(i => i.location);
         const issuesWithoutLocations = newIssues.filter(i => !i.location);
-        // Issues with locations - show with expandable fixes
+        // Issues with locations - show with code fixes
         if (issuesWithLocations.length > 0) {
-            for (const issue of issuesWithLocations.slice(0, 10)) {
-                const location = formatLocation(issue.location, repoContext);
-                const title = getIssueTitle(issue);
-                const severity = issue.severity === 'critical' ? 'CRITICAL' : 'WARNING';
-                const fullLineFix = issue.fullLineFix;
-                lines.push(`**${severity}** ${location} — ${title}`);
-                if (fullLineFix) {
-                    lines.push('```diff');
-                    lines.push(`- // current line`);
-                    lines.push(`+ ${fullLineFix.trim()}`);
-                    lines.push('```');
-                }
-                else if (issue.recommendation) {
-                    lines.push(`> Fix: ${issue.recommendation}`);
+            // Group by location to avoid duplicate entries
+            const byLocation = new Map();
+            for (const issue of issuesWithLocations) {
+                const loc = issue.location || '';
+                if (!byLocation.has(loc))
+                    byLocation.set(loc, []);
+                byLocation.get(loc).push(issue);
+            }
+            let count = 0;
+            for (const [loc, issues] of byLocation) {
+                if (count >= 5)
+                    break;
+                count++;
+                const location = formatLocation(loc, repoContext);
+                const criticals = issues.filter(i => i.severity === 'critical');
+                const warnings = issues.filter(i => i.severity === 'warning');
+                lines.push(`#### ${location}`);
+                // Show issues at this location
+                for (const issue of [...criticals, ...warnings].slice(0, 3)) {
+                    const title = getIssueTitle(issue);
+                    const severity = issue.severity === 'critical' ? 'CRITICAL' : 'WARNING';
+                    const fullLineFix = issue.fullLineFix;
+                    if (fullLineFix) {
+                        lines.push(`**${severity}:** ${title}`);
+                        lines.push('```typescript');
+                        lines.push(`// Replace with:`);
+                        lines.push(fullLineFix);
+                        lines.push('```');
+                    }
+                    else {
+                        lines.push(`**${severity}:** ${title} — ${issue.recommendation || ''}`);
+                    }
                 }
                 lines.push('');
             }

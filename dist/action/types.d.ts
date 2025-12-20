@@ -101,12 +101,12 @@ export declare const ScannedFile: z.ZodObject<{
     loc: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
     path: string;
-    language: string;
     loc: number;
+    language: string;
 }, {
     path: string;
-    language: string;
     loc: number;
+    language: string;
 }>;
 export declare const ScanResult: z.ZodObject<{
     root: z.ZodString;
@@ -116,12 +116,12 @@ export declare const ScanResult: z.ZodObject<{
         loc: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
         path: string;
-        language: string;
         loc: number;
+        language: string;
     }, {
         path: string;
-        language: string;
         loc: number;
+        language: string;
     }>, "many">;
     candidates: z.ZodArray<z.ZodObject<{
         file: z.ZodString;
@@ -162,8 +162,8 @@ export declare const ScanResult: z.ZodObject<{
     root: string;
     files: {
         path: string;
-        language: string;
         loc: number;
+        language: string;
     }[];
     candidates: {
         file: string;
@@ -180,8 +180,8 @@ export declare const ScanResult: z.ZodObject<{
     root: string;
     files: {
         path: string;
-        language: string;
         loc: number;
+        language: string;
     }[];
     candidates: {
         file: string;
