@@ -187,7 +187,7 @@ function getModelDowngrade(model: string): string | null {
 
 /**
  * Generate insights with locations from inference points.
- * Includes suggestedFix for one-click apply in GitHub.
+ * Includes fullLineFix for showing code in PR comment.
  */
 function generateLocationAwareInsights(
   inferencePoints: AnalysisResponse['analysis']['inferencePoints']
@@ -196,48 +196,48 @@ function generateLocationAwareInsights(
 
   for (const point of inferencePoints) {
     const location = `${point.file}:${point.line}`;
+    const downgrade = getModelDowngrade(point.model);
 
-    // High-cost model warning with full line replacement fix
-    if (point.costTier === 'high') {
-      const downgrade = getModelDowngrade(point.model);
-
+    // Model downgrade suggestion (always show if downgrade available)
+    if (downgrade) {
       insights.push({
         severity: 'warning',
         category: 'cost',
-        headline: 'Expensive model',
-        evidence: `Using ${point.model}. For this task, a smaller model would work.`,
-        recommendation: downgrade ? `Change to ${downgrade}` : 'Consider a smaller model',
+        headline: 'Consider smaller model',
+        evidence: `${point.model} is expensive for many tasks.`,
+        recommendation: `Use ${downgrade} instead`,
         location,
         source: 'template',
-        // Full line replacement for one-click apply
-        fullLineFix: downgrade ? `    model: '${downgrade}',` : undefined,
+        fullLineFix: `    model: '${downgrade}',`,
       } as Insight & { fullLineFix?: string });
     }
 
-    // No streaming - text recommendation only (adding a line is complex)
+    // No streaming
     if (!point.streaming) {
       insights.push({
         severity: 'warning',
         category: 'latency',
         headline: 'No streaming',
-        evidence: 'Streaming improves perceived latency for users.',
-        recommendation: 'Add stream: true to the options',
+        evidence: 'Streaming improves perceived latency.',
+        recommendation: 'Add stream: true',
         location,
         source: 'template',
-      });
+        fullLineFix: `    stream: true,`,
+      } as Insight & { fullLineFix?: string });
     }
 
-    // No error handling - suggest try-catch wrapper
+    // No error handling
     if (!point.hasRetry && !point.hasFallback) {
       insights.push({
         severity: 'critical',
         category: 'reliability',
         headline: 'No error handling',
-        evidence: 'LLM calls can fail. Add retry logic or fallback.',
-        recommendation: 'Wrap in try-catch with retry logic',
+        evidence: 'LLM calls can fail unexpectedly.',
+        recommendation: 'Add try-catch with retry',
         location,
         source: 'template',
-      });
+        fullLineFix: `  try {\n    // ... existing code ...\n  } catch (error) {\n    // Retry or handle error\n  }`,
+      } as Insight & { fullLineFix?: string });
     }
   }
 
