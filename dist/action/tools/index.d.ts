@@ -92,12 +92,12 @@ declare const ReadInputSchema: z.ZodObject<{
     startLine: z.ZodOptional<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
     file: string;
-    maxLines?: number | undefined;
     startLine?: number | undefined;
+    maxLines?: number | undefined;
 }, {
     file: string;
-    maxLines?: number | undefined;
     startLine?: number | undefined;
+    maxLines?: number | undefined;
 }>;
 declare const ReadOutputSchema: z.ZodObject<{
     content: z.ZodString;
@@ -142,8 +142,8 @@ export declare const AGENT_TOOLS: (Tool<{
     totalMatches: number;
 }> | Tool<{
     file: string;
-    maxLines?: number | undefined;
     startLine?: number | undefined;
+    maxLines?: number | undefined;
 }, {
     content: string;
     lines: number;

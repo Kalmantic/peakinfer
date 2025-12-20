@@ -88,66 +88,45 @@ function getSeverityBadge(severity: string): { icon: string; label: string } {
 
 /**
  * Format insight as inline comment body (CodeRabbit style).
- * Structure: Severity badge → Explanation → Collapsible fix with diff
+ * Structure: Severity badge → Explanation → One-click suggestion
+ *
+ * Uses GitHub's native ```suggestion syntax for one-click "Commit suggestion" button.
+ * Julie Zhou principle: Make the primary action obvious and friction-free.
  */
-function formatInlineComment(insight: Insight, originalLine?: string): string {
+function formatInlineComment(insight: Insight): string {
   const lines: string[] = [];
   const title = getIssueTitle(insight);
   const badge = getSeverityBadge(insight.severity);
 
-  // Severity badge header (CodeRabbit style)
-  lines.push(`**⚠️ ${title}** | ${badge.icon} ${badge.label}`);
+  // Severity header (CodeRabbit style - clear, scannable)
+  lines.push(`**${getSeverityLabel(insight.severity)}:** ${title}`);
   lines.push('');
 
-  // Full explanation
+  // Evidence - why this matters
   if (insight.evidence) {
     lines.push(insight.evidence);
     lines.push('');
   }
 
-  // Get fix content
+  // Get fix content from API
   const suggestedFix = (insight as unknown as { suggestedFix?: string }).suggestedFix;
-  const fullLineFix = (insight as unknown as { fullLineFix?: string }).fullLineFix;
-  const originalCode = (insight as unknown as { originalCode?: string }).originalCode;
 
-  // Collapsible proposed fix section (CodeRabbit style)
-  if (fullLineFix) {
-    const fixDescription = insight.recommendation || 'Apply this fix';
-    lines.push('<details>');
-    lines.push(`<summary>🔧 Proposed fix: ${fixDescription}</summary>`);
+  // One-click fix using GitHub's suggestion syntax
+  // This creates "Commit suggestion" and "Add suggestion to batch" buttons
+  if (suggestedFix) {
+    lines.push('**Fix:** Click "Apply suggestion" below');
     lines.push('');
-
-    // Show diff if we have original code
-    if (originalCode) {
-      lines.push('```diff');
-      lines.push(`- ${originalCode.trim()}`);
-      lines.push(`+ ${fullLineFix.trim()}`);
-      lines.push('```');
-    } else {
-      // Fallback to suggestion syntax for one-click apply
-      lines.push('```suggestion');
-      lines.push(fullLineFix);
-      lines.push('```');
-    }
-
-    lines.push('');
-    lines.push('</details>');
-  } else if (suggestedFix) {
-    lines.push('<details>');
-    lines.push(`<summary>🔧 Proposed fix: Add ${suggestedFix.trim()}</summary>`);
-    lines.push('');
-    lines.push('```typescript');
+    lines.push('```suggestion');
     lines.push(suggestedFix);
     lines.push('```');
-    lines.push('');
-    lines.push('</details>');
   } else if (insight.recommendation) {
-    lines.push(`**🔧 Fix:** ${insight.recommendation}`);
+    // Fallback to text recommendation if no code fix
+    lines.push(`**Fix:** ${insight.recommendation}`);
   }
 
   lines.push('');
   lines.push('---');
-  lines.push('<sub>🏔️ PeakInfer</sub>');
+  lines.push('*PeakInfer*');
 
   return lines.join('\n');
 }
@@ -157,46 +136,94 @@ function formatInlineComment(insight: Insight, originalLine?: string): string {
 // =============================================================================
 
 /**
- * Post inline comments on PR files
+ * Calculate line range for multi-line suggestions.
+ * GitHub's suggestion syntax replaces lines from start_line to line.
+ */
+function calculateLineRange(insight: Insight): { startLine: number; endLine: number } | null {
+  const loc = parseLocation(insight.location);
+  if (!loc.line) return null;
+
+  // Get original code to calculate how many lines to replace
+  const originalCode = (insight as unknown as { originalCode?: string }).originalCode;
+
+  if (originalCode) {
+    const lineCount = originalCode.split('\n').length;
+    return {
+      startLine: loc.line,
+      endLine: loc.line + lineCount - 1,
+    };
+  }
+
+  // Single line replacement
+  return { startLine: loc.line, endLine: loc.line };
+}
+
+/**
+ * Post inline comments on PR files with one-click apply suggestions.
+ *
+ * Features:
+ * - One-click "Commit suggestion" button for each fix
+ * - "Add suggestion to batch" for applying multiple fixes at once
+ * - Multi-line suggestion support for function-level fixes
  *
  * Returns count of posted and omitted comments
  */
 export async function postInlineComments(
   octokit: Octokit,
   context: Context,
-  insights: Insight[]
+  insights: Insight[],
+  options?: { showAll?: boolean }
 ): Promise<{ posted: number; omitted: number }> {
   const pr = context.payload.pull_request;
   if (!pr) {
     return { posted: 0, omitted: 0 };
   }
 
-  // Sort by severity and take top N (only those with valid locations)
-  const topInsights = insights
-    .filter(i => {
-      const loc = parseLocation(i.location);
-      return loc.file && loc.line;
-    })
-    .sort((a, b) => severityScore(b) - severityScore(a))
-    .slice(0, MAX_INLINE_COMMENTS);
+  // Filter to insights with valid locations
+  let validInsights = insights.filter(i => {
+    const loc = parseLocation(i.location);
+    return loc.file && loc.line;
+  });
 
+  // Sort by severity (critical first)
+  validInsights = validInsights.sort((a, b) => severityScore(b) - severityScore(a));
+
+  // Unless showAll is true, only show critical and warning by default
+  if (!options?.showAll) {
+    validInsights = validInsights.filter(i => i.severity === 'critical' || i.severity === 'warning');
+  }
+
+  // Limit to MAX_INLINE_COMMENTS
+  const topInsights = validInsights.slice(0, MAX_INLINE_COMMENTS);
   let posted = 0;
 
   for (const insight of topInsights) {
     const loc = parseLocation(insight.location);
     if (!loc.file || !loc.line) continue;
 
+    const lineRange = calculateLineRange(insight);
+    if (!lineRange) continue;
+
     try {
-      await octokit.rest.pulls.createReviewComment({
+      // For multi-line suggestions, use start_line parameter
+      const commentParams: Record<string, unknown> = {
         owner: context.repo.owner,
         repo: context.repo.repo,
         pull_number: pr.number,
         body: formatInlineComment(insight),
         commit_id: pr.head.sha,
         path: loc.file,
-        line: loc.line,
+        line: lineRange.endLine,
         side: 'RIGHT',
-      });
+      };
+
+      // Add start_line for multi-line suggestions
+      if (lineRange.startLine !== lineRange.endLine) {
+        commentParams.start_line = lineRange.startLine;
+        commentParams.start_side = 'RIGHT';
+      }
+
+      await octokit.rest.pulls.createReviewComment(commentParams);
       posted++;
     } catch {
       // Skip if comment fails (e.g., file not in PR diff)
@@ -204,6 +231,6 @@ export async function postInlineComments(
     }
   }
 
-  const omitted = Math.max(0, insights.length - MAX_INLINE_COMMENTS);
+  const omitted = Math.max(0, validInsights.length - MAX_INLINE_COMMENTS);
   return { posted, omitted };
 }
