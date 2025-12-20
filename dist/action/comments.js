@@ -85,30 +85,39 @@ export function generatePRComment(data) {
     else {
         lines.push('Issues: None\n');
     }
-    // Issues section
+    // Issues section with inline fixes
     if (newIssues.length > 0) {
         lines.push('### Issues\n');
-        // Critical issues shown in table
-        if (criticalIssues.length > 0) {
-            lines.push('| Location | Issue |');
-            lines.push('|----------|-------|');
-            for (const issue of criticalIssues) {
+        // Show issues with locations and fixes
+        const issuesWithLocations = newIssues.filter(i => i.location);
+        const issuesWithoutLocations = newIssues.filter(i => !i.location);
+        // Issues with locations - show with expandable fixes
+        if (issuesWithLocations.length > 0) {
+            for (const issue of issuesWithLocations.slice(0, 10)) {
                 const location = formatLocation(issue.location, repoContext);
                 const title = getIssueTitle(issue);
-                lines.push(`| CRITICAL ${location} | ${title} |`);
+                const severity = issue.severity === 'critical' ? 'CRITICAL' : 'WARNING';
+                const fullLineFix = issue.fullLineFix;
+                lines.push(`**${severity}** ${location} — ${title}`);
+                if (fullLineFix) {
+                    lines.push('```diff');
+                    lines.push(`- // current line`);
+                    lines.push(`+ ${fullLineFix.trim()}`);
+                    lines.push('```');
+                }
+                else if (issue.recommendation) {
+                    lines.push(`> Fix: ${issue.recommendation}`);
+                }
+                lines.push('');
             }
-            lines.push('');
         }
-        // Warnings collapsed
-        if (warningIssues.length > 0) {
+        // Generic issues collapsed
+        if (issuesWithoutLocations.length > 0) {
             lines.push('<details>');
-            lines.push(`<summary>${warningIssues.length} warning${warningIssues.length > 1 ? 's' : ''}</summary>\n`);
-            lines.push('| Location | Issue |');
-            lines.push('|----------|-------|');
-            for (const issue of warningIssues) {
-                const location = formatLocation(issue.location, repoContext);
+            lines.push(`<summary>${issuesWithoutLocations.length} general recommendations</summary>\n`);
+            for (const issue of issuesWithoutLocations.slice(0, 10)) {
                 const title = getIssueTitle(issue);
-                lines.push(`| ${location} | ${title} |`);
+                lines.push(`- ${title}`);
             }
             lines.push('\n</details>\n');
         }
