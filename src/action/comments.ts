@@ -32,6 +32,8 @@ interface CommentData {
     owner: string;
     repo: string;
     sha: string;
+    baseSha?: string;
+    prNumber?: number;
   };
 }
 
@@ -96,15 +98,23 @@ function getVerdictText(critical: number, warnings: number): string {
 // =============================================================================
 
 /**
- * Generate PR comment markdown aligned with CLI UX and DD v1.6.
+ * Get severity badge (CodeRabbit style)
+ */
+function getSeverityBadge(severity: string): string {
+  switch (severity) {
+    case 'critical': return '🔴 Critical';
+    case 'warning': return '🟡 Medium';
+    default: return '🔵 Low';
+  }
+}
+
+/**
+ * Generate PR comment markdown (CodeRabbit style).
  *
- * Structure: Summary → Issues → Verdict
- * - Summary: inference points, issue counts
- * - Issues: table with location first (like CLI), critical shown, warnings collapsed
- * - Verdict: text label, not emoji
+ * Structure: Header → Commits → Files → Summary → Issues → Verdict → Finishing Touches
  */
 export function generatePRComment(data: CommentData): string {
-  const { results, newIssues, credits, repoContext } = data;
+  const { results, newIssues, credits, repoContext, changedFiles } = data;
 
   const lines: string[] = [];
   const inferencePoints = results.inferenceMap?.summary?.totalCallsites || 0;
@@ -112,18 +122,41 @@ export function generatePRComment(data: CommentData): string {
   const warningIssues = newIssues.filter(i => i.severity === 'warning');
 
   // Header
-  lines.push('## PeakInfer Analysis\n');
+  lines.push('## 🏔️ PeakInfer Analysis\n');
 
-  // Summary section (like CLI)
+  // Commits section (CodeRabbit style - collapsible)
+  if (repoContext?.baseSha && repoContext?.sha) {
+    lines.push('<details>');
+    lines.push('<summary>📝 Commits</summary>\n');
+    const shortBase = repoContext.baseSha.substring(0, 7);
+    const shortHead = repoContext.sha.substring(0, 7);
+    lines.push(`Reviewing files from \`${shortBase}\` to \`${shortHead}\``);
+    lines.push('\n</details>\n');
+  }
+
+  // Files section (CodeRabbit style - collapsible)
+  if (changedFiles && changedFiles.length > 0) {
+    lines.push('<details>');
+    lines.push(`<summary>📁 Files analyzed (${changedFiles.length})</summary>\n`);
+    for (const file of changedFiles.slice(0, 20)) {
+      lines.push(`- \`${file}\``);
+    }
+    if (changedFiles.length > 20) {
+      lines.push(`- ... and ${changedFiles.length - 20} more`);
+    }
+    lines.push('\n</details>\n');
+  }
+
+  // Summary section
   lines.push('### Summary\n');
-  lines.push(`Inference Points: ${inferencePoints}  `);
+  lines.push(`**Inference Points:** ${inferencePoints}  `);
   if (newIssues.length > 0) {
     const parts: string[] = [];
-    if (criticalIssues.length > 0) parts.push(`${criticalIssues.length} critical`);
-    if (warningIssues.length > 0) parts.push(`${warningIssues.length} warning${warningIssues.length > 1 ? 's' : ''}`);
-    lines.push(`Issues: ${parts.join(', ')}\n`);
+    if (criticalIssues.length > 0) parts.push(`🔴 ${criticalIssues.length} critical`);
+    if (warningIssues.length > 0) parts.push(`🟡 ${warningIssues.length} warning${warningIssues.length > 1 ? 's' : ''}`);
+    lines.push(`**Issues:** ${parts.join(', ')}\n`);
   } else {
-    lines.push('Issues: None\n');
+    lines.push('**Issues:** ✅ None\n');
   }
 
   // Issues section with inline fixes
@@ -134,7 +167,7 @@ export function generatePRComment(data: CommentData): string {
     const issuesWithLocations = newIssues.filter(i => i.location);
     const issuesWithoutLocations = newIssues.filter(i => !i.location);
 
-    // Issues with locations - show with code fixes
+    // Issues with locations - show with code fixes (CodeRabbit style)
     if (issuesWithLocations.length > 0) {
       // Group by location to avoid duplicate entries
       const byLocation = new Map<string, typeof issuesWithLocations>();
@@ -155,30 +188,46 @@ export function generatePRComment(data: CommentData): string {
 
         lines.push(`#### ${location}`);
 
-        // Show issues at this location
+        // Show issues at this location (CodeRabbit style)
         for (const issue of [...criticals, ...warnings].slice(0, 3)) {
           const title = getIssueTitle(issue);
-          const severity = issue.severity === 'critical' ? 'CRITICAL' : 'WARNING';
+          const badge = getSeverityBadge(issue.severity);
           const fullLineFix = (issue as unknown as { fullLineFix?: string }).fullLineFix;
+          const originalCode = (issue as unknown as { originalCode?: string }).originalCode;
+
+          lines.push(`**⚠️ ${title}** | ${badge}`);
+          if (issue.evidence) {
+            lines.push(`> ${issue.evidence}`);
+          }
 
           if (fullLineFix) {
-            lines.push(`**${severity}:** ${title}`);
-            lines.push('```typescript');
-            lines.push(`// Replace with:`);
-            lines.push(fullLineFix);
-            lines.push('```');
-          } else {
-            lines.push(`**${severity}:** ${title} — ${issue.recommendation || ''}`);
+            lines.push('<details>');
+            lines.push(`<summary>🔧 Proposed fix: ${issue.recommendation || 'Apply this change'}</summary>\n`);
+
+            if (originalCode) {
+              lines.push('```diff');
+              lines.push(`- ${originalCode.trim()}`);
+              lines.push(`+ ${fullLineFix.trim()}`);
+              lines.push('```');
+            } else {
+              lines.push('```typescript');
+              lines.push(`// Replace with:`);
+              lines.push(fullLineFix);
+              lines.push('```');
+            }
+            lines.push('\n</details>');
+          } else if (issue.recommendation) {
+            lines.push(`**🔧 Fix:** ${issue.recommendation}`);
           }
+          lines.push('');
         }
-        lines.push('');
       }
     }
 
     // Generic issues collapsed
     if (issuesWithoutLocations.length > 0) {
       lines.push('<details>');
-      lines.push(`<summary>${issuesWithoutLocations.length} general recommendations</summary>\n`);
+      lines.push(`<summary>📋 ${issuesWithoutLocations.length} general recommendations</summary>\n`);
       for (const issue of issuesWithoutLocations.slice(0, 10)) {
         const title = getIssueTitle(issue);
         lines.push(`- ${title}`);
@@ -192,10 +241,19 @@ export function generatePRComment(data: CommentData): string {
   lines.push(getVerdictText(criticalIssues.length, warningIssues.length));
   lines.push('');
 
+  // Finishing touches section (CodeRabbit style)
+  lines.push('<details>');
+  lines.push('<summary>✨ Finishing touches</summary>\n');
+  lines.push('#### Follow-up actions');
+  lines.push('- [ ] Review inline comments and apply suggested fixes');
+  lines.push('- [ ] Add error handling where missing');
+  lines.push('- [ ] Consider model downgrades for cost optimization');
+  lines.push('\n</details>\n');
+
   // Footer
   lines.push('---');
   if (credits) {
-    lines.push(`<sub>${credits.used}/${credits.limit} free analyses this month</sub>`);
+    lines.push(`<sub>📊 ${credits.used}/${credits.limit} free analyses this month · [PeakInfer](https://github.com/Kalmantic/peakinfer)</sub>`);
   } else {
     lines.push('<sub>Generated by [PeakInfer](https://github.com/Kalmantic/peakinfer)</sub>');
   }

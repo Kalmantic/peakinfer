@@ -33,26 +33,64 @@ interface ActionInputs {
   targetP95?: number;
 }
 
+// Issue type returned by API (LLM-generated fixes)
+interface APIIssue {
+  type: string;
+  severity: 'critical' | 'warning' | 'info';
+  headline: string;
+  evidence: string;
+  originalCode: string;
+  suggestedFix: string | null;
+  aiAgentPrompt: string;
+}
+
 interface AnalysisResponse {
   success: boolean;
   analysis: {
     inferencePoints: Array<{
+      id: string;
       file: string;
       line: number;
       provider: string;
       model: string;
-      streaming: boolean;
-      hasRetry: boolean;
-      hasFallback: boolean;
-      costTier: 'high' | 'medium' | 'low';
+      // Original code for the inference point
+      originalCode?: string;
+      // LLM-generated issues with fixes (v1.6)
+      issues?: APIIssue[];
+      // Legacy fields
+      streaming?: boolean;
+      hasRetry?: boolean;
+      hasFallback?: boolean;
+      costTier?: 'high' | 'medium' | 'low';
+      // New 4D profile fields
+      hasStreaming?: boolean;
+      hasErrorHandling?: boolean;
+      estimatedP95Ms?: number;
+      isBlocking?: boolean;
+      hasRateLimiting?: boolean;
+      hasBatching?: boolean;
+      hasTimeout?: boolean;
+      reliabilityLevel?: string;
     }>;
     insights: Insight[];
     summary: {
       totalInferencePoints: number;
-      streamingEnabled: number;
-      withRetries: number;
-      estimatedMonthlyCost: string;
-      primaryRisk: string;
+      streamingEnabled?: number;
+      withRetries?: number;
+      estimatedMonthlyCost?: string;
+      primaryRisk?: string;
+      // New 4D summary fields
+      totalFiles?: number;
+      providers?: string[];
+      models?: string[];
+      estimatedCostPer1kCalls?: number;
+      estimatedP95Ms?: number;
+      blockingCalls?: number;
+      hasRateLimiting?: number;
+      hasErrorHandling?: number;
+      hasRetry?: number;
+      hasFallback?: number;
+      overallReliability?: string;
     };
   };
   credits: {
@@ -65,6 +103,8 @@ interface AnalysisResponse {
     prNumber: number;
     analyzedAt: string;
     filesAnalyzed: number;
+    version?: string;
+    analysisType?: string;
   };
 }
 
@@ -176,68 +216,106 @@ async function callAnalysisAPI(
  */
 function getModelDowngrade(model: string): string | null {
   const downgrades: Record<string, string> = {
-    'gpt-4': 'gpt-4o-mini',
-    'gpt-4-turbo': 'gpt-4o-mini',
-    'gpt-4o': 'gpt-4o-mini',
+    // Claude model downgrades (Anthropic)
     'claude-3-opus-20240229': 'claude-3-haiku-20240307',
     'claude-3-sonnet-20240229': 'claude-3-haiku-20240307',
+    'claude-sonnet-4-20250514': 'claude-3-5-haiku-20241022',
+    'claude-opus-4-20250514': 'claude-sonnet-4-20250514',
   };
   return downgrades[model] || null;
 }
 
 /**
- * Generate insights with locations from inference points.
- * Includes fullLineFix for showing code in PR comment.
+ * Convert LLM-generated issues from API to Insights.
+ * Issues now come with originalCode, suggestedFix, and aiAgentPrompt from the LLM.
  */
-function generateLocationAwareInsights(
+function convertAPIIssuesToInsights(
   inferencePoints: AnalysisResponse['analysis']['inferencePoints']
 ): Insight[] {
   const insights: Insight[] = [];
 
   for (const point of inferencePoints) {
     const location = `${point.file}:${point.line}`;
-    const downgrade = getModelDowngrade(point.model);
 
-    // Model downgrade suggestion (always show if downgrade available)
-    if (downgrade) {
-      insights.push({
-        severity: 'warning',
-        category: 'cost',
-        headline: 'Consider smaller model',
-        evidence: `${point.model} is expensive for many tasks.`,
-        recommendation: `Use ${downgrade} instead`,
-        location,
-        source: 'template',
-        fullLineFix: `    model: '${downgrade}',`,
-      } as Insight & { fullLineFix?: string });
-    }
+    // Convert LLM-generated issues to insights (v1.6)
+    if (point.issues && point.issues.length > 0) {
+      for (const issue of point.issues) {
+        // Map issue type to category
+        let category: Insight['category'] = 'reliability';
+        if (issue.type.includes('model') || issue.type.includes('cost')) {
+          category = 'cost';
+        } else if (issue.type.includes('streaming') || issue.type.includes('latency') || issue.type.includes('timeout')) {
+          category = 'latency';
+        } else if (issue.type.includes('rate') || issue.type.includes('batch') || issue.type.includes('throughput')) {
+          category = 'throughput';
+        }
 
-    // No streaming
-    if (!point.streaming) {
-      insights.push({
-        severity: 'warning',
-        category: 'latency',
-        headline: 'No streaming',
-        evidence: 'Streaming improves perceived latency.',
-        recommendation: 'Add stream: true',
-        location,
-        source: 'template',
-        fullLineFix: `    stream: true,`,
-      } as Insight & { fullLineFix?: string });
-    }
+        insights.push({
+          severity: issue.severity,
+          category,
+          headline: issue.headline,
+          evidence: issue.evidence,
+          location,
+          source: 'llm',
+          // CodeRabbit-style fix fields
+          originalCode: issue.originalCode,
+          suggestedFix: issue.suggestedFix || undefined,
+          aiAgentPrompt: issue.aiAgentPrompt,
+          // For backwards compatibility and suggestion syntax
+          fullLineFix: issue.suggestedFix || undefined,
+          recommendation: issue.aiAgentPrompt,
+        } as Insight);
+      }
+    } else {
+      // Fallback to template-based insights if no LLM issues
+      // (for backwards compatibility with older API versions)
+      const downgrade = getModelDowngrade(point.model);
+      const hasStreaming = point.streaming ?? point.hasStreaming ?? false;
+      const hasRetry = point.hasRetry ?? false;
+      const hasFallback = point.hasFallback ?? false;
+      const hasErrorHandling = point.hasErrorHandling ?? false;
 
-    // No error handling
-    if (!point.hasRetry && !point.hasFallback) {
-      insights.push({
-        severity: 'critical',
-        category: 'reliability',
-        headline: 'No error handling',
-        evidence: 'LLM calls can fail unexpectedly.',
-        recommendation: 'Add try-catch with retry',
-        location,
-        source: 'template',
-        fullLineFix: `  try {\n    // ... existing code ...\n  } catch (error) {\n    // Retry or handle error\n  }`,
-      } as Insight & { fullLineFix?: string });
+      // Model downgrade suggestion
+      if (downgrade) {
+        insights.push({
+          severity: 'warning',
+          category: 'cost',
+          headline: 'Consider smaller model',
+          evidence: `${point.model} is expensive for many tasks.`,
+          recommendation: `Use ${downgrade} instead`,
+          location,
+          source: 'template',
+          fullLineFix: `    model: '${downgrade}',`,
+        } as Insight);
+      }
+
+      // No streaming
+      if (!hasStreaming) {
+        insights.push({
+          severity: 'warning',
+          category: 'latency',
+          headline: 'No streaming',
+          evidence: 'Streaming improves perceived latency.',
+          recommendation: 'Add stream: true',
+          location,
+          source: 'template',
+          fullLineFix: `    stream: true,`,
+        } as Insight);
+      }
+
+      // No error handling
+      if (!hasRetry && !hasFallback && !hasErrorHandling) {
+        insights.push({
+          severity: 'critical',
+          category: 'reliability',
+          headline: 'No error handling',
+          evidence: 'LLM calls can fail unexpectedly.',
+          recommendation: 'Add try-catch with retry',
+          location,
+          source: 'template',
+          fullLineFix: `  try {\n    // ... existing code ...\n  } catch (error) {\n    // Retry or handle error\n  }`,
+        } as Insight);
+      }
     }
   }
 
@@ -261,17 +339,35 @@ function determineStatus(
     regressions.push(`${criticalSeverity.length} critical severity issues found`);
   }
 
-  // Check for drift (streaming configured but not working, etc.)
-  const streamingDrift = analysis.inferencePoints.filter(p => !p.streaming);
-  if (streamingDrift.length > 0 && analysis.summary.streamingEnabled === 0) {
+  // Check for critical issues from LLM analysis (v1.6)
+  const criticalIssues = analysis.inferencePoints.reduce((count, p) => {
+    return count + (p.issues?.filter(i => i.severity === 'critical').length || 0);
+  }, 0);
+  if (criticalIssues > 0 && status === 'pass') {
+    status = 'warning';
+    regressions.push(`${criticalIssues} critical issues found by LLM analysis`);
+  }
+
+  // Check for streaming drift (supports both old and new field names)
+  const streamingEnabled = analysis.summary.streamingEnabled ?? 0;
+  const noStreaming = analysis.inferencePoints.filter(p => {
+    const hasStreaming = p.streaming ?? p.hasStreaming ?? false;
+    return !hasStreaming;
+  });
+  if (noStreaming.length > 0 && streamingEnabled === 0) {
     regressions.push('Streaming not enabled on any inference points');
     if (status === 'pass') status = 'warning';
   }
 
-  // Check reliability
-  const noRetry = analysis.inferencePoints.filter(p => !p.hasRetry && !p.hasFallback);
-  if (noRetry.length > analysis.inferencePoints.length * 0.5) {
-    regressions.push('More than 50% of inference points lack retry/fallback');
+  // Check reliability (supports both old and new field names)
+  const noErrorHandling = analysis.inferencePoints.filter(p => {
+    const hasRetry = p.hasRetry ?? false;
+    const hasFallback = p.hasFallback ?? false;
+    const hasErrorHandling = p.hasErrorHandling ?? false;
+    return !hasRetry && !hasFallback && !hasErrorHandling;
+  });
+  if (noErrorHandling.length > analysis.inferencePoints.length * 0.5) {
+    regressions.push('More than 50% of inference points lack error handling');
     if (status === 'pass') status = 'warning';
   }
 
@@ -409,9 +505,9 @@ async function run(): Promise<void> {
       // Get changed files
       const changedFiles = await getChangedFiles(octokit, context);
 
-      // Generate location-aware insights from inference points
-      // These have file:line locations for inline comments
-      const locationAwareInsights = generateLocationAwareInsights(analysis.inferencePoints);
+      // Convert LLM-generated issues to insights (v1.6)
+      // These have file:line locations and originalCode/suggestedFix from LLM
+      const locationAwareInsights = convertAPIIssuesToInsights(analysis.inferencePoints);
 
       // Combine API insights with location-aware ones
       const allInsights = [...analysis.insights, ...locationAwareInsights];
@@ -442,6 +538,8 @@ async function run(): Promise<void> {
           owner: context.repo.owner,
           repo: context.repo.repo,
           sha: context.payload.pull_request.head.sha,
+          baseSha: context.payload.pull_request.base.sha,
+          prNumber: context.payload.pull_request.number,
         },
       });
 

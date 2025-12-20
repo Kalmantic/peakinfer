@@ -234,6 +234,11 @@ export const Insight = z.object({
   source: z.enum(['template', 'llm']).optional(), // 'template' = pattern-based, 'llm' = semantic analysis
   // Impact estimation fields
   impact: ImpactEstimate.optional(), // Estimated impact of implementing this recommendation
+  // CodeRabbit-style fix fields (v1.6 - LLM-generated)
+  originalCode: z.string().optional(), // Exact code line(s) that need to change
+  suggestedFix: z.string().optional(), // Complete replacement code
+  aiAgentPrompt: z.string().optional(), // Instructions for AI agents like Copilot
+  fullLineFix: z.string().optional(), // Full line replacement for suggestion syntax
 });
 
 // =============================================================================
