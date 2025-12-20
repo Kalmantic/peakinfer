@@ -54,40 +54,76 @@ function getSeverityLabel(severity) {
     }
 }
 /**
- * Format insight as inline comment body with optional suggested fix.
- * Uses GitHub's suggestion syntax when a fix is available.
- * Design: Clean, text labels, show line context.
+ * Get severity icon and label (CodeRabbit style)
+ */
+function getSeverityBadge(severity) {
+    switch (severity) {
+        case 'critical':
+            return { icon: '🔴', label: 'Critical' };
+        case 'warning':
+            return { icon: '🟡', label: 'Medium' };
+        default:
+            return { icon: '🔵', label: 'Low' };
+    }
+}
+/**
+ * Format insight as inline comment body (CodeRabbit style).
+ * Structure: Severity badge → Explanation → Collapsible fix with diff
  */
 function formatInlineComment(insight, originalLine) {
     const lines = [];
     const title = getIssueTitle(insight);
-    const label = getSeverityLabel(insight.severity);
-    // Clear headline with severity label
-    lines.push(`**${label}:** ${title}`);
+    const badge = getSeverityBadge(insight.severity);
+    // Severity badge header (CodeRabbit style)
+    lines.push(`**⚠️ ${title}** | ${badge.icon} ${badge.label}`);
     lines.push('');
-    // Why it matters
+    // Full explanation
     if (insight.evidence) {
         lines.push(insight.evidence);
         lines.push('');
     }
-    // Suggested fix using GitHub's suggestion syntax
+    // Get fix content
     const suggestedFix = insight.suggestedFix;
     const fullLineFix = insight.fullLineFix;
+    const originalCode = insight.originalCode;
+    // Collapsible proposed fix section (CodeRabbit style)
     if (fullLineFix) {
-        // Full line replacement - shows "Apply suggestion" button
-        lines.push('**Fix:** Click "Apply suggestion" below');
-        lines.push('```suggestion');
-        lines.push(fullLineFix);
-        lines.push('```');
+        const fixDescription = insight.recommendation || 'Apply this fix';
+        lines.push('<details>');
+        lines.push(`<summary>🔧 Proposed fix: ${fixDescription}</summary>`);
+        lines.push('');
+        // Show diff if we have original code
+        if (originalCode) {
+            lines.push('```diff');
+            lines.push(`- ${originalCode.trim()}`);
+            lines.push(`+ ${fullLineFix.trim()}`);
+            lines.push('```');
+        }
+        else {
+            // Fallback to suggestion syntax for one-click apply
+            lines.push('```suggestion');
+            lines.push(fullLineFix);
+            lines.push('```');
+        }
+        lines.push('');
+        lines.push('</details>');
     }
     else if (suggestedFix) {
-        lines.push(`**Fix:** Add \`${suggestedFix.trim()}\``);
+        lines.push('<details>');
+        lines.push(`<summary>🔧 Proposed fix: Add ${suggestedFix.trim()}</summary>`);
+        lines.push('');
+        lines.push('```typescript');
+        lines.push(suggestedFix);
+        lines.push('```');
+        lines.push('');
+        lines.push('</details>');
     }
     else if (insight.recommendation) {
-        lines.push(`**Fix:** ${insight.recommendation}`);
+        lines.push(`**🔧 Fix:** ${insight.recommendation}`);
     }
     lines.push('');
-    lines.push('<sub>PeakInfer</sub>');
+    lines.push('---');
+    lines.push('<sub>🏔️ PeakInfer</sub>');
     return lines.join('\n');
 }
 // =============================================================================

@@ -1266,6 +1266,10 @@ export declare const Insight: z.ZodObject<{
         confidence?: number | undefined;
         assumptions?: string | undefined;
     }>>;
+    originalCode: z.ZodOptional<z.ZodString>;
+    suggestedFix: z.ZodOptional<z.ZodString>;
+    aiAgentPrompt: z.ZodOptional<z.ZodString>;
+    fullLineFix: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     severity: "critical" | "warning" | "info";
     category: "cost" | "latency" | "drift" | "reliability" | "waste" | "throughput" | "security" | "best-practice";
@@ -1287,6 +1291,10 @@ export declare const Insight: z.ZodObject<{
         confidence?: number | undefined;
         assumptions?: string | undefined;
     } | undefined;
+    originalCode?: string | undefined;
+    suggestedFix?: string | undefined;
+    aiAgentPrompt?: string | undefined;
+    fullLineFix?: string | undefined;
 }, {
     severity: "critical" | "warning" | "info";
     category: "cost" | "latency" | "drift" | "reliability" | "waste" | "throughput" | "security" | "best-practice";
@@ -1308,6 +1316,10 @@ export declare const Insight: z.ZodObject<{
         confidence?: number | undefined;
         assumptions?: string | undefined;
     } | undefined;
+    originalCode?: string | undefined;
+    suggestedFix?: string | undefined;
+    aiAgentPrompt?: string | undefined;
+    fullLineFix?: string | undefined;
 }>;
 export declare const PerformanceEnvelope: z.ZodObject<{
     ttft_p50_ms: z.ZodNumber;

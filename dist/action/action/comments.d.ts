@@ -40,15 +40,14 @@ interface CommentData {
         owner: string;
         repo: string;
         sha: string;
+        baseSha?: string;
+        prNumber?: number;
     };
 }
 /**
- * Generate PR comment markdown aligned with CLI UX and DD v1.6.
+ * Generate PR comment markdown (CodeRabbit style).
  *
- * Structure: Summary → Issues → Verdict
- * - Summary: inference points, issue counts
- * - Issues: table with location first (like CLI), critical shown, warnings collapsed
- * - Verdict: text label, not emoji
+ * Structure: Header → Commits → Files → Summary → Issues → Verdict → Finishing Touches
  */
 export declare function generatePRComment(data: CommentData): string;
 /**
