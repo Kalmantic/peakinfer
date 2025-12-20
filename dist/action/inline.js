@@ -56,9 +56,9 @@ function getSeverityLabel(severity) {
 /**
  * Format insight as inline comment body with optional suggested fix.
  * Uses GitHub's suggestion syntax when a fix is available.
- * Design: Clean, text labels, no emoji clutter.
+ * Design: Clean, text labels, show line context.
  */
-function formatInlineComment(insight) {
+function formatInlineComment(insight, originalLine) {
     const lines = [];
     const title = getIssueTitle(insight);
     const label = getSeverityLabel(insight.severity);
@@ -72,11 +72,16 @@ function formatInlineComment(insight) {
     }
     // Suggested fix using GitHub's suggestion syntax
     const suggestedFix = insight.suggestedFix;
-    if (suggestedFix) {
-        lines.push('**Fix:**');
+    const fullLineFix = insight.fullLineFix;
+    if (fullLineFix) {
+        // Full line replacement - shows "Apply suggestion" button
+        lines.push('**Fix:** Click "Apply suggestion" below');
         lines.push('```suggestion');
-        lines.push(suggestedFix);
+        lines.push(fullLineFix);
         lines.push('```');
+    }
+    else if (suggestedFix) {
+        lines.push(`**Fix:** Add \`${suggestedFix.trim()}\``);
     }
     else if (insight.recommendation) {
         lines.push(`**Fix:** ${insight.recommendation}`);

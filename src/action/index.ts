@@ -197,37 +197,34 @@ function generateLocationAwareInsights(
   for (const point of inferencePoints) {
     const location = `${point.file}:${point.line}`;
 
-    // High-cost model warning with suggested fix
+    // High-cost model warning with full line replacement fix
     if (point.costTier === 'high') {
       const downgrade = getModelDowngrade(point.model);
-      const suggestedFix = downgrade
-        ? `    model: '${downgrade}',`
-        : undefined;
 
       insights.push({
         severity: 'warning',
         category: 'cost',
         headline: 'Expensive model',
-        evidence: `${point.model} is expensive. Consider a smaller model for this task.`,
-        recommendation: downgrade ? `Use ${downgrade} instead` : 'Consider a smaller model',
+        evidence: `Using ${point.model}. For this task, a smaller model would work.`,
+        recommendation: downgrade ? `Change to ${downgrade}` : 'Consider a smaller model',
         location,
         source: 'template',
-        suggestedFix,
-      } as Insight & { suggestedFix?: string });
+        // Full line replacement for one-click apply
+        fullLineFix: downgrade ? `    model: '${downgrade}',` : undefined,
+      } as Insight & { fullLineFix?: string });
     }
 
-    // No streaming with suggested fix
+    // No streaming - text recommendation only (adding a line is complex)
     if (!point.streaming) {
       insights.push({
         severity: 'warning',
         category: 'latency',
         headline: 'No streaming',
         evidence: 'Streaming improves perceived latency for users.',
-        recommendation: 'Add stream: true',
+        recommendation: 'Add stream: true to the options',
         location,
         source: 'template',
-        suggestedFix: '    stream: true,',
-      } as Insight & { suggestedFix?: string });
+      });
     }
 
     // No error handling - suggest try-catch wrapper
