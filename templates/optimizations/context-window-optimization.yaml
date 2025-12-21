@@ -1,0 +1,91 @@
+id: context-window-optimization
+name: Context Window Optimization and Sliding Windows
+description: Reduce context costs through intelligent windowing without losing relevant information
+category: memory_optimization
+confidence: 0.88
+success_count: 1234
+verified_environments: 56
+contributors:
+  - context_specialist
+  - memory_optimizer
+  - nlp_engineer
+last_updated: "2025-01-12"
+
+environment_match:
+  avg_context_length: ">4000 tokens"
+  context_growth_pattern: accumulating
+  task_type:
+    - chat
+    - document_qa
+    - summarization
+
+optimization:
+  technique: sliding_window_context
+  expected_cost_reduction: "40-60%"
+  expected_quality_retention: ">95%"
+  effort_estimate: "1-2 weeks"
+  risk_level: low
+
+economics:
+  baseline_calculation:
+    avg_tokens_per_request: 8000
+    cost_per_1k_tokens: 0.03
+  projected_improvement:
+    optimized_tokens_per_request: 3200
+    cost_reduction_percent: 60
+  implementation_cost:
+    engineering_hours: 60
+    total_cost: 12000
+
+implementation:
+  prerequisites:
+    - requirement: "Context tracking capability"
+      validation_command: "python scripts/test_context_tracking.py"
+    - requirement: "Relevance scoring model"
+      validation_command: "python scripts/test_relevance_model.py"
+  automated_steps:
+    - step_id: context_analysis
+      name: Context Usage Analysis
+      executable: true
+      commands:
+        - "python scripts/analyze_context_patterns.py --logs ./request_logs"
+        - "python scripts/identify_redundancy.py --output context_report.json"
+      validation:
+        command: "python scripts/validate_analysis.py"
+        success_criteria: "analysis_complete"
+    - step_id: window_implementation
+      name: Sliding Window Implementation
+      executable: true
+      commands:
+        - "python scripts/implement_sliding_window.py --max-tokens 4000 --overlap 500"
+        - "python scripts/setup_relevance_filter.py --threshold 0.7"
+      validation:
+        command: "python scripts/test_window_quality.py"
+        success_criteria: "quality_score > 0.95"
+        rollback_command: "python scripts/revert_context_handling.py"
+
+monitoring:
+  key_metrics:
+    - metric: avg_context_tokens
+      target: "<4000"
+      alert_threshold: ">6000"
+    - metric: response_quality
+      target: ">0.95"
+      alert_threshold: "<0.93"
+    - metric: context_miss_rate
+      target: "<0.05"
+      alert_threshold: ">0.1"
+  rollback_triggers:
+    - condition: "response_quality < 0.9 for 10 minutes"
+      action: automatic_rollback
+    - condition: "context_miss_rate > 0.15 for 5 minutes"
+      action: alert_and_investigation
+
+results:
+  recent_implementations:
+    - environment: customer_support_chat
+      baseline_avg_tokens: 12000
+      optimized_avg_tokens: 4500
+      cost_reduction_percent: 62.5
+      quality_retention: 96.8
+      implementation_days: 10

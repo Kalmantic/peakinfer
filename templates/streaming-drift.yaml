@@ -3,6 +3,7 @@ name: Streaming Drift Detection
 version: "1.0"
 category: latency
 severity: critical
+layer: application
 
 match:
   scope: callsite

@@ -12,6 +12,7 @@ declare function renderZeroState(): void;
 declare function renderPartialState(warnings: string[]): void;
 export interface RendererOptions {
     verbose?: boolean;
+    showFixes?: boolean;
 }
 export interface ProgressData {
     phase: 'scanning' | 'analyzing' | 'profiling' | 'parsing' | 'correlating' | 'generating';

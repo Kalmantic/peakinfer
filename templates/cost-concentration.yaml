@@ -3,6 +3,7 @@ name: Cost Concentration
 version: "1.0"
 category: cost
 severity: warning
+layer: application
 
 match:
   scope: global

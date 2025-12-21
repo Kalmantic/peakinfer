@@ -11,6 +11,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { join, extname } from 'path';
 import { generatePRComment, generateExhaustedComment } from './comments.js';
 import { postInlineComments } from './inline.js';
+import { parseEvents } from '../runtime.js';
 import { getChangedFiles, filterToChangedFiles } from './diff.js';
 import { getBaseline, compareToBaseline } from './baseline.js';
 import { parseCommand, handleCommentCommand } from './commands.js';
@@ -31,6 +32,9 @@ interface ActionInputs {
   inlineComments: boolean;
   failOnRegression: boolean;
   targetP95?: number;
+  // v1.8: Runtime correlation inputs
+  runtime?: string;
+  runtimeSource?: string;
 }
 
 // Issue type returned by API (LLM-generated fixes)
@@ -129,6 +133,9 @@ function getInputs(): ActionInputs {
     inlineComments: core.getInput('inline-comments') !== 'false',
     failOnRegression: core.getInput('fail-on-regression') === 'true',
     targetP95: core.getInput('target-p95') ? parseInt(core.getInput('target-p95'), 10) : undefined,
+    // v1.8: Runtime correlation inputs
+    runtime: core.getInput('runtime') || undefined,
+    runtimeSource: core.getInput('runtime-source') || 'file',
   };
 }
 
@@ -442,6 +449,22 @@ async function run(): Promise<void> {
       return;
     }
 
+    // v1.8: Load runtime events if provided (for gap messaging)
+    let hasRuntime = false;
+    let runtimeEventCount = 0;
+
+    if (inputs.runtime && existsSync(inputs.runtime)) {
+      try {
+        core.info(`Loading runtime events from ${inputs.runtime}...`);
+        const events = await parseEvents(inputs.runtime);
+        hasRuntime = events.length > 0;
+        runtimeEventCount = events.length;
+        core.info(`Loaded ${runtimeEventCount} runtime events`);
+      } catch (error) {
+        core.warning(`Failed to parse runtime events: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
     // Call the managed API
     core.info('Calling PeakInfer analysis API...');
     const response = await callAnalysisAPI(orgId, files, repo, prNumber);
@@ -541,6 +564,9 @@ async function run(): Promise<void> {
           baseSha: context.payload.pull_request.base.sha,
           prNumber: context.payload.pull_request.number,
         },
+        // v1.8: Runtime correlation gap messaging
+        hasRuntime,
+        runtimeEventCount,
       });
 
       await octokit.rest.issues.createComment({

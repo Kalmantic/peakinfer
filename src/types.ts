@@ -184,6 +184,7 @@ export const InsightTemplate = z.object({
   version: z.string(),
   category: Category,
   severity: Severity,
+  layer: z.enum(['application', 'api', 'gateway', 'runtime', 'model', 'hardware']).optional(), // v1.8: 6-layer architecture
   match: z.object({
     scope: z.enum(['callsite', 'joined', 'global', 'envelope']),
     conditions: z.array(TemplateCondition),
@@ -195,12 +196,133 @@ export const InsightTemplate = z.object({
   defaults: z.record(z.number()).optional(),
 });
 
-// Stack layers for impact analysis
+// =============================================================================
+// COMMUNITY OPTIMIZATION TEMPLATES (v1.8 - Inference Squeeze Guide)
+// =============================================================================
+
+/**
+ * Optimization template category - matches Inference Squeeze Guide structure
+ */
+export const OptimizationCategory = z.enum([
+  'runtime_optimization',     // PyTorch to ONNX, vLLM, TensorRT
+  'batching_optimization',    // Continuous batching, batch sizing
+  'memory_optimization',      // Quantization, KV cache
+  'application_optimization', // Model routing, context management
+  'cost_optimization',        // Budget controls, cost allocation
+  'monitoring',               // APM, quality monitoring, A/B testing
+  'scaling',                  // Auto-scaling, multi-GPU
+]);
+
+/**
+ * Risk level for optimization implementation
+ */
+export const OptimizationRiskLevel = z.enum(['low', 'medium', 'high']);
+
+/**
+ * Implementation step with validation and rollback
+ */
+export const ImplementationStep = z.object({
+  step_id: z.string(),
+  name: z.string(),
+  executable: z.boolean().optional(),
+  commands: z.array(z.string()).optional(),
+  validation: z.object({
+    command: z.string().optional(),
+    success_criteria: z.string().optional(),
+    rollback_command: z.string().optional(),
+  }).optional(),
+});
+
+/**
+ * Monitoring metric configuration
+ */
+export const MonitoringMetric = z.object({
+  metric: z.string(),
+  target: z.string(),
+  alert_threshold: z.string(),
+});
+
+/**
+ * Rollback trigger configuration
+ */
+export const RollbackTrigger = z.object({
+  condition: z.string(),
+  action: z.string(),
+});
+
+/**
+ * Community Optimization Template - runbook-style templates from Inference Squeeze Guide
+ * These templates provide step-by-step implementation guides with ROI estimates
+ */
+export const OptimizationTemplate = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  category: OptimizationCategory,
+  confidence: z.number().min(0).max(1),
+  success_count: z.number().optional(),
+  verified_environments: z.number().optional(),
+  contributors: z.array(z.string()).optional(),
+  last_updated: z.string().optional(),
+
+  // Environment matching criteria
+  environment_match: z.record(z.union([z.string(), z.boolean(), z.array(z.string())])).optional(),
+
+  // Optimization details
+  optimization: z.object({
+    technique: z.string(),
+    expected_cost_reduction: z.string().optional(),
+    expected_latency_improvement: z.string().optional(),
+    expected_throughput_improvement: z.string().optional(),
+    expected_memory_reduction: z.string().optional(),
+    expected_quality_retention: z.string().optional(),
+    effort_estimate: z.string(),
+    risk_level: OptimizationRiskLevel,
+  }),
+
+  // Economics and ROI
+  economics: z.object({
+    baseline_calculation: z.record(z.union([z.string(), z.number()])).optional(),
+    projected_improvement: z.record(z.union([z.string(), z.number()])).optional(),
+    projected_savings: z.record(z.union([z.string(), z.number()])).optional(),
+    implementation_cost: z.object({
+      engineering_hours: z.number().optional(),
+      hourly_rate: z.number().optional(),
+      compute_hours: z.number().optional(),
+      total_cost: z.number(),
+    }).optional(),
+    roi_calculation: z.record(z.string()).optional(),
+  }).optional(),
+
+  // Implementation steps
+  implementation: z.object({
+    prerequisites: z.array(z.object({
+      requirement: z.string(),
+      validation_command: z.string().optional(),
+    })).optional(),
+    automated_steps: z.array(ImplementationStep).optional(),
+  }).optional(),
+
+  // Monitoring configuration
+  monitoring: z.object({
+    key_metrics: z.array(MonitoringMetric).optional(),
+    rollback_triggers: z.array(RollbackTrigger).optional(),
+  }).optional(),
+
+  // Historical results
+  results: z.object({
+    recent_implementations: z.array(z.record(z.union([z.string(), z.number()]))).optional(),
+  }).optional(),
+});
+
+// Stack layers for impact analysis (TDD v1.7 - 6-layer architecture)
 export const StackLayer = z.enum([
-  'application',    // Code patterns: caching, batching, streaming, error handling
-  'model',          // Model selection: GPT-4 vs GPT-3.5, Claude Opus vs Haiku
+  'application',    // Code patterns: streaming-drift, overpowered-model, cost-concentration
+  'api',            // API layer: retry-explosion, untested-fallback, rate limiting
+  'gateway',        // Gateway/proxy layer: caching, load balancing, routing
   'runtime',        // Inference engines: vLLM, sglang, TGI optimizations
-  'infrastructure', // Hosting: serverless vs dedicated, provider selection
+  'model',          // Model selection: GPT-4 vs GPT-3.5, context-accumulation, token-underutilization
+  'hardware',       // Hardware layer: GPU optimization, memory management
 ]);
 
 // Impact metrics
@@ -307,6 +429,9 @@ export type EnrichedCallsite = z.infer<typeof EnrichedCallsite>;
 export type JoinedOutput = z.infer<typeof JoinedOutput>;
 export type TemplateCondition = z.infer<typeof TemplateCondition>;
 export type InsightTemplate = z.infer<typeof InsightTemplate>;
+export type OptimizationTemplate = z.infer<typeof OptimizationTemplate>;
+export type OptimizationCategory = z.infer<typeof OptimizationCategory>;
+export type OptimizationRiskLevel = z.infer<typeof OptimizationRiskLevel>;
 export type StackLayer = z.infer<typeof StackLayer>;
 export type ImpactType = z.infer<typeof ImpactType>;
 export type EffortLevel = z.infer<typeof EffortLevel>;

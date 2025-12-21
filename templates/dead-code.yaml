@@ -3,6 +3,7 @@ name: Dead Code Detection
 version: "1.0"
 category: drift
 severity: warning
+layer: application
 
 match:
   scope: joined

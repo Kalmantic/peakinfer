@@ -15,6 +15,12 @@ import { registerCICommand } from './commands/ci.js';
 import { registerExportCommand } from './commands/export.js';
 import { registerWhatIfCommand } from './commands/whatif.js';
 
+// v1.8 Analytics (respects DO_NOT_TRACK)
+import { initAnalytics, track, flush } from './analytics.js';
+
+// Initialize analytics at startup
+initAnalytics();
+
 // =============================================================================
 // CONSTANTS
 // =============================================================================
@@ -48,6 +54,8 @@ program
   .option('--lenient', 'accept low-confidence field mappings')
   .option('--strict', 'fail on missing required fields or unknown formats')
   .option('--redact', 'redact code snippets from artifacts')
+  // Fix suggestions (v1.8)
+  .option('--fixes', 'show code fix suggestions for issues')
   // History options (v1.5)
   .option('--no-history', 'skip saving run to history (disables comparison/prediction)')
   .option('--compare [runId]', 'compare with previous run (default: latest)')
@@ -67,6 +75,8 @@ program
     lenient?: boolean;
     strict?: boolean;
     redact?: boolean;
+    // Fix suggestions (v1.8)
+    fixes?: boolean;
     // History options (v1.5)
     history?: boolean; // Commander negates --no-history to history: false
     compare?: string | boolean; // --compare or --compare <runId>
@@ -86,8 +96,17 @@ program
         process.exit(1);
       }
 
-      const renderer = createRenderer({ verbose: options.verbose });
+      const renderer = createRenderer({ verbose: options.verbose, showFixes: options.fixes });
       renderer.renderHeader();
+
+      // Track analysis start (v1.8)
+      track('analysis_started', {
+        has_events: !!options.events,
+        html: options.html,
+        pdf: options.pdf,
+        predict: options.predict,
+        compare: options.compare !== undefined,
+      });
 
       const agent = new Agent({
         onResumed: (runId) => renderer.renderResumed(runId),
@@ -98,6 +117,14 @@ program
         onPartial: (warnings) => renderer.renderPartial(warnings),
         onComplete: (results) => {
           renderer.renderResults(results);
+
+          // Track analysis completion (v1.8)
+          track('analysis_completed', {
+            inference_points: results.inferenceMap?.summary?.totalCallsites || 0,
+            insights_count: results.insights?.length || 0,
+            has_runtime: !!results.events,
+            providers: results.inferenceMap?.summary?.providers || [],
+          });
 
           // Open report if requested (prefer PDF if generated, else HTML)
           if (options.open) {
@@ -144,7 +171,16 @@ program
         predict: options.predict, // --predict flag
         targetP95: options.targetP95 ? parseInt(options.targetP95, 10) : undefined, // --target-p95 <ms>
       });
+
+      // Flush analytics before exit (v1.8)
+      await flush();
     } catch (error) {
+      // Track error and flush analytics (v1.8)
+      track('analysis_error', {
+        error_type: error instanceof Error ? error.constructor.name : 'unknown',
+      });
+      await flush();
+
       if (error instanceof Error) {
         console.error(`Error: ${error.message}`);
         if (options.verbose && error.stack) {

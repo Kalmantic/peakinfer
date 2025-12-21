@@ -1,6 +1,6 @@
 {
   "name": "@kalmantic/peakinfer",
-  "version": "1.0.93",
+  "version": "1.0.107",
   "description": "LLM inference performance analysis CLI",
   "type": "module",
   "main": "dist/cli.js",
@@ -47,6 +47,7 @@
     "glob": "^10.3.10",
     "ignore": "^5.3.0",
     "ora": "^9.0.0",
+    "posthog-node": "^4.0.0",
     "puppeteer": "^24.33.0",
     "yaml": "^2.3.4",
     "zod": "^3.22.0"

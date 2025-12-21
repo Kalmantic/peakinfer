@@ -43,6 +43,8 @@ interface CommentData {
         baseSha?: string;
         prNumber?: number;
     };
+    hasRuntime?: boolean;
+    runtimeEventCount?: number;
 }
 /**
  * Generate PR comment markdown (CodeRabbit style).

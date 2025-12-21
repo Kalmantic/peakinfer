@@ -6,6 +6,7 @@ name: Token Budget Underutilization
 version: "1.0"
 category: waste
 severity: info
+layer: model
 
 match:
   scope: callsite

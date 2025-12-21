@@ -6,6 +6,7 @@ name: Prompt Bloat Detection
 version: "1.0"
 category: cost
 severity: warning
+layer: model
 
 match:
   scope: callsite

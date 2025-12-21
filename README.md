@@ -127,6 +127,9 @@ Both work. AI finds more.
 # Basic scan
 peakinfer analyze .
 
+# With code fix suggestions
+peakinfer analyze . --fixes
+
 # With HTML report
 peakinfer analyze . --html --open
 
@@ -137,14 +140,29 @@ peakinfer analyze . --compare
 peakinfer analyze . --predict --target-p95 2000
 
 # Full analysis
-peakinfer analyze . --compare --predict --html --open
+peakinfer analyze . --fixes --compare --predict --html --open
 ```
+
+### CLI Options
+
+| Flag | Description |
+|------|-------------|
+| `--fixes` | Show code fix suggestions for each issue |
+| `--html` | Generate HTML report |
+| `--open` | Auto-open report in browser |
+| `--compare` | Compare with previous analysis run |
+| `--predict` | Run deploy-time prediction analysis |
+| `--target-p95 <ms>` | Set target p95 latency for prediction |
+| `--json` | Output JSON format |
+| `--verbose` | Show detailed analysis logs |
 
 ---
 
 ## GitHub Action
 
 Every PR. Every merge. Automatic.
+
+### Basic Usage (Static Analysis)
 
 ```yaml
 name: PeakInfer
@@ -161,13 +179,59 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-**What happens:**
+### With Runtime Events (Drift Detection)
+
+PeakInfer's real power is correlating code with runtime behavior. Add runtime data for drift detection:
+
+```yaml
+name: PeakInfer
+on: [pull_request]
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Option 1: From file in repo
+      - uses: kalmantic/peakinfer@v1
+        with:
+          path: ./src
+          runtime: ./traces/events.jsonl
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Option 2: From URL (your observability platform)
+      - uses: kalmantic/peakinfer@v1
+        with:
+          path: ./src
+          runtime-source: url
+          runtime: ${{ secrets.TRACES_URL }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### Action Inputs
+
+| Input | Required | Description |
+|-------|----------|-------------|
+| `path` | No | Path to analyze (default: `./src`) |
+| `github-token` | No | Token for PR comments |
+| `runtime` | No | Path to runtime events file (JSONL) |
+| `runtime-source` | No | Source type: `file` or `url` |
+| `baseline` | No | Path to baseline for comparison |
+| `target-p95` | No | Target p95 latency in ms |
+| `inline-comments` | No | Add inline PR comments (default: `true`) |
+| `fail-on-regression` | No | Fail if metrics regress (default: `false`) |
+
+### What happens:
 - Scans changed files
-- Posts summary comment
+- Posts summary comment with code fixes
 - Flags critical issues
 - Tracks regressions
+- Detects drift between code and runtime (if events provided)
 
 No API key needed. Uses managed service with 300 free analyses/month.
+
+See [Runtime Events Format](docs/events-format.md) for event schema details.
 
 ---
 
@@ -185,6 +249,35 @@ No API key needed. Uses managed service with 300 free analyses/month.
 
 ---
 
+## Community Templates
+
+PeakInfer ships with 27 battle-tested optimization templates across 6 stack layers:
+
+| Layer | Examples |
+|-------|----------|
+| **Application** | Streaming drift, overpowered model selection |
+| **API** | Retry explosion, untested fallbacks |
+| **Gateway** | Missing caching, rate limit gaps |
+| **Runtime** | vLLM/sglang optimization opportunities |
+| **Model** | Context accumulation, token waste |
+| **Hardware** | GPU memory, quantization opportunities |
+
+Templates provide:
+- **Detection**: Pattern-matched insights with evidence
+- **Impact estimates**: Cost/latency/throughput projections
+- **Code fixes**: One-click suggestions (CLI `--fixes`, PR comments)
+
+---
+
+## Technical Docs
+
+| Document | Description |
+|----------|-------------|
+| [Runtime Events Format](docs/events-format.md) | How to format runtime event data |
+| [InferenceMap Spec](docs/inferencemap-spec.md) | Output schema for analysis results |
+
+---
+
 ## What Teams Say
 
 > "Found $4,200/month in wasted GPT-4 calls in the first scan."
@@ -197,9 +290,30 @@ No API key needed. Uses managed service with 300 free analyses/month.
 
 ## Pricing
 
-**CLI**: Free forever. Your API key.
+**CLI**: Free forever. Bring your own API key.
 
-**GitHub Action**: 300 analyses/month free. Then $29/month.
+**GitHub Action**:
+- **Free**: 300 analyses/month
+- **Pro**: 500 analyses/user/month — $49/month
+
+[View pricing →](https://peakinfer.com/pricing)
+
+---
+
+## What's Included (v1.8)
+
+| Feature | Status |
+|---------|--------|
+| Static Analysis Engine | ✅ |
+| GitHub Action with PR Comments | ✅ |
+| Code Fix Suggestions (`--fixes`) | ✅ |
+| LiteLLM Dynamic Pricing (600+ models) | ✅ |
+| 27 Optimization Templates | ✅ |
+| GitHub OAuth | ✅ |
+| Credits API & Billing | ✅ |
+| Run History | ✅ |
+| InferenceMap v0.1 Spec | ✅ |
+| Runtime Events Schema | ✅ |
 
 ---
 

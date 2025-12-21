@@ -405,7 +405,7 @@ function renderError(error: Error, context?: { file?: string; line?: number; fie
  * 11. Findings (detailed evidence)
  * 12. Saved artifacts + Next steps
  */
-function renderSuccess(results: AgentResults): void {
+function renderSuccess(results: AgentResults, opts: { showFixes?: boolean } = {}): void {
   // Show warnings if partial state
   if (results.warnings && results.warnings.length > 0) {
     renderPartialState(results.warnings);
@@ -550,6 +550,7 @@ function renderSuccess(results: AgentResults): void {
       impactType: string;
       impactPercent: number;
       locations: string[];
+      fixes: string[];  // v1.8: Track suggested fixes
     }>();
 
     for (const insight of sortedInsights) {
@@ -562,10 +563,16 @@ function renderSuccess(results: AgentResults): void {
           impactType: insight.impact?.impactType || 'improvement',
           impactPercent: insight.impact?.estimatedImpactPercent || 0,
           locations: [],
+          fixes: [],
         });
       }
       if (insight.location) {
         grouped.get(recommendation)!.locations.push(insight.location);
+      }
+      // v1.8: Collect suggested fixes (access via type assertion since field is optional)
+      const suggestedFix = (insight as unknown as { suggestedFix?: string }).suggestedFix;
+      if (suggestedFix && !grouped.get(recommendation)!.fixes.includes(suggestedFix)) {
+        grouped.get(recommendation)!.fixes.push(suggestedFix);
       }
     }
 
@@ -584,6 +591,11 @@ function renderSuccess(results: AgentResults): void {
       const count = group.locations.length;
       console.log(`  ${marker} ${group.recommendation}${impactTag}`);
       console.log(`      ${dim(`${count} inference point${count !== 1 ? 's' : ''}`)}`);
+      // v1.8: Show fix suggestions when --fixes flag is used
+      if (opts.showFixes && group.fixes.length > 0) {
+        const fix = group.fixes[0];  // Show first unique fix
+        console.log(`      ${dim('Fix:')} ${fix}`);
+      }
     }
     console.log('');
   } else {
@@ -630,6 +642,7 @@ function renderSuccess(results: AgentResults): void {
 
 export interface RendererOptions {
   verbose?: boolean;
+  showFixes?: boolean;  // v1.8: Show code fix suggestions
 }
 
 // Progress data for user-meaningful updates
@@ -864,7 +877,7 @@ export function createRenderer(opts: RendererOptions = {}) {
         }
       }
 
-      renderSuccess(results);
+      renderSuccess(results, { showFixes: opts.showFixes });
     },
 
     renderError(error: Error, context?: { file?: string; line?: number; field?: string }): void {

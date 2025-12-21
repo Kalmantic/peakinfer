@@ -47,12 +47,12 @@ declare const GrepInputSchema: z.ZodObject<{
     files: z.ZodArray<z.ZodString, "many">;
     maxMatches: z.ZodOptional<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
-    pattern: string;
     files: string[];
+    pattern: string;
     maxMatches?: number | undefined;
 }, {
-    pattern: string;
     files: string[];
+    pattern: string;
     maxMatches?: number | undefined;
 }>;
 declare const GrepOutputSchema: z.ZodObject<{
@@ -61,26 +61,26 @@ declare const GrepOutputSchema: z.ZodObject<{
         line: z.ZodNumber;
         content: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        content: string;
         file: string;
+        content: string;
         line: number;
     }, {
-        content: string;
         file: string;
+        content: string;
         line: number;
     }>, "many">;
     totalMatches: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
     matches: {
-        content: string;
         file: string;
+        content: string;
         line: number;
     }[];
     totalMatches: number;
 }, {
     matches: {
-        content: string;
         file: string;
+        content: string;
         line: number;
     }[];
     totalMatches: number;
@@ -130,13 +130,13 @@ export declare const AGENT_TOOLS: (Tool<{
     files: string[];
     count: number;
 }> | Tool<{
-    pattern: string;
     files: string[];
+    pattern: string;
     maxMatches?: number | undefined;
 }, {
     matches: {
-        content: string;
         file: string;
+        content: string;
         line: number;
     }[];
     totalMatches: number;

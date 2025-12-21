@@ -6,6 +6,7 @@ name: Retry Storm Detection
 version: "1.0"
 category: cost
 severity: critical
+layer: api
 
 match:
   scope: callsite

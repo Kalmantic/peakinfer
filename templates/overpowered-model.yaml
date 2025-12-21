@@ -3,6 +3,7 @@ name: Overpowered Model Detection
 version: "1.0"
 category: waste
 severity: info
+layer: model
 
 match:
   scope: callsite

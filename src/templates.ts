@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { parse as parseYAML } from 'yaml';
-import { InsightTemplate } from './types.js';
+import { InsightTemplate, OptimizationTemplate } from './types.js';
 
 // =============================================================================
 // CONSTANTS
@@ -17,6 +17,7 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const BUNDLED_DIR = join(__dirname, '..', 'templates');
+const OPTIMIZATIONS_DIR = join(__dirname, '..', 'templates', 'optimizations');
 const PROMPTS_DIR = join(__dirname, '..', 'prompts');
 
 // =============================================================================
@@ -262,6 +263,59 @@ export function clearCache(): void {
       }
     }
   }
+}
+
+// =============================================================================
+// OPTIMIZATION TEMPLATES API (v1.8 - Inference Squeeze Guide)
+// =============================================================================
+
+/**
+ * Load bundled optimization templates from templates/optimizations/
+ * These are community optimization runbooks with implementation steps
+ */
+export function loadOptimizationTemplates(): OptimizationTemplate[] {
+  if (!existsSync(OPTIMIZATIONS_DIR)) return [];
+
+  const templates: OptimizationTemplate[] = [];
+  const files = readdirSync(OPTIMIZATIONS_DIR).filter(f => f.endsWith('.yaml'));
+
+  for (const file of files) {
+    try {
+      const content = readFileSync(join(OPTIMIZATIONS_DIR, file), 'utf-8');
+      const parsed = parseYAML(content);
+      const validated = OptimizationTemplate.parse(parsed);
+      templates.push(validated);
+    } catch (err) {
+      // Skip invalid templates but log for debugging
+      console.warn(`[templates] Failed to load optimization template ${file}:`, err);
+    }
+  }
+
+  return templates;
+}
+
+/**
+ * Get a single optimization template by ID
+ */
+export function getOptimizationTemplate(id: string): OptimizationTemplate | null {
+  const templates = loadOptimizationTemplates();
+  return templates.find(t => t.id === id) || null;
+}
+
+/**
+ * List all optimization template IDs
+ */
+export function listOptimizationTemplates(): string[] {
+  const templates = loadOptimizationTemplates();
+  return templates.map(t => t.id);
+}
+
+/**
+ * Get optimization templates by category
+ */
+export function getOptimizationTemplatesByCategory(category: string): OptimizationTemplate[] {
+  const templates = loadOptimizationTemplates();
+  return templates.filter(t => t.category === category);
 }
 
 // =============================================================================

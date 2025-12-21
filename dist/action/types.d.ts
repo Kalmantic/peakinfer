@@ -51,12 +51,12 @@ export declare const Callsite: z.ZodObject<{
     confidence: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    model: string | null;
     runtime: string | null;
+    model: string | null;
     confidence: number;
     file: string;
-    line: number;
     provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+    line: number;
     framework: string | null;
     patterns: {
         streaming?: boolean | undefined;
@@ -67,12 +67,12 @@ export declare const Callsite: z.ZodObject<{
     };
 }, {
     id: string;
-    model: string | null;
     runtime: string | null;
+    model: string | null;
     confidence: number;
     file: string;
-    line: number;
     provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+    line: number;
     framework: string | null;
     patterns: {
         streaming?: boolean | undefined;
@@ -261,12 +261,12 @@ export declare const InferenceMap: z.ZodObject<{
         confidence: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -277,12 +277,12 @@ export declare const InferenceMap: z.ZodObject<{
         };
     }, {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -301,12 +301,12 @@ export declare const InferenceMap: z.ZodObject<{
     };
     callsites: {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -336,12 +336,12 @@ export declare const InferenceMap: z.ZodObject<{
     };
     callsites: {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -384,8 +384,8 @@ export declare const InferenceEvent: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     id: string;
     model: string;
-    provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp";
     ts: string;
+    provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp";
     input_tokens: number;
     output_tokens: number;
     latency_ms: number;
@@ -402,8 +402,8 @@ export declare const InferenceEvent: z.ZodObject<{
 }, {
     id: string;
     model: string;
-    provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp";
     ts: string;
+    provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp";
     input_tokens: number;
     output_tokens: number;
     latency_ms: number;
@@ -640,12 +640,12 @@ export declare const EnrichedCallsite: z.ZodObject<{
     }>>;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    model: string | null;
     runtime: string | null;
+    model: string | null;
     confidence: number;
     file: string;
-    line: number;
     provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+    line: number;
     framework: string | null;
     patterns: {
         streaming?: boolean | undefined;
@@ -664,12 +664,12 @@ export declare const EnrichedCallsite: z.ZodObject<{
     } | undefined;
 }, {
     id: string;
-    model: string | null;
     runtime: string | null;
+    model: string | null;
     confidence: number;
     file: string;
-    line: number;
     provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+    line: number;
     framework: string | null;
     patterns: {
         streaming?: boolean | undefined;
@@ -741,12 +741,12 @@ export declare const JoinedOutput: z.ZodObject<{
         }>>;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -765,12 +765,12 @@ export declare const JoinedOutput: z.ZodObject<{
         } | undefined;
     }, {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -818,12 +818,12 @@ export declare const JoinedOutput: z.ZodObject<{
         confidence: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -834,12 +834,12 @@ export declare const JoinedOutput: z.ZodObject<{
         };
     }, {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -870,8 +870,8 @@ export declare const JoinedOutput: z.ZodObject<{
     }, "strip", z.ZodTypeAny, {
         id: string;
         model: string;
-        provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp";
         ts: string;
+        provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp";
         input_tokens: number;
         output_tokens: number;
         latency_ms: number;
@@ -888,8 +888,8 @@ export declare const JoinedOutput: z.ZodObject<{
     }, {
         id: string;
         model: string;
-        provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp";
         ts: string;
+        provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp";
         input_tokens: number;
         output_tokens: number;
         latency_ms: number;
@@ -933,12 +933,12 @@ export declare const JoinedOutput: z.ZodObject<{
     }[];
     callsites: {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -958,12 +958,12 @@ export declare const JoinedOutput: z.ZodObject<{
     }[];
     codeOnly: {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -976,8 +976,8 @@ export declare const JoinedOutput: z.ZodObject<{
     runtimeOnly: {
         id: string;
         model: string;
-        provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp";
         ts: string;
+        provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp";
         input_tokens: number;
         output_tokens: number;
         latency_ms: number;
@@ -1002,12 +1002,12 @@ export declare const JoinedOutput: z.ZodObject<{
     }[];
     callsites: {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -1027,12 +1027,12 @@ export declare const JoinedOutput: z.ZodObject<{
     }[];
     codeOnly: {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -1045,8 +1045,8 @@ export declare const JoinedOutput: z.ZodObject<{
     runtimeOnly: {
         id: string;
         model: string;
-        provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp";
         ts: string;
+        provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp";
         input_tokens: number;
         output_tokens: number;
         latency_ms: number;
@@ -1090,6 +1090,7 @@ export declare const InsightTemplate: z.ZodObject<{
     version: z.ZodString;
     category: z.ZodEnum<["cost", "latency", "drift", "reliability", "waste", "throughput", "security", "best-practice"]>;
     severity: z.ZodEnum<["critical", "warning", "info"]>;
+    layer: z.ZodOptional<z.ZodEnum<["application", "api", "gateway", "runtime", "model", "hardware"]>>;
     match: z.ZodObject<{
         scope: z.ZodEnum<["callsite", "joined", "global", "envelope"]>;
         conditions: z.ZodArray<z.ZodObject<{
@@ -1167,6 +1168,7 @@ export declare const InsightTemplate: z.ZodObject<{
         headline: string;
         evidence: string;
     };
+    layer?: "application" | "api" | "gateway" | "runtime" | "model" | "hardware" | undefined;
     defaults?: Record<string, number> | undefined;
 }, {
     id: string;
@@ -1189,13 +1191,444 @@ export declare const InsightTemplate: z.ZodObject<{
         headline: string;
         evidence: string;
     };
+    layer?: "application" | "api" | "gateway" | "runtime" | "model" | "hardware" | undefined;
     defaults?: Record<string, number> | undefined;
 }>;
-export declare const StackLayer: z.ZodEnum<["application", "model", "runtime", "infrastructure"]>;
+/**
+ * Optimization template category - matches Inference Squeeze Guide structure
+ */
+export declare const OptimizationCategory: z.ZodEnum<["runtime_optimization", "batching_optimization", "memory_optimization", "application_optimization", "cost_optimization", "monitoring", "scaling"]>;
+/**
+ * Risk level for optimization implementation
+ */
+export declare const OptimizationRiskLevel: z.ZodEnum<["low", "medium", "high"]>;
+/**
+ * Implementation step with validation and rollback
+ */
+export declare const ImplementationStep: z.ZodObject<{
+    step_id: z.ZodString;
+    name: z.ZodString;
+    executable: z.ZodOptional<z.ZodBoolean>;
+    commands: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    validation: z.ZodOptional<z.ZodObject<{
+        command: z.ZodOptional<z.ZodString>;
+        success_criteria: z.ZodOptional<z.ZodString>;
+        rollback_command: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        command?: string | undefined;
+        success_criteria?: string | undefined;
+        rollback_command?: string | undefined;
+    }, {
+        command?: string | undefined;
+        success_criteria?: string | undefined;
+        rollback_command?: string | undefined;
+    }>>;
+}, "strip", z.ZodTypeAny, {
+    name: string;
+    step_id: string;
+    validation?: {
+        command?: string | undefined;
+        success_criteria?: string | undefined;
+        rollback_command?: string | undefined;
+    } | undefined;
+    executable?: boolean | undefined;
+    commands?: string[] | undefined;
+}, {
+    name: string;
+    step_id: string;
+    validation?: {
+        command?: string | undefined;
+        success_criteria?: string | undefined;
+        rollback_command?: string | undefined;
+    } | undefined;
+    executable?: boolean | undefined;
+    commands?: string[] | undefined;
+}>;
+/**
+ * Monitoring metric configuration
+ */
+export declare const MonitoringMetric: z.ZodObject<{
+    metric: z.ZodString;
+    target: z.ZodString;
+    alert_threshold: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    target: string;
+    metric: string;
+    alert_threshold: string;
+}, {
+    target: string;
+    metric: string;
+    alert_threshold: string;
+}>;
+/**
+ * Rollback trigger configuration
+ */
+export declare const RollbackTrigger: z.ZodObject<{
+    condition: z.ZodString;
+    action: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    condition: string;
+    action: string;
+}, {
+    condition: string;
+    action: string;
+}>;
+/**
+ * Community Optimization Template - runbook-style templates from Inference Squeeze Guide
+ * These templates provide step-by-step implementation guides with ROI estimates
+ */
+export declare const OptimizationTemplate: z.ZodObject<{
+    id: z.ZodString;
+    name: z.ZodString;
+    description: z.ZodString;
+    category: z.ZodEnum<["runtime_optimization", "batching_optimization", "memory_optimization", "application_optimization", "cost_optimization", "monitoring", "scaling"]>;
+    confidence: z.ZodNumber;
+    success_count: z.ZodOptional<z.ZodNumber>;
+    verified_environments: z.ZodOptional<z.ZodNumber>;
+    contributors: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    last_updated: z.ZodOptional<z.ZodString>;
+    environment_match: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodBoolean, z.ZodArray<z.ZodString, "many">]>>>;
+    optimization: z.ZodObject<{
+        technique: z.ZodString;
+        expected_cost_reduction: z.ZodOptional<z.ZodString>;
+        expected_latency_improvement: z.ZodOptional<z.ZodString>;
+        expected_throughput_improvement: z.ZodOptional<z.ZodString>;
+        expected_memory_reduction: z.ZodOptional<z.ZodString>;
+        expected_quality_retention: z.ZodOptional<z.ZodString>;
+        effort_estimate: z.ZodString;
+        risk_level: z.ZodEnum<["low", "medium", "high"]>;
+    }, "strip", z.ZodTypeAny, {
+        technique: string;
+        effort_estimate: string;
+        risk_level: "high" | "medium" | "low";
+        expected_cost_reduction?: string | undefined;
+        expected_latency_improvement?: string | undefined;
+        expected_throughput_improvement?: string | undefined;
+        expected_memory_reduction?: string | undefined;
+        expected_quality_retention?: string | undefined;
+    }, {
+        technique: string;
+        effort_estimate: string;
+        risk_level: "high" | "medium" | "low";
+        expected_cost_reduction?: string | undefined;
+        expected_latency_improvement?: string | undefined;
+        expected_throughput_improvement?: string | undefined;
+        expected_memory_reduction?: string | undefined;
+        expected_quality_retention?: string | undefined;
+    }>;
+    economics: z.ZodOptional<z.ZodObject<{
+        baseline_calculation: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodNumber]>>>;
+        projected_improvement: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodNumber]>>>;
+        projected_savings: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodNumber]>>>;
+        implementation_cost: z.ZodOptional<z.ZodObject<{
+            engineering_hours: z.ZodOptional<z.ZodNumber>;
+            hourly_rate: z.ZodOptional<z.ZodNumber>;
+            compute_hours: z.ZodOptional<z.ZodNumber>;
+            total_cost: z.ZodNumber;
+        }, "strip", z.ZodTypeAny, {
+            total_cost: number;
+            engineering_hours?: number | undefined;
+            hourly_rate?: number | undefined;
+            compute_hours?: number | undefined;
+        }, {
+            total_cost: number;
+            engineering_hours?: number | undefined;
+            hourly_rate?: number | undefined;
+            compute_hours?: number | undefined;
+        }>>;
+        roi_calculation: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    }, "strip", z.ZodTypeAny, {
+        baseline_calculation?: Record<string, string | number> | undefined;
+        projected_improvement?: Record<string, string | number> | undefined;
+        projected_savings?: Record<string, string | number> | undefined;
+        implementation_cost?: {
+            total_cost: number;
+            engineering_hours?: number | undefined;
+            hourly_rate?: number | undefined;
+            compute_hours?: number | undefined;
+        } | undefined;
+        roi_calculation?: Record<string, string> | undefined;
+    }, {
+        baseline_calculation?: Record<string, string | number> | undefined;
+        projected_improvement?: Record<string, string | number> | undefined;
+        projected_savings?: Record<string, string | number> | undefined;
+        implementation_cost?: {
+            total_cost: number;
+            engineering_hours?: number | undefined;
+            hourly_rate?: number | undefined;
+            compute_hours?: number | undefined;
+        } | undefined;
+        roi_calculation?: Record<string, string> | undefined;
+    }>>;
+    implementation: z.ZodOptional<z.ZodObject<{
+        prerequisites: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            requirement: z.ZodString;
+            validation_command: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            requirement: string;
+            validation_command?: string | undefined;
+        }, {
+            requirement: string;
+            validation_command?: string | undefined;
+        }>, "many">>;
+        automated_steps: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            step_id: z.ZodString;
+            name: z.ZodString;
+            executable: z.ZodOptional<z.ZodBoolean>;
+            commands: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            validation: z.ZodOptional<z.ZodObject<{
+                command: z.ZodOptional<z.ZodString>;
+                success_criteria: z.ZodOptional<z.ZodString>;
+                rollback_command: z.ZodOptional<z.ZodString>;
+            }, "strip", z.ZodTypeAny, {
+                command?: string | undefined;
+                success_criteria?: string | undefined;
+                rollback_command?: string | undefined;
+            }, {
+                command?: string | undefined;
+                success_criteria?: string | undefined;
+                rollback_command?: string | undefined;
+            }>>;
+        }, "strip", z.ZodTypeAny, {
+            name: string;
+            step_id: string;
+            validation?: {
+                command?: string | undefined;
+                success_criteria?: string | undefined;
+                rollback_command?: string | undefined;
+            } | undefined;
+            executable?: boolean | undefined;
+            commands?: string[] | undefined;
+        }, {
+            name: string;
+            step_id: string;
+            validation?: {
+                command?: string | undefined;
+                success_criteria?: string | undefined;
+                rollback_command?: string | undefined;
+            } | undefined;
+            executable?: boolean | undefined;
+            commands?: string[] | undefined;
+        }>, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        prerequisites?: {
+            requirement: string;
+            validation_command?: string | undefined;
+        }[] | undefined;
+        automated_steps?: {
+            name: string;
+            step_id: string;
+            validation?: {
+                command?: string | undefined;
+                success_criteria?: string | undefined;
+                rollback_command?: string | undefined;
+            } | undefined;
+            executable?: boolean | undefined;
+            commands?: string[] | undefined;
+        }[] | undefined;
+    }, {
+        prerequisites?: {
+            requirement: string;
+            validation_command?: string | undefined;
+        }[] | undefined;
+        automated_steps?: {
+            name: string;
+            step_id: string;
+            validation?: {
+                command?: string | undefined;
+                success_criteria?: string | undefined;
+                rollback_command?: string | undefined;
+            } | undefined;
+            executable?: boolean | undefined;
+            commands?: string[] | undefined;
+        }[] | undefined;
+    }>>;
+    monitoring: z.ZodOptional<z.ZodObject<{
+        key_metrics: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            metric: z.ZodString;
+            target: z.ZodString;
+            alert_threshold: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            target: string;
+            metric: string;
+            alert_threshold: string;
+        }, {
+            target: string;
+            metric: string;
+            alert_threshold: string;
+        }>, "many">>;
+        rollback_triggers: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            condition: z.ZodString;
+            action: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            condition: string;
+            action: string;
+        }, {
+            condition: string;
+            action: string;
+        }>, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        key_metrics?: {
+            target: string;
+            metric: string;
+            alert_threshold: string;
+        }[] | undefined;
+        rollback_triggers?: {
+            condition: string;
+            action: string;
+        }[] | undefined;
+    }, {
+        key_metrics?: {
+            target: string;
+            metric: string;
+            alert_threshold: string;
+        }[] | undefined;
+        rollback_triggers?: {
+            condition: string;
+            action: string;
+        }[] | undefined;
+    }>>;
+    results: z.ZodOptional<z.ZodObject<{
+        recent_implementations: z.ZodOptional<z.ZodArray<z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodNumber]>>, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        recent_implementations?: Record<string, string | number>[] | undefined;
+    }, {
+        recent_implementations?: Record<string, string | number>[] | undefined;
+    }>>;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    category: "cost_optimization" | "runtime_optimization" | "batching_optimization" | "memory_optimization" | "application_optimization" | "monitoring" | "scaling";
+    confidence: number;
+    description: string;
+    name: string;
+    optimization: {
+        technique: string;
+        effort_estimate: string;
+        risk_level: "high" | "medium" | "low";
+        expected_cost_reduction?: string | undefined;
+        expected_latency_improvement?: string | undefined;
+        expected_throughput_improvement?: string | undefined;
+        expected_memory_reduction?: string | undefined;
+        expected_quality_retention?: string | undefined;
+    };
+    results?: {
+        recent_implementations?: Record<string, string | number>[] | undefined;
+    } | undefined;
+    monitoring?: {
+        key_metrics?: {
+            target: string;
+            metric: string;
+            alert_threshold: string;
+        }[] | undefined;
+        rollback_triggers?: {
+            condition: string;
+            action: string;
+        }[] | undefined;
+    } | undefined;
+    success_count?: number | undefined;
+    verified_environments?: number | undefined;
+    contributors?: string[] | undefined;
+    last_updated?: string | undefined;
+    environment_match?: Record<string, string | boolean | string[]> | undefined;
+    economics?: {
+        baseline_calculation?: Record<string, string | number> | undefined;
+        projected_improvement?: Record<string, string | number> | undefined;
+        projected_savings?: Record<string, string | number> | undefined;
+        implementation_cost?: {
+            total_cost: number;
+            engineering_hours?: number | undefined;
+            hourly_rate?: number | undefined;
+            compute_hours?: number | undefined;
+        } | undefined;
+        roi_calculation?: Record<string, string> | undefined;
+    } | undefined;
+    implementation?: {
+        prerequisites?: {
+            requirement: string;
+            validation_command?: string | undefined;
+        }[] | undefined;
+        automated_steps?: {
+            name: string;
+            step_id: string;
+            validation?: {
+                command?: string | undefined;
+                success_criteria?: string | undefined;
+                rollback_command?: string | undefined;
+            } | undefined;
+            executable?: boolean | undefined;
+            commands?: string[] | undefined;
+        }[] | undefined;
+    } | undefined;
+}, {
+    id: string;
+    category: "cost_optimization" | "runtime_optimization" | "batching_optimization" | "memory_optimization" | "application_optimization" | "monitoring" | "scaling";
+    confidence: number;
+    description: string;
+    name: string;
+    optimization: {
+        technique: string;
+        effort_estimate: string;
+        risk_level: "high" | "medium" | "low";
+        expected_cost_reduction?: string | undefined;
+        expected_latency_improvement?: string | undefined;
+        expected_throughput_improvement?: string | undefined;
+        expected_memory_reduction?: string | undefined;
+        expected_quality_retention?: string | undefined;
+    };
+    results?: {
+        recent_implementations?: Record<string, string | number>[] | undefined;
+    } | undefined;
+    monitoring?: {
+        key_metrics?: {
+            target: string;
+            metric: string;
+            alert_threshold: string;
+        }[] | undefined;
+        rollback_triggers?: {
+            condition: string;
+            action: string;
+        }[] | undefined;
+    } | undefined;
+    success_count?: number | undefined;
+    verified_environments?: number | undefined;
+    contributors?: string[] | undefined;
+    last_updated?: string | undefined;
+    environment_match?: Record<string, string | boolean | string[]> | undefined;
+    economics?: {
+        baseline_calculation?: Record<string, string | number> | undefined;
+        projected_improvement?: Record<string, string | number> | undefined;
+        projected_savings?: Record<string, string | number> | undefined;
+        implementation_cost?: {
+            total_cost: number;
+            engineering_hours?: number | undefined;
+            hourly_rate?: number | undefined;
+            compute_hours?: number | undefined;
+        } | undefined;
+        roi_calculation?: Record<string, string> | undefined;
+    } | undefined;
+    implementation?: {
+        prerequisites?: {
+            requirement: string;
+            validation_command?: string | undefined;
+        }[] | undefined;
+        automated_steps?: {
+            name: string;
+            step_id: string;
+            validation?: {
+                command?: string | undefined;
+                success_criteria?: string | undefined;
+                rollback_command?: string | undefined;
+            } | undefined;
+            executable?: boolean | undefined;
+            commands?: string[] | undefined;
+        }[] | undefined;
+    } | undefined;
+}>;
+export declare const StackLayer: z.ZodEnum<["application", "api", "gateway", "runtime", "model", "hardware"]>;
 export declare const ImpactType: z.ZodEnum<["cost", "latency", "throughput"]>;
 export declare const EffortLevel: z.ZodEnum<["low", "medium", "high"]>;
 export declare const ImpactEstimate: z.ZodObject<{
-    layer: z.ZodEnum<["application", "model", "runtime", "infrastructure"]>;
+    layer: z.ZodEnum<["application", "api", "gateway", "runtime", "model", "hardware"]>;
     impactType: z.ZodEnum<["cost", "latency", "throughput"]>;
     estimatedImpactPercent: z.ZodNumber;
     effort: z.ZodEnum<["low", "medium", "high"]>;
@@ -1205,7 +1638,7 @@ export declare const ImpactEstimate: z.ZodObject<{
     confidence: z.ZodOptional<z.ZodNumber>;
     assumptions: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    layer: "application" | "model" | "runtime" | "infrastructure";
+    layer: "application" | "api" | "gateway" | "runtime" | "model" | "hardware";
     impactType: "cost" | "latency" | "throughput";
     estimatedImpactPercent: number;
     effort: "high" | "medium" | "low";
@@ -1215,7 +1648,7 @@ export declare const ImpactEstimate: z.ZodObject<{
     confidence?: number | undefined;
     assumptions?: string | undefined;
 }, {
-    layer: "application" | "model" | "runtime" | "infrastructure";
+    layer: "application" | "api" | "gateway" | "runtime" | "model" | "hardware";
     impactType: "cost" | "latency" | "throughput";
     estimatedImpactPercent: number;
     effort: "high" | "medium" | "low";
@@ -1236,7 +1669,7 @@ export declare const Insight: z.ZodObject<{
     recommendation: z.ZodOptional<z.ZodString>;
     source: z.ZodOptional<z.ZodEnum<["template", "llm"]>>;
     impact: z.ZodOptional<z.ZodObject<{
-        layer: z.ZodEnum<["application", "model", "runtime", "infrastructure"]>;
+        layer: z.ZodEnum<["application", "api", "gateway", "runtime", "model", "hardware"]>;
         impactType: z.ZodEnum<["cost", "latency", "throughput"]>;
         estimatedImpactPercent: z.ZodNumber;
         effort: z.ZodEnum<["low", "medium", "high"]>;
@@ -1246,7 +1679,7 @@ export declare const Insight: z.ZodObject<{
         confidence: z.ZodOptional<z.ZodNumber>;
         assumptions: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
-        layer: "application" | "model" | "runtime" | "infrastructure";
+        layer: "application" | "api" | "gateway" | "runtime" | "model" | "hardware";
         impactType: "cost" | "latency" | "throughput";
         estimatedImpactPercent: number;
         effort: "high" | "medium" | "low";
@@ -1256,7 +1689,7 @@ export declare const Insight: z.ZodObject<{
         confidence?: number | undefined;
         assumptions?: string | undefined;
     }, {
-        layer: "application" | "model" | "runtime" | "infrastructure";
+        layer: "application" | "api" | "gateway" | "runtime" | "model" | "hardware";
         impactType: "cost" | "latency" | "throughput";
         estimatedImpactPercent: number;
         effort: "high" | "medium" | "low";
@@ -1281,7 +1714,7 @@ export declare const Insight: z.ZodObject<{
     recommendation?: string | undefined;
     source?: "template" | "llm" | undefined;
     impact?: {
-        layer: "application" | "model" | "runtime" | "infrastructure";
+        layer: "application" | "api" | "gateway" | "runtime" | "model" | "hardware";
         impactType: "cost" | "latency" | "throughput";
         estimatedImpactPercent: number;
         effort: "high" | "medium" | "low";
@@ -1306,7 +1739,7 @@ export declare const Insight: z.ZodObject<{
     recommendation?: string | undefined;
     source?: "template" | "llm" | undefined;
     impact?: {
-        layer: "application" | "model" | "runtime" | "infrastructure";
+        layer: "application" | "api" | "gateway" | "runtime" | "model" | "hardware";
         impactType: "cost" | "latency" | "throughput";
         estimatedImpactPercent: number;
         effort: "high" | "medium" | "low";
@@ -1424,6 +1857,9 @@ export type EnrichedCallsite = z.infer<typeof EnrichedCallsite>;
 export type JoinedOutput = z.infer<typeof JoinedOutput>;
 export type TemplateCondition = z.infer<typeof TemplateCondition>;
 export type InsightTemplate = z.infer<typeof InsightTemplate>;
+export type OptimizationTemplate = z.infer<typeof OptimizationTemplate>;
+export type OptimizationCategory = z.infer<typeof OptimizationCategory>;
+export type OptimizationRiskLevel = z.infer<typeof OptimizationRiskLevel>;
 export type StackLayer = z.infer<typeof StackLayer>;
 export type ImpactType = z.infer<typeof ImpactType>;
 export type EffortLevel = z.infer<typeof EffortLevel>;
@@ -1461,14 +1897,14 @@ export declare const FieldMapping: z.ZodObject<{
     confidence: number;
     target: string;
     source_path: string;
-    extraction_type: "regex" | "direct" | "jsonpath" | "column" | "computed" | "constant";
+    extraction_type: "direct" | "jsonpath" | "column" | "regex" | "computed" | "constant";
     transform: "none" | "unix_ms_to_iso" | "unix_s_to_iso" | "unix_nano_to_iso" | "duration_to_ms" | "parse_int" | "parse_float" | "lowercase" | "provider_normalize";
     evidence?: string | undefined;
 }, {
     confidence: number;
     target: string;
     source_path: string;
-    extraction_type: "regex" | "direct" | "jsonpath" | "column" | "computed" | "constant";
+    extraction_type: "direct" | "jsonpath" | "column" | "regex" | "computed" | "constant";
     evidence?: string | undefined;
     transform?: "none" | "unix_ms_to_iso" | "unix_s_to_iso" | "unix_nano_to_iso" | "duration_to_ms" | "parse_int" | "parse_float" | "lowercase" | "provider_normalize" | undefined;
 }>;
@@ -1528,14 +1964,14 @@ export declare const NormalizationResult: z.ZodObject<{
         confidence: number;
         target: string;
         source_path: string;
-        extraction_type: "regex" | "direct" | "jsonpath" | "column" | "computed" | "constant";
+        extraction_type: "direct" | "jsonpath" | "column" | "regex" | "computed" | "constant";
         transform: "none" | "unix_ms_to_iso" | "unix_s_to_iso" | "unix_nano_to_iso" | "duration_to_ms" | "parse_int" | "parse_float" | "lowercase" | "provider_normalize";
         evidence?: string | undefined;
     }, {
         confidence: number;
         target: string;
         source_path: string;
-        extraction_type: "regex" | "direct" | "jsonpath" | "column" | "computed" | "constant";
+        extraction_type: "direct" | "jsonpath" | "column" | "regex" | "computed" | "constant";
         evidence?: string | undefined;
         transform?: "none" | "unix_ms_to_iso" | "unix_s_to_iso" | "unix_nano_to_iso" | "duration_to_ms" | "parse_int" | "parse_float" | "lowercase" | "provider_normalize" | undefined;
     }>, "many">;
@@ -1569,7 +2005,7 @@ export declare const NormalizationResult: z.ZodObject<{
         confidence: number;
         target: string;
         source_path: string;
-        extraction_type: "regex" | "direct" | "jsonpath" | "column" | "computed" | "constant";
+        extraction_type: "direct" | "jsonpath" | "column" | "regex" | "computed" | "constant";
         transform: "none" | "unix_ms_to_iso" | "unix_s_to_iso" | "unix_nano_to_iso" | "duration_to_ms" | "parse_int" | "parse_float" | "lowercase" | "provider_normalize";
         evidence?: string | undefined;
     }[];
@@ -1593,7 +2029,7 @@ export declare const NormalizationResult: z.ZodObject<{
         confidence: number;
         target: string;
         source_path: string;
-        extraction_type: "regex" | "direct" | "jsonpath" | "column" | "computed" | "constant";
+        extraction_type: "direct" | "jsonpath" | "column" | "regex" | "computed" | "constant";
         evidence?: string | undefined;
         transform?: "none" | "unix_ms_to_iso" | "unix_s_to_iso" | "unix_nano_to_iso" | "duration_to_ms" | "parse_int" | "parse_float" | "lowercase" | "provider_normalize" | undefined;
     }[];
@@ -1736,7 +2172,6 @@ export declare const HistoryIndex: z.ZodObject<{
         inferencePointCount: number;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
-    version: string;
     runs: {
         timestamp: string;
         runId: string;
@@ -1744,9 +2179,9 @@ export declare const HistoryIndex: z.ZodObject<{
         analysisType: "runtime" | "static" | "combined";
         inferencePointCount: number;
     }[];
+    version: string;
     lastUpdated: string;
 }, {
-    version: string;
     runs: {
         timestamp: string;
         runId: string;
@@ -1754,6 +2189,7 @@ export declare const HistoryIndex: z.ZodObject<{
         analysisType: "runtime" | "static" | "combined";
         inferencePointCount: number;
     }[];
+    version: string;
     lastUpdated: string;
 }>;
 export type AnalysisType = z.infer<typeof AnalysisType>;
@@ -1813,12 +2249,12 @@ export declare const ChangedInferencePoint: z.ZodObject<{
         confidence: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -1829,12 +2265,12 @@ export declare const ChangedInferencePoint: z.ZodObject<{
         };
     }, {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -1860,12 +2296,12 @@ export declare const ChangedInferencePoint: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     point: {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -1883,12 +2319,12 @@ export declare const ChangedInferencePoint: z.ZodObject<{
 }, {
     point: {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -1943,12 +2379,12 @@ export declare const ComparisonResult: z.ZodObject<{
         confidence: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -1959,12 +2395,12 @@ export declare const ComparisonResult: z.ZodObject<{
         };
     }, {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -2004,12 +2440,12 @@ export declare const ComparisonResult: z.ZodObject<{
         confidence: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -2020,12 +2456,12 @@ export declare const ComparisonResult: z.ZodObject<{
         };
     }, {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -2066,12 +2502,12 @@ export declare const ComparisonResult: z.ZodObject<{
             confidence: z.ZodNumber;
         }, "strip", z.ZodTypeAny, {
             id: string;
-            model: string | null;
             runtime: string | null;
+            model: string | null;
             confidence: number;
             file: string;
-            line: number;
             provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+            line: number;
             framework: string | null;
             patterns: {
                 streaming?: boolean | undefined;
@@ -2082,12 +2518,12 @@ export declare const ComparisonResult: z.ZodObject<{
             };
         }, {
             id: string;
-            model: string | null;
             runtime: string | null;
+            model: string | null;
             confidence: number;
             file: string;
-            line: number;
             provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+            line: number;
             framework: string | null;
             patterns: {
                 streaming?: boolean | undefined;
@@ -2113,12 +2549,12 @@ export declare const ComparisonResult: z.ZodObject<{
     }, "strip", z.ZodTypeAny, {
         point: {
             id: string;
-            model: string | null;
             runtime: string | null;
+            model: string | null;
             confidence: number;
             file: string;
-            line: number;
             provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+            line: number;
             framework: string | null;
             patterns: {
                 streaming?: boolean | undefined;
@@ -2136,12 +2572,12 @@ export declare const ComparisonResult: z.ZodObject<{
     }, {
         point: {
             id: string;
-            model: string | null;
             runtime: string | null;
+            model: string | null;
             confidence: number;
             file: string;
-            line: number;
             provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+            line: number;
             framework: string | null;
             patterns: {
                 streaming?: boolean | undefined;
@@ -2202,12 +2638,12 @@ export declare const ComparisonResult: z.ZodObject<{
     currentTimestamp: string;
     added: {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -2219,12 +2655,12 @@ export declare const ComparisonResult: z.ZodObject<{
     }[];
     removed: {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -2237,12 +2673,12 @@ export declare const ComparisonResult: z.ZodObject<{
     changed: {
         point: {
             id: string;
-            model: string | null;
             runtime: string | null;
+            model: string | null;
             confidence: number;
             file: string;
-            line: number;
             provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+            line: number;
             framework: string | null;
             patterns: {
                 streaming?: boolean | undefined;
@@ -2279,12 +2715,12 @@ export declare const ComparisonResult: z.ZodObject<{
     currentTimestamp: string;
     added: {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -2296,12 +2732,12 @@ export declare const ComparisonResult: z.ZodObject<{
     }[];
     removed: {
         id: string;
-        model: string | null;
         runtime: string | null;
+        model: string | null;
         confidence: number;
         file: string;
-        line: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+        line: number;
         framework: string | null;
         patterns: {
             streaming?: boolean | undefined;
@@ -2314,12 +2750,12 @@ export declare const ComparisonResult: z.ZodObject<{
     changed: {
         point: {
             id: string;
-            model: string | null;
             runtime: string | null;
+            model: string | null;
             confidence: number;
             file: string;
-            line: number;
             provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
+            line: number;
             framework: string | null;
             patterns: {
                 streaming?: boolean | undefined;
@@ -2768,14 +3204,14 @@ export declare const CounterfactualState: z.ZodObject<{
     estimatedLatency: number;
     estimatedCost: number;
     model?: string | undefined;
-    pattern?: string | undefined;
     provider?: string | undefined;
+    pattern?: string | undefined;
 }, {
     estimatedLatency: number;
     estimatedCost: number;
     model?: string | undefined;
-    pattern?: string | undefined;
     provider?: string | undefined;
+    pattern?: string | undefined;
 }>;
 /**
  * Impact assessment for a counterfactual.
@@ -2818,14 +3254,14 @@ export declare const Counterfactual: z.ZodObject<{
         estimatedLatency: number;
         estimatedCost: number;
         model?: string | undefined;
-        pattern?: string | undefined;
         provider?: string | undefined;
+        pattern?: string | undefined;
     }, {
         estimatedLatency: number;
         estimatedCost: number;
         model?: string | undefined;
-        pattern?: string | undefined;
         provider?: string | undefined;
+        pattern?: string | undefined;
     }>;
     proposedState: z.ZodObject<{
         model: z.ZodOptional<z.ZodString>;
@@ -2837,14 +3273,14 @@ export declare const Counterfactual: z.ZodObject<{
         estimatedLatency: number;
         estimatedCost: number;
         model?: string | undefined;
-        pattern?: string | undefined;
         provider?: string | undefined;
+        pattern?: string | undefined;
     }, {
         estimatedLatency: number;
         estimatedCost: number;
         model?: string | undefined;
-        pattern?: string | undefined;
         provider?: string | undefined;
+        pattern?: string | undefined;
     }>;
     impact: z.ZodObject<{
         latencyDelta: z.ZodNumber;
@@ -2887,15 +3323,15 @@ export declare const Counterfactual: z.ZodObject<{
         estimatedLatency: number;
         estimatedCost: number;
         model?: string | undefined;
-        pattern?: string | undefined;
         provider?: string | undefined;
+        pattern?: string | undefined;
     };
     proposedState: {
         estimatedLatency: number;
         estimatedCost: number;
         model?: string | undefined;
-        pattern?: string | undefined;
         provider?: string | undefined;
+        pattern?: string | undefined;
     };
     affectedPoints: string[];
     confidenceReason?: string | undefined;
@@ -2917,15 +3353,15 @@ export declare const Counterfactual: z.ZodObject<{
         estimatedLatency: number;
         estimatedCost: number;
         model?: string | undefined;
-        pattern?: string | undefined;
         provider?: string | undefined;
+        pattern?: string | undefined;
     };
     proposedState: {
         estimatedLatency: number;
         estimatedCost: number;
         model?: string | undefined;
-        pattern?: string | undefined;
         provider?: string | undefined;
+        pattern?: string | undefined;
     };
     affectedPoints: string[];
     confidenceReason?: string | undefined;
@@ -2974,14 +3410,14 @@ export declare const CounterfactualResult: z.ZodObject<{
             estimatedLatency: number;
             estimatedCost: number;
             model?: string | undefined;
-            pattern?: string | undefined;
             provider?: string | undefined;
+            pattern?: string | undefined;
         }, {
             estimatedLatency: number;
             estimatedCost: number;
             model?: string | undefined;
-            pattern?: string | undefined;
             provider?: string | undefined;
+            pattern?: string | undefined;
         }>;
         proposedState: z.ZodObject<{
             model: z.ZodOptional<z.ZodString>;
@@ -2993,14 +3429,14 @@ export declare const CounterfactualResult: z.ZodObject<{
             estimatedLatency: number;
             estimatedCost: number;
             model?: string | undefined;
-            pattern?: string | undefined;
             provider?: string | undefined;
+            pattern?: string | undefined;
         }, {
             estimatedLatency: number;
             estimatedCost: number;
             model?: string | undefined;
-            pattern?: string | undefined;
             provider?: string | undefined;
+            pattern?: string | undefined;
         }>;
         impact: z.ZodObject<{
             latencyDelta: z.ZodNumber;
@@ -3043,15 +3479,15 @@ export declare const CounterfactualResult: z.ZodObject<{
             estimatedLatency: number;
             estimatedCost: number;
             model?: string | undefined;
-            pattern?: string | undefined;
             provider?: string | undefined;
+            pattern?: string | undefined;
         };
         proposedState: {
             estimatedLatency: number;
             estimatedCost: number;
             model?: string | undefined;
-            pattern?: string | undefined;
             provider?: string | undefined;
+            pattern?: string | undefined;
         };
         affectedPoints: string[];
         confidenceReason?: string | undefined;
@@ -3073,15 +3509,15 @@ export declare const CounterfactualResult: z.ZodObject<{
             estimatedLatency: number;
             estimatedCost: number;
             model?: string | undefined;
-            pattern?: string | undefined;
             provider?: string | undefined;
+            pattern?: string | undefined;
         };
         proposedState: {
             estimatedLatency: number;
             estimatedCost: number;
             model?: string | undefined;
-            pattern?: string | undefined;
             provider?: string | undefined;
+            pattern?: string | undefined;
         };
         affectedPoints: string[];
         confidenceReason?: string | undefined;
@@ -3136,15 +3572,15 @@ export declare const CounterfactualResult: z.ZodObject<{
             estimatedLatency: number;
             estimatedCost: number;
             model?: string | undefined;
-            pattern?: string | undefined;
             provider?: string | undefined;
+            pattern?: string | undefined;
         };
         proposedState: {
             estimatedLatency: number;
             estimatedCost: number;
             model?: string | undefined;
-            pattern?: string | undefined;
             provider?: string | undefined;
+            pattern?: string | undefined;
         };
         affectedPoints: string[];
         confidenceReason?: string | undefined;
@@ -3177,15 +3613,15 @@ export declare const CounterfactualResult: z.ZodObject<{
             estimatedLatency: number;
             estimatedCost: number;
             model?: string | undefined;
-            pattern?: string | undefined;
             provider?: string | undefined;
+            pattern?: string | undefined;
         };
         proposedState: {
             estimatedLatency: number;
             estimatedCost: number;
             model?: string | undefined;
-            pattern?: string | undefined;
             provider?: string | undefined;
+            pattern?: string | undefined;
         };
         affectedPoints: string[];
         confidenceReason?: string | undefined;

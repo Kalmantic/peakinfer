@@ -1,0 +1,75 @@
+id: system-prompt-optimization
+name: Redundant System Prompt Optimization
+description: Reduce system prompt token costs through caching and optimization
+category: cost_optimization
+confidence: 0.91
+success_count: 1890
+verified_environments: 89
+contributors:
+  - prompt_engineer
+  - token_optimizer
+last_updated: "2024-12-30"
+
+environment_match:
+  system_prompt_length: ">500 tokens"
+  request_volume: ">10K/day"
+  system_prompt_repetition: high
+
+optimization:
+  technique: system_prompt_caching
+  expected_cost_reduction: "15-30%"
+  effort_estimate: "1-2 days"
+  risk_level: low
+
+economics:
+  baseline_calculation:
+    system_tokens_per_request: 800
+    daily_requests: 50000
+  projected_improvement:
+    cached_token_savings_percent: 25
+  implementation_cost:
+    engineering_hours: 12
+    total_cost: 2400
+
+implementation:
+  prerequisites:
+    - requirement: "Prompt caching support (Anthropic/OpenAI)"
+    - requirement: "Stable system prompt"
+  automated_steps:
+    - step_id: prompt_analysis
+      name: System Prompt Analysis
+      executable: true
+      commands:
+        - "python scripts/analyze_system_prompts.py"
+        - "python scripts/identify_cacheable_content.py"
+      validation:
+        command: "python scripts/validate_analysis.py"
+        success_criteria: "cacheable_tokens > 400"
+    - step_id: caching_setup
+      name: Prompt Caching Setup
+      executable: true
+      commands:
+        - "python scripts/enable_prompt_caching.py"
+        - "python scripts/optimize_prompt_structure.py"
+      validation:
+        command: "python scripts/verify_caching.py"
+        success_criteria: "cache_hit_rate > 0.9"
+
+monitoring:
+  key_metrics:
+    - metric: cache_hit_rate
+      target: ">0.95"
+      alert_threshold: "<0.8"
+    - metric: input_token_cost
+      target: "<baseline * 0.75"
+      alert_threshold: ">baseline * 0.9"
+  rollback_triggers:
+    - condition: "cache_hit_rate < 0.5 for 10 minutes"
+      action: alert_and_investigation
+
+results:
+  recent_implementations:
+    - environment: chatbot_service
+      baseline_token_cost_daily: 500
+      optimized_token_cost_daily: 375
+      cost_reduction_percent: 25

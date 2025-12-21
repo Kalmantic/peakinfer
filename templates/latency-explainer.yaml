@@ -3,6 +3,7 @@ name: Latency Explainer
 version: "1.0"
 category: latency
 severity: warning
+layer: application
 
 match:
   scope: callsite

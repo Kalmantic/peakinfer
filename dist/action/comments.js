@@ -113,6 +113,28 @@ export function generatePRComment(data) {
     else {
         lines.push('**Issues:** ✅ None\n');
     }
+    // v1.8: Runtime Correlation section (per PRD v1.9 §0 - Ship the JOIN)
+    lines.push('### Runtime Correlation\n');
+    if (data.hasRuntime) {
+        lines.push(`✅ Analyzed **${data.runtimeEventCount?.toLocaleString() || 0} events**\n`);
+    }
+    else {
+        lines.push('🔒 **No runtime events provided.**\n');
+        lines.push('');
+        lines.push('With runtime data, PeakInfer detects:');
+        lines.push('- Streaming declared but not working (2-5x latency impact)');
+        lines.push('- Model mismatches (code says gpt-4, runtime uses gpt-3.5)');
+        lines.push('- Retry logic that never fires');
+        lines.push('- Cache layers with 0% hit rate');
+        lines.push('');
+        lines.push('**Add to your workflow:**');
+        lines.push('```yaml');
+        lines.push('- uses: kalmantic/peakinfer-action@v1');
+        lines.push('  with:');
+        lines.push('    path: ./src');
+        lines.push('    runtime: ./events.jsonl');
+        lines.push('```\n');
+    }
     // Issues section with inline fixes
     if (newIssues.length > 0) {
         lines.push('### Issues\n');

@@ -1,4 +1,4 @@
-import { InsightTemplate } from './types.js';
+import { InsightTemplate, OptimizationTemplate } from './types.js';
 /**
  * Analysis prompt configuration loaded from YAML
  * Used for LLM-based code analysis with configurable focus areas
@@ -29,6 +29,23 @@ export declare function getTemplate(id: string, opts?: LoadOptions): Promise<Ins
  * Clear template cache
  */
 export declare function clearCache(): void;
+/**
+ * Load bundled optimization templates from templates/optimizations/
+ * These are community optimization runbooks with implementation steps
+ */
+export declare function loadOptimizationTemplates(): OptimizationTemplate[];
+/**
+ * Get a single optimization template by ID
+ */
+export declare function getOptimizationTemplate(id: string): OptimizationTemplate | null;
+/**
+ * List all optimization template IDs
+ */
+export declare function listOptimizationTemplates(): string[];
+/**
+ * Get optimization templates by category
+ */
+export declare function getOptimizationTemplatesByCategory(category: string): OptimizationTemplate[];
 /**
  * Load an analysis prompt by ID from the prompts directory
  * @param id - Prompt ID (e.g., 'peak-performance')
