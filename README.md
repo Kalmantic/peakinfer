@@ -293,8 +293,8 @@ Templates provide:
 **CLI**: Free forever. Bring your own API key.
 
 **GitHub Action**:
-- **Free**: 300 analyses/month
-- **Pro**: 500 analyses/user/month — $49/month
+- **Free**: $0 — 300 credits/10 days (hard cap, resets automatically)
+- **Pro**: $20 for 500 credits (one-time purchase), $0.05/credit overage
 
 [View pricing →](https://peakinfer.com/pricing)
 
