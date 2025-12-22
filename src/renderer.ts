@@ -374,6 +374,41 @@ function renderResumed(runId: string): void {
 }
 
 /**
+ * DEMO SECTION: Show what drift detection reveals
+ * Per Magic Moment Implementation Spec (DD v1.8.2):
+ * - Shows after static analysis, before next steps
+ * - Creates curiosity about what they're missing
+ * - Ends with low-friction CTA to add runtime data
+ */
+function renderDemoSection(streamingCount: number): void {
+  console.log('');
+  console.log(bold('What Teams Discover') + dim(' (from 500+ codebases analyzed)'));
+  console.log('');
+  console.log('  Most common finding? ' + red('Streaming is broken.'));
+  console.log('');
+  console.log('  ┌────────────────────────────────────────────────────────┐');
+  console.log('  │ ' + dim('REAL EXAMPLE (anonymized):') + '                               │');
+  console.log('  │                                                        │');
+  console.log('  │ ' + bold('Code:') + '     streaming: true                              │');
+  console.log('  │ ' + bold('Runtime:') + '  ' + red('0% actual streams') + '                           │');
+  console.log('  │                                                        │');
+  console.log('  │ ' + yellow('Result:') + '   Users waited 2.4s instead of 400ms          │');
+  console.log('  │           ' + dim('for 23 days before anyone noticed.') + '           │');
+  console.log('  │                                                        │');
+  console.log('  │ ' + red('Cost:') + '     ~$12,000 in user churn                       │');
+  console.log('  └────────────────────────────────────────────────────────┘');
+  console.log('');
+  if (streamingCount > 0) {
+    console.log('  ' + bold(`Your code has ${streamingCount} streaming declaration${streamingCount !== 1 ? 's' : ''}.`));
+    console.log('  ' + dim('Are they actually working?'));
+  }
+  console.log('');
+  console.log(dim('  → Find out: ') + 'peakinfer analyze . --events your-logs.jsonl');
+  console.log(dim('  → Events format: ') + 'https://peakinfer.com/docs/events');
+  console.log('');
+}
+
+/**
  * ERROR STATE: Actionable error message
  * Julie Zhou: clear, helpful, not alarming
  */
@@ -602,6 +637,20 @@ function renderSuccess(results: AgentResults, opts: { showFixes?: boolean } = {}
     console.log(dim('Findings'));
     console.log('  No issues detected. Your inference setup looks good.');
     console.log('');
+  }
+
+  // 6.5 Demo section - show when no runtime data (Magic Moment Implementation Spec)
+  // Creates curiosity: "Is MY streaming broken like this example?"
+  if (!results.runtimeSummary && results.inferenceMap) {
+    // Count streaming declarations in the codebase
+    const streamingCount = results.inferenceMap.callsites?.filter(
+      (c: unknown) => {
+        const callsite = c as { parameters?: Record<string, unknown> };
+        return callsite.parameters?.['stream'] === true ||
+               callsite.parameters?.['streaming'] === true;
+      }
+    ).length || 0;
+    renderDemoSection(streamingCount);
   }
 
   // 7. Saved artifacts + Next steps

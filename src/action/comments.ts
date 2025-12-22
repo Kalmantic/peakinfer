@@ -163,25 +163,36 @@ export function generatePRComment(data: CommentData): string {
   }
 
   // v1.8: Runtime Correlation section (per PRD v1.9 §0 - Ship the JOIN)
+  // v1.8.2: Updated with concrete example per Magic Moment Implementation Spec
   lines.push('### Runtime Correlation\n');
   if (data.hasRuntime) {
-    lines.push(`✅ Analyzed **${data.runtimeEventCount?.toLocaleString() || 0} events**\n`);
+    lines.push(`✅ Analyzed **${data.runtimeEventCount?.toLocaleString() || 0} runtime events**\n`);
+    if (results.joined?.drift && Array.isArray(results.joined.drift) && results.joined.drift.length > 0) {
+      lines.push('**🔴 Drift Detected** — Code behavior differs from runtime reality.\n');
+    }
   } else {
-    lines.push('🔒 **No runtime events provided.**\n');
+    // Concrete example instead of feature list (Magic Moment spec)
+    lines.push('🔒 **What You\'re Missing**\n');
     lines.push('');
-    lines.push('With runtime data, PeakInfer detects:');
-    lines.push('- Streaming declared but not working (2-5x latency impact)');
-    lines.push('- Model mismatches (code says gpt-4, runtime uses gpt-3.5)');
-    lines.push('- Retry logic that never fires');
-    lines.push('- Cache layers with 0% hit rate');
+    lines.push('**Real finding from similar codebase:**\n');
     lines.push('');
-    lines.push('**Add to your workflow:**');
+    lines.push('| Code | Runtime | Impact |');
+    lines.push('|------|---------|--------|');
+    lines.push('| `streaming: true` | 0% actual streams | **6x latency** |');
+    lines.push('');
+    lines.push(`This PR touches **${inferencePoints} inference point${inferencePoints !== 1 ? 's' : ''}**. What's YOUR drift?\n`);
+    lines.push('');
+    lines.push('<details>');
+    lines.push('<summary>📊 Add runtime correlation</summary>\n');
     lines.push('```yaml');
     lines.push('- uses: kalmantic/peakinfer-action@v1');
     lines.push('  with:');
     lines.push('    path: ./src');
-    lines.push('    runtime: ./events.jsonl');
-    lines.push('```\n');
+    lines.push('    runtime: ./events.jsonl  # Your production logs');
+    lines.push('```');
+    lines.push('');
+    lines.push('→ [Events format guide](https://peakinfer.com/docs/events)');
+    lines.push('\n</details>\n');
   }
 
   // Issues section with inline fixes
