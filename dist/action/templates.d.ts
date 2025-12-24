@@ -39,14 +39,6 @@ export declare function loadOptimizationTemplates(): OptimizationTemplate[];
  */
 export declare function getOptimizationTemplate(id: string): OptimizationTemplate | null;
 /**
- * List all optimization template IDs
- */
-export declare function listOptimizationTemplates(): string[];
-/**
- * Get optimization templates by category
- */
-export declare function getOptimizationTemplatesByCategory(category: string): OptimizationTemplate[];
-/**
  * Load an analysis prompt by ID from the prompts directory
  * @param id - Prompt ID (e.g., 'peak-performance')
  * @returns AnalysisPrompt or null if not found
@@ -57,11 +49,6 @@ export declare function loadPrompt(id: string): AnalysisPrompt | null;
  * @returns Array of prompt IDs
  */
 export declare function listPrompts(): string[];
-/**
- * Load all available analysis prompts
- * @returns Map of prompt ID to AnalysisPrompt
- */
-export declare function loadAllPrompts(): Map<string, AnalysisPrompt>;
 /**
  * Get the default analysis prompt (peak-performance)
  * @returns AnalysisPrompt
@@ -130,7 +117,3 @@ export declare function getConfiguredMode(): 'agent' | 'llm' | 'regex';
  * @returns true if cascade is enabled
  */
 export declare function isCascadeEnabled(): boolean;
-/**
- * Clear cached configuration (useful for testing)
- */
-export declare function clearConfigCache(): void;

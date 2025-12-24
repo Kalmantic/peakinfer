@@ -1,8 +1,8 @@
 /**
- * Export Command (v1.6 - GAP 4)
+ * Export Command (v1.6)
  *
  * CLI command for exporting analysis results in various formats:
- * - inferencemap: InferenceMap v1.0 schema (default)
+ * - inferencemap: InferenceMap v0.1 schema (default)
  * - json: Full analysis results
  * - prometheus: Prometheus metrics format
  */
@@ -34,21 +34,19 @@ interface AnalysisExport {
 // =============================================================================
 
 /**
- * Export in InferenceMap v1.0 schema format
+ * Export in InferenceMap v0.1 schema format
+ * Matches schemas/inference-map.v0.1.json
  */
 function exportInferenceMap(data: AnalysisExport): string {
   if (!data.inferenceMap) {
     throw new Error('No inference map data available to export');
   }
 
-  // InferenceMap v1.0 schema
-  // Destructure to avoid duplicate version property
-  const { version: _existingVersion, ...inferenceMapData } = data.inferenceMap;
+  // InferenceMap v0.1 schema - preserve the original version
+  // The inferenceMap should already have version: "0.1"
   const output = {
-    schema: 'inferencemap',
-    version: '1.0',
+    ...data.inferenceMap,
     exportedAt: new Date().toISOString(),
-    ...inferenceMapData,
   };
 
   return JSON.stringify(output, null, 2);

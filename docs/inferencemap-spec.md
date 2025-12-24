@@ -38,11 +38,11 @@ Optional context about how the analysis was performed:
 {
   "metadata": {
     "absolutePath": "/Users/dev/project/src",
-    "promptId": "peakinfer-v1.8",
-    "promptVersion": "1.0.0",
+    "promptId": "unified-analyzer",
+    "promptVersion": "1.6.0",
     "templatesVersion": "1.0.0",
     "llmProvider": "anthropic",
-    "llmModel": "claude-3-opus-20240229"
+    "llmModel": "claude-sonnet-4-20250514"
   }
 }
 ```
@@ -176,7 +176,7 @@ type Provider =
   "metadata": {
     "absolutePath": "/Users/dev/project/src",
     "llmProvider": "anthropic",
-    "llmModel": "claude-3-opus-20240229"
+    "llmModel": "claude-sonnet-4-20250514"
   },
   "summary": {
     "totalCallsites": 3,

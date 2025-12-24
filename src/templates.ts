@@ -302,22 +302,6 @@ export function getOptimizationTemplate(id: string): OptimizationTemplate | null
   return templates.find(t => t.id === id) || null;
 }
 
-/**
- * List all optimization template IDs
- */
-export function listOptimizationTemplates(): string[] {
-  const templates = loadOptimizationTemplates();
-  return templates.map(t => t.id);
-}
-
-/**
- * Get optimization templates by category
- */
-export function getOptimizationTemplatesByCategory(category: string): OptimizationTemplate[] {
-  const templates = loadOptimizationTemplates();
-  return templates.filter(t => t.category === category);
-}
-
 // =============================================================================
 // ANALYSIS PROMPTS API
 // =============================================================================
@@ -366,24 +350,6 @@ export function listPrompts(): string[] {
   } catch {
     return [];
   }
-}
-
-/**
- * Load all available analysis prompts
- * @returns Map of prompt ID to AnalysisPrompt
- */
-export function loadAllPrompts(): Map<string, AnalysisPrompt> {
-  const prompts = new Map<string, AnalysisPrompt>();
-  const ids = listPrompts();
-
-  for (const id of ids) {
-    const prompt = loadPrompt(id);
-    if (prompt) {
-      prompts.set(id, prompt);
-    }
-  }
-
-  return prompts;
 }
 
 /**
@@ -564,13 +530,6 @@ export function getConfiguredMode(): 'agent' | 'llm' | 'regex' {
 export function isCascadeEnabled(): boolean {
   const config = loadConfig();
   return config.analysis.cascade;
-}
-
-/**
- * Clear cached configuration (useful for testing)
- */
-export function clearConfigCache(): void {
-  cachedConfig = null;
 }
 
 /**

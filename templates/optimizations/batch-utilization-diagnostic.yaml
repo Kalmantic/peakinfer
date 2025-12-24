@@ -1,0 +1,142 @@
+id: batch-utilization-diagnostic
+name: API Batch Utilization Diagnostic and Optimization
+description: Identify batch optimization opportunities in API workloads - 5-minute diagnostic that reveals 50-70% cost savings
+category: api_optimization
+confidence: 0.91
+success_count: 1876
+verified_environments: 89
+contributors:
+  - inference_squeeze
+  - batch_expert
+  - api_architect
+last_updated: "2025-01-20"
+source: "Inference Squeeze Chapter 3 - Batch Utilization Diagnostic"
+
+environment_match:
+  api_pattern: real_time_or_mixed
+  request_pattern: individual_calls
+  latency_tolerance: variable
+  monthly_requests: ">50K"
+
+optimization:
+  technique: request_batching
+  expected_cost_reduction: "50-70%"
+  expected_latency_impact: "50-200ms additional wait"
+  effort_estimate: "3-5 days"
+  risk_level: low
+
+economics:
+  baseline_calculation:
+    individual_requests_per_day: 10000
+    avg_tokens_per_request: 500
+    cost_per_token: 0.00003
+    daily_cost: 150
+  projected_improvement:
+    batch_discount: 0.50
+    new_daily_cost: 75
+    monthly_savings: 2250
+  implementation_cost:
+    engineering_hours: 24
+    total_cost: 4800
+
+diagnostic:
+  five_minute_test:
+    step_1:
+      question: "What percentage of requests require <1s response?"
+      low_batch_signal: ">80% require immediate response"
+      high_batch_signal: "<50% require immediate response"
+    step_2:
+      question: "Can requests be queued for 5-60 seconds?"
+      low_batch_signal: "No, real-time required"
+      high_batch_signal: "Yes, async processing acceptable"
+    step_3:
+      question: "Are requests independent (no dependencies)?"
+      low_batch_signal: "No, requests depend on each other"
+      high_batch_signal: "Yes, can process in any order"
+    step_4:
+      question: "What is your current batch size?"
+      interpretation:
+        batch_1: "6-8x cost reduction possible"
+        batch_2_4: "3-4x cost reduction possible"
+        batch_8_16: "1.5-2x cost reduction possible"
+        batch_32_plus: "Already optimized"
+
+implementation:
+  prerequisites:
+    - requirement: "Request queue infrastructure"
+      validation: "Redis, SQS, or equivalent available"
+    - requirement: "Async processing capability"
+      validation: "Can handle delayed responses"
+  automated_steps:
+    - step_id: workload_analysis
+      name: Analyze Request Patterns
+      executable: true
+      commands:
+        - "Audit latency requirements per endpoint"
+        - "Identify async-eligible workloads"
+        - "Calculate potential batch sizes by endpoint"
+      validation:
+        command: "Request patterns documented"
+        success_criteria: "latency_requirements_mapped AND async_eligible_identified"
+        rollback_command: "Continue with individual requests"
+    - step_id: queue_implementation
+      name: Implement Request Queuing
+      executable: true
+      commands:
+        - "Add message queue (Redis, SQS, etc.)"
+        - "Configure batch collection windows (50-500ms)"
+        - "Implement batch processor with OpenAI Batch API or similar"
+      validation:
+        command: "Test batch processing"
+        success_criteria: "batch_size > 8 AND latency_within_tolerance"
+        rollback_command: "Disable queuing"
+    - step_id: latency_tiers
+      name: Define Latency Tiers
+      executable: true
+      tiers:
+        real_time:
+          max_wait: "0ms"
+          batch_size: 1
+          use_case: "Interactive chat, autocomplete"
+        near_real_time:
+          max_wait: "500ms"
+          batch_size: 8
+          use_case: "Document processing, search"
+        batch:
+          max_wait: "5s"
+          batch_size: 32
+          use_case: "Bulk analysis, reporting"
+        async:
+          max_wait: "24h"
+          batch_size: 1000
+          use_case: "Batch processing, training data"
+      validation:
+        command: "Validate tier assignments"
+        success_criteria: "all_endpoints_tiered"
+        rollback_command: "Revert to real-time only"
+
+monitoring:
+  key_metrics:
+    - metric: avg_batch_size
+      target: ">16"
+      alert_threshold: "<8"
+    - metric: batch_api_utilization
+      target: ">60%"
+      alert_threshold: "<40%"
+    - metric: queue_wait_time_p95
+      target: "<configured_max"
+      alert_threshold: ">configured_max * 1.5"
+  rollback_triggers:
+    - condition: "avg_batch_size < 4 for 1 hour"
+      action: review_batch_configuration
+    - condition: "queue_wait_time_p95 > SLA for 15 minutes"
+      action: reduce_batch_window
+
+results:
+  case_study:
+    environment: E-commerce product description generation
+    baseline_cost_per_item: 0.12
+    optimized_cost_per_item: 0.04
+    cost_reduction_percent: 67
+    items_processed_daily: 50000
+    monthly_savings: 120000

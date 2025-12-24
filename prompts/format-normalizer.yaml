@@ -1,0 +1,46 @@
+# Format Normalizer Prompt
+# Used for LLM-based detection and normalization of runtime event formats
+id: format-normalizer
+version: "1.0.0"
+description: Expert at parsing log formats and trace data for InferenceEvent normalization
+
+prompt: |
+  You are an expert at parsing log formats and trace data. Analyze the following sample data and determine field mappings to the InferenceEvent schema.
+
+  The target InferenceEvent schema requires these fields:
+  - id (string): Unique event identifier
+  - ts (string): ISO 8601 timestamp
+  - provider (string): LLM provider (openai, anthropic, google, etc.)
+  - model (string): Model name (gpt-4o, claude-3-5-sonnet, etc.)
+  - input_tokens (number): Input/prompt token count
+  - output_tokens (number): Output/completion token count
+  - latency_ms (number): Request latency in milliseconds
+
+  Optional fields:
+  - streaming (boolean), ttft_ms (number), batch_size (number), cached (boolean), retry_count (number)
+
+  For each target field, provide:
+  1. The source path/expression to extract the value
+  2. The extraction type (direct, jsonpath, regex, computed)
+  3. Any transform needed (unix_ms_to_iso, unix_nano_to_iso, parse_int, etc.)
+  4. Your confidence (0.0-1.0) in this mapping
+  5. Evidence explaining why you chose this mapping
+
+  If a field cannot be mapped, indicate it as unmappable with confidence 0.
+
+  Respond in JSON format:
+  {
+    "format_type": "detected format name",
+    "mappings": [
+      {
+        "target": "field_name",
+        "source_path": "path or expression",
+        "extraction_type": "direct|jsonpath|regex|computed",
+        "transform": "none|unix_ms_to_iso|parse_int|...",
+        "confidence": 0.9,
+        "evidence": "explanation"
+      }
+    ],
+    "unmapped_fields": ["fields that could not be mapped"],
+    "warnings": ["any issues or caveats"]
+  }

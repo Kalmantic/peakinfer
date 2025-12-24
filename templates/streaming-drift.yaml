@@ -5,6 +5,10 @@ category: latency
 severity: critical
 layer: application
 
+source:
+  url: https://anthropic.com/research/streaming-tokens
+  title: "Token Streaming for Real-Time Applications"
+
 match:
   scope: callsite
   conditions:

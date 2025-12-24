@@ -123,20 +123,6 @@ export function setPricingProvider(provider: PricingProvider): void {
   pricingCache = null;
 }
 
-/**
- * Get the current pricing provider name.
- */
-export function getPricingProviderName(): string {
-  return activeProvider.name;
-}
-
-/**
- * Reset to default LiteLLM provider.
- */
-export function resetToDefaultProvider(): void {
-  activeProvider = litellmProvider;
-  pricingCache = null;
-}
 
 // =============================================================================
 // HELPERS
@@ -267,11 +253,6 @@ export function calculateCost(
 ): number {
   const cost = getModelCost(model);
   return (inputTokens * cost.input + outputTokens * cost.output) / 1_000_000;
-}
-
-// For testing
-export function clearCache(): void {
-  pricingCache = null;
 }
 
 export function setTestPricing(data: Record<string, { input: number; output: number }>): void {

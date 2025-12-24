@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import 'dotenv/config';
 import { Command } from 'commander';
-import { existsSync } from 'fs';
+import { existsSync, writeFileSync } from 'fs';
 import { exec } from 'child_process';
 import { Agent } from './agent.js';
 import { createRenderer } from './renderer.js';
@@ -14,6 +14,12 @@ import { registerHistoryCommands } from './commands/history.js';
 import { registerCICommand } from './commands/ci.js';
 import { registerExportCommand } from './commands/export.js';
 import { registerWhatIfCommand } from './commands/whatif.js';
+
+// v2.0 Demo command (works offline, no API key needed)
+import { registerDemoCommand } from './commands/demo.js';
+
+// v1.9.3 Validate-map command (InferenceMap schema validation)
+import { registerValidateMapCommand } from './commands/validate-map.js';
 
 // v1.8 Analytics (respects DO_NOT_TRACK)
 import { initAnalytics, track, flush } from './analytics.js';
@@ -42,15 +48,18 @@ program
   .description('analyze codebase or runtime events')
   .argument('[path]', 'path to repository or events file', '.')
   .option('--events <file>', 'add runtime telemetry to static analysis')
+  .option('--events-url <url>', 'URL to fetch runtime events')
   .option('--html', 'generate html report')
   .option('--pdf', 'generate pdf report')
   .option('--open', 'open report in browser/viewer')
-  .option('--output <format>', 'output format: text (default) or json')
+  .option('--output <format>', 'output format: text (default), json, or inference-map')
+  .option('--out <file>', 'write output to file')
   .option('--cached', 'view previous analysis (offline, no API key needed)')
   .option('--verbose', 'show detailed task progress')
   // Format detection options (PRD §6.4)
   .option('--format <type>', 'specify runtime format: jsonl, json, csv, otel, jaeger, zipkin, langsmith, litellm')
   .option('--map <mappings...>', 'field mappings: --map latency_ms=duration model=model_name')
+  .option('--events-map <mappings...>', 'alias for --map (field mappings for non-standard event formats)')
   .option('--lenient', 'accept low-confidence field mappings')
   .option('--strict', 'fail on missing required fields or unknown formats')
   .option('--redact', 'redact code snippets from artifacts')
@@ -63,15 +72,18 @@ program
   .option('--target-p95 <ms>', 'target p95 latency for budget calculation (use with --predict)')
   .action(async (path: string, options: {
     events?: string;
+    eventsUrl?: string; // --events-url
     html?: boolean;
     pdf?: boolean;
     open?: boolean;
     output?: string;
+    out?: string; // --out
     cached?: boolean;
     verbose?: boolean;
     // Format detection options
     format?: string;
     map?: string[];
+    eventsMap?: string[]; // --events-map alias for --map
     lenient?: boolean;
     strict?: boolean;
     redact?: boolean;
@@ -116,7 +128,37 @@ program
         onProgress: (data) => renderer.renderProgress(data),
         onPartial: (warnings) => renderer.renderPartial(warnings),
         onComplete: (results) => {
-          renderer.renderResults(results);
+          // Handle --output inference-map: output only InferenceMap JSON
+          if (options.output === 'inference-map') {
+            if (!results.inferenceMap) {
+              console.error('No InferenceMap data available');
+              process.exit(1);
+            }
+            const output = JSON.stringify(results.inferenceMap, null, 2);
+            if (options.out) {
+              writeFileSync(options.out, output);
+              console.error(`InferenceMap written to ${options.out}`);
+            } else {
+              console.log(output);
+            }
+          } else if (options.output === 'json') {
+            // Handle --output json: output full results as JSON
+            const output = JSON.stringify({
+              inferenceMap: results.inferenceMap,
+              insights: results.insights,
+              runtime: results.runtimeSummary,
+              joined: results.joined,
+            }, null, 2);
+            if (options.out) {
+              writeFileSync(options.out, output);
+              console.error(`Results written to ${options.out}`);
+            } else {
+              console.log(output);
+            }
+          } else {
+            // Default: render text output
+            renderer.renderResults(results);
+          }
 
           // Track analysis completion (v1.8)
           track('analysis_completed', {
@@ -138,8 +180,18 @@ program
         onError: (error) => renderer.renderError(error),
       });
 
-      // Parse field mappings from --map option
+      // Parse field mappings from --map or --events-map option
+      // (--events-map is an alias for --map, consistent with GitHub Action input naming)
       const fieldHints: Record<string, string> = {};
+      // Merge if both are provided (--map takes precedence for conflicts)
+      if (options.eventsMap) {
+        for (const mapping of options.eventsMap) {
+          const [target, source] = mapping.split('=');
+          if (target && source) {
+            fieldHints[target.trim()] = source.trim();
+          }
+        }
+      }
       if (options.map) {
         for (const mapping of options.map) {
           const [target, source] = mapping.split('=');
@@ -152,9 +204,11 @@ program
       await agent.run({
         path,
         events: options.events,
+        eventsUrl: options.eventsUrl, // --events-url
         html: options.html || options.pdf || options.open, // Generate HTML if PDF or open requested
         pdf: options.pdf,
         open: options.open,
+        out: options.out, // --out
         offline: false,
         noCache: !options.cached, // --cached means use cache
         verbose: options.verbose,
@@ -204,23 +258,41 @@ registerCICommand(program);
 registerExportCommand(program);
 registerWhatIfCommand(program);
 
+// =============================================================================
+// REGISTER v2.0 COMMANDS
+// =============================================================================
+
+registerDemoCommand(program);
+
+// =============================================================================
+// REGISTER v1.9.3 COMMANDS
+// =============================================================================
+
+registerValidateMapCommand(program);
+
 // Custom help text (PRD-aligned, Julie Zhou style)
 program.addHelpText('after', `
+quick start:
+  peakinfer demo                       # see it in action (no API key needed)
+  peakinfer analyze .                  # analyze your codebase
+
 analyze modes:
   peakinfer analyze .                  # static: scan codebase for LLM calls
   peakinfer analyze events.jsonl       # runtime: analyze inference telemetry
   peakinfer analyze . --events prod.jsonl  # combined: static + runtime
+  peakinfer analyze . --events-url https://api.example.com/events  # fetch events from URL
+  peakinfer analyze . --out results.json   # write output to file
+  peakinfer analyze . --output inference-map  # output only InferenceMap v0.1 JSON
 
-v1.6 commands:
+more commands:
   peakinfer template list              # browse optimization templates
   peakinfer config show                # view configuration
   peakinfer history                    # view analysis history
+  peakinfer history compare <id1> [id2] # compare two analysis runs
   peakinfer export                     # export results (json, prometheus)
   peakinfer whatif --model gpt-4o-mini # counterfactual analysis
   peakinfer ci ./src --baseline base.json  # CI/CD integration
-
-quick start:
-  peakinfer analyze .
+  peakinfer validate-map ./map.json    # validate InferenceMap schema
 `);
 
 // Parse and run

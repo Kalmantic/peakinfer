@@ -147,9 +147,28 @@ export async function handleFix(octokit, context, issueId) {
         // Decode and apply fix
         const content = Buffer.from(fileContent.content, 'base64').toString('utf-8');
         const lines = content.split('\n');
-        // Simple line replacement (for now)
-        // TODO: More sophisticated patching
-        lines[line - 1] = issue.suggestedFix;
+        // Multi-line aware patching:
+        // - If fix contains newlines, splice multiple lines
+        // - Find end line by counting original indentation block
+        const fixLines = issue.suggestedFix.split('\n');
+        const originalIndent = lines[line - 1]?.match(/^(\s*)/)?.[1] || '';
+        // Determine how many lines to replace (find next line with same/less indent)
+        let endLine = line;
+        if (fixLines.length > 1) {
+            for (let i = line; i < lines.length; i++) {
+                const lineIndent = lines[i].match(/^(\s*)/)?.[1] || '';
+                const lineContent = lines[i].trim();
+                // Stop at same-or-less indent (unless empty line)
+                if (lineContent && lineIndent.length <= originalIndent.length && i > line - 1) {
+                    endLine = i;
+                    break;
+                }
+                if (i === lines.length - 1)
+                    endLine = i + 1;
+            }
+        }
+        // Splice in the fix (remove old lines, insert new)
+        lines.splice(line - 1, endLine - line + 1, ...fixLines);
         const newContent = lines.join('\n');
         // Create commit
         await octokit.rest.repos.createOrUpdateFileContents({
@@ -243,8 +262,8 @@ export async function postCommandResponse(octokit, context, success, message) {
     const prNumber = context.payload.issue?.number;
     if (!prNumber)
         return;
-    const emoji = success ? '✅' : '❌';
-    const body = `${emoji} ${message}\n\n<sub>PeakInfer</sub>`;
+    const statusLabel = success ? '[OK]' : '[ERROR]';
+    const body = `${statusLabel} ${message}\n\n<sub>PeakInfer</sub>`;
     await octokit.rest.issues.createComment({
         owner: context.repo.owner,
         repo: context.repo.repo,

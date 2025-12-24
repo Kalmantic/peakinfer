@@ -26,16 +26,6 @@ export interface AnalysisSnapshot {
  */
 export declare function compareSnapshots(baseline: AnalysisSnapshot, current: AnalysisSnapshot, options?: CompareOptions): ComparisonResult;
 /**
- * Compare current analysis with the latest historical run for a path.
- * Returns null if no history exists.
- */
-export declare function compareWithLatest(path: string, current: AnalysisSnapshot, options?: CompareOptions): Promise<ComparisonResult | null>;
-/**
- * Compare current analysis with a specific historical run.
- * Returns null if the run doesn't exist.
- */
-export declare function compareWithRun(runId: string, current: AnalysisSnapshot, options?: CompareOptions): Promise<ComparisonResult | null>;
-/**
  * Format a comparison result as a human-readable summary.
  * Provides concise, actionable summary for pre-deploy review.
  */

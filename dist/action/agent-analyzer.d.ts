@@ -1,11 +1,13 @@
 /**
  * Agent-based Semantic Analyzer for PeakInfer
  *
- * Uses Claude's tool use capability for multi-step code analysis:
+ * Uses Claude Agent SDK (per TDD v1.9.3) for multi-step code analysis:
  * 1. Read source files
  * 2. Extract patterns and variable assignments
  * 3. Trace variable definitions to resolve model names
  * 4. Identify actual LLM callsites (not client initialization)
+ *
+ * Architecture: Claude Agent SDK = Engine, TypeScript = Glue (per TDD §1)
  */
 import 'dotenv/config';
 import type { ScanResult, Callsite, Patterns } from './types.js';

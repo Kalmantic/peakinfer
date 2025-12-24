@@ -5,9 +5,11 @@ import { type StaticAnalysisOutput } from './agents/index.js';
 export interface AgentOptions {
     path: string;
     events?: string;
+    eventsUrl?: string;
     html?: boolean;
     pdf?: boolean;
     open?: boolean;
+    out?: string;
     offline?: boolean;
     verbose?: boolean;
     noCache?: boolean;

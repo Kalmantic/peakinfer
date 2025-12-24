@@ -19,13 +19,15 @@ inputs:
   fail-on-regression:
     description: 'Fail if metrics regress beyond thresholds'
     default: 'false'
-  runtime:
+  events:
     description: 'Path to runtime events file (JSONL format)'
     required: false
-  runtime-source:
-    description: 'Source for runtime data: file, artifact'
+  events-url:
+    description: 'URL to fetch runtime events'
     required: false
-    default: 'file'
+  events-map:
+    description: 'Field mapping for non-standard event formats'
+    required: false
   baseline:
     description: 'Path to baseline file for comparison'
     required: false

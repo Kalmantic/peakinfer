@@ -377,7 +377,7 @@ export function formatPredictionSummary(result: PredictionResult): string {
     if (summary.budgetExceeded) {
       lines.push(`  [!] Budget exceeded: worst p95 ${summary.worstP95}ms > target ${targetP95}ms`);
     } else {
-      lines.push(`  [✓] Within budget: worst p95 ${summary.worstP95}ms <= target ${targetP95}ms`);
+      lines.push(`  [OK] Within budget: worst p95 ${summary.worstP95}ms <= target ${targetP95}ms`);
     }
   }
 

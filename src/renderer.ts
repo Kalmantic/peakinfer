@@ -11,6 +11,15 @@ import chalk from 'chalk';
 
 const VERSION = VERSION_DISPLAY;
 
+const COLORS = {
+  critical: '#991b1b',
+  warning: '#b45309',
+  success: '#2d6a4f',
+  info: '#8b949e',
+  neutral: '#6b7280',
+  border: '#30363d',
+};
+
 // Severity markers (no emojis)
 const SEVERITY_MARKER = {
   critical: '[!]',
@@ -67,15 +76,15 @@ function bold(text: string): string {
 }
 
 function green(text: string): string {
-  return `\x1b[32m${text}\x1b[0m`;
+  return chalk.hex(COLORS.success)(text);
 }
 
 function red(text: string): string {
-  return `\x1b[31m${text}\x1b[0m`;
+  return chalk.hex(COLORS.critical)(text);
 }
 
 function yellow(text: string): string {
-  return `\x1b[33m${text}\x1b[0m`;
+  return chalk.hex(COLORS.warning)(text);
 }
 
 // =============================================================================
@@ -154,13 +163,13 @@ function renderComparison(comparison: ComparisonResult): void {
         console.log(`  ${red('[!]')} ${insightDeltas.newCritical} new critical issue${insightDeltas.newCritical !== 1 ? 's' : ''}`);
       }
       if (insightDeltas.resolvedCritical > 0) {
-        console.log(`  ${green('[✓]')} ${insightDeltas.resolvedCritical} critical issue${insightDeltas.resolvedCritical !== 1 ? 's' : ''} resolved`);
+        console.log(`  ${green('[OK]')} ${insightDeltas.resolvedCritical} critical issue${insightDeltas.resolvedCritical !== 1 ? 's' : ''} resolved`);
       }
       if (insightDeltas.newWarnings > 0) {
         console.log(`  ${yellow('[*]')} ${insightDeltas.newWarnings} new warning${insightDeltas.newWarnings !== 1 ? 's' : ''}`);
       }
       if (insightDeltas.resolvedWarnings > 0) {
-        console.log(`  ${green('[✓]')} ${insightDeltas.resolvedWarnings} warning${insightDeltas.resolvedWarnings !== 1 ? 's' : ''} resolved`);
+        console.log(`  ${green('[OK]')} ${insightDeltas.resolvedWarnings} warning${insightDeltas.resolvedWarnings !== 1 ? 's' : ''} resolved`);
       }
       console.log('');
     }
@@ -195,7 +204,7 @@ function renderPrediction(prediction: PredictionResult): void {
 
   const neutralCount = summary.totalPoints - summary.highRiskCount - summary.mediumRiskCount - summary.lowRiskCount;
   if (neutralCount > 0) {
-    console.log(`  ${dim('[✓]')} ${neutralCount} within acceptable latency`);
+    console.log(`  ${dim('[OK]')} ${neutralCount} within acceptable latency`);
   }
   console.log('');
 
@@ -219,7 +228,7 @@ function renderPrediction(prediction: PredictionResult): void {
     if (summary.budgetExceeded) {
       console.log(`  ${red('[!]')} Budget exceeded: worst p95 ${summary.worstP95}ms > target ${targetP95}ms`);
     } else {
-      console.log(`  ${green('[✓]')} Within budget: worst p95 ${summary.worstP95}ms ≤ target ${targetP95}ms`);
+      console.log(`  ${green('[OK]')} Within budget: worst p95 ${summary.worstP95}ms ≤ target ${targetP95}ms`);
     }
     console.log('');
   }
@@ -404,7 +413,7 @@ function renderDemoSection(streamingCount: number): void {
   }
   console.log('');
   console.log(dim('  → Find out: ') + 'peakinfer analyze . --events your-logs.jsonl');
-  console.log(dim('  → Events format: ') + 'https://peakinfer.com/docs/events');
+  console.log(dim('  → Events format: ') + 'https://peakinfer.dev/docs/events');
   console.log('');
 }
 
@@ -766,13 +775,13 @@ export function createRenderer(opts: RendererOptions = {}) {
     stopSpinner();
 
     // Build initial progress bar at 0%
-    const bar = chalk.cyan('') + chalk.gray(BAR_EMPTY.repeat(BAR_WIDTH));
+    const bar = chalk.hex(COLORS.neutral)('') + chalk.hex(COLORS.border)(BAR_EMPTY.repeat(BAR_WIDTH));
     const initialText = `${phaseName}... ${bar}   0%`;
 
     spinner = ora({
       text: initialText,
       spinner: 'dots',
-      color: 'cyan',
+      color: 'gray',
     }).start();
   }
 
@@ -789,7 +798,8 @@ export function createRenderer(opts: RendererOptions = {}) {
 
     const filled = Math.floor((percent / 100) * BAR_WIDTH);
     const empty = BAR_WIDTH - filled;
-    const bar = chalk.cyan(BAR_FILLED.repeat(filled)) + chalk.gray(BAR_EMPTY.repeat(empty));
+    const bar = chalk.hex(COLORS.neutral)(BAR_FILLED.repeat(filled)) +
+      chalk.hex(COLORS.border)(BAR_EMPTY.repeat(empty));
     const percentStr = `${percent}%`.padStart(4);
 
     let text = `${phaseName}... ${bar} ${percentStr}`;
@@ -893,14 +903,17 @@ export function createRenderer(opts: RendererOptions = {}) {
       // Completion display (no percent = phase complete)
       if (spinner) {
         // Use ora's succeed for nice checkmark
-        spinner.succeed(`${phaseLabel}... ${chalk.dim(data.detail || 'done')}`);
+        spinner.stopAndPersist({
+          symbol: chalk.hex(COLORS.success)('✓'),
+          text: `${phaseLabel}... ${chalk.dim(data.detail || 'done')}`,
+        });
         spinner = null;
       } else if (opts.verbose) {
         // Verbose: show with duration-style detail
         console.log(`  ${phaseNumber}/${totalPhases} ${phaseLabel} ${dim(`(${data.detail || 'done'})`)}`);
       } else {
-        // Non-verbose non-TTY: clean completion with checkmark
-        console.log(`${phaseLabel}... ${dim(data.detail || 'done')} ✓`);
+        // Non-verbose non-TTY: clean completion
+        console.log(`${phaseLabel}... ${dim(data.detail || 'done')}`);
       }
     },
 

@@ -108,16 +108,3 @@ export async function generatePDF(
   }
 }
 
-/**
- * Convert HTML file to PDF
- * @param htmlPath - Path to the HTML file
- * @param pdfPath - Where to save the PDF
- */
-export async function htmlFileToPDF(
-  htmlPath: string,
-  pdfPath: string
-): Promise<void> {
-  const { readFileSync } = await import('fs');
-  const htmlContent = readFileSync(htmlPath, 'utf-8');
-  await generatePDF(htmlContent, pdfPath);
-}

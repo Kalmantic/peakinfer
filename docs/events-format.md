@@ -21,7 +21,7 @@ peakinfer analyze ./src --events events.jsonl
 - uses: kalmantic/peakinfer@v1
   with:
     path: ./src
-    runtime: ./events.jsonl
+    events: ./events.jsonl
 ```
 
 ---
@@ -178,7 +178,7 @@ Example PR comment:
 - uses: kalmantic/peakinfer@v1
   with:
     path: ./src
-    runtime: ./traces/events.jsonl
+    events: ./traces/events.jsonl
 ```
 
 ### From URL
@@ -189,8 +189,7 @@ Fetch events from your observability platform:
 - uses: kalmantic/peakinfer@v1
   with:
     path: ./src
-    runtime-source: url
-    runtime: ${{ secrets.OBSERVABILITY_URL }}
+    events-url: ${{ secrets.OBSERVABILITY_URL }}
 ```
 
 ### From GitHub Artifact
@@ -205,7 +204,7 @@ If events are produced by a previous job:
 - uses: kalmantic/peakinfer@v1
   with:
     path: ./src
-    runtime: ./inference-events/events.jsonl
+    events: ./inference-events/events.jsonl
 ```
 
 ---

@@ -100,12 +100,16 @@ export function compareToBaseline(
     comparison.inferencePointsDelta = currentPoints - base.inferencePoints;
   }
 
-  // Latency delta
+  // Latency delta (with zero-division protection)
   const currentLatency = results.runtime?.global?.p95;
-  if (base.p95Latency !== undefined && currentLatency !== undefined) {
+  if (base.p95Latency !== undefined && base.p95Latency > 0 && currentLatency !== undefined) {
     const latencyDelta = currentLatency - base.p95Latency;
-    comparison.latencyDeltaPercent = (latencyDelta / base.p95Latency) * 100;
+    comparison.latencyDeltaPercent = Math.round((latencyDelta / base.p95Latency) * 100);
   }
+
+  // Cost delta (with zero-division protection)
+  // Note: cost calculation requires current cost from analysis results
+  // For now, we compare inference point counts as a proxy since cost scales with calls
 
   return comparison;
 }

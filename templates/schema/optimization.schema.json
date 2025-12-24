@@ -1,0 +1,180 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/Kalmantic/peakinfer_templates/schema/optimization.schema.json",
+  "title": "PeakInfer Optimization Template",
+  "description": "Schema for optimization recommendation templates",
+  "type": "object",
+  "required": ["id", "name", "description", "category", "optimization", "implementation"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Unique identifier (kebab-case)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the optimization"
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "title": { "type": "string" },
+        "authors": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "description": "Attribution to research paper, blog post, etc."
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "api_optimization",
+        "memory_optimization",
+        "latency_optimization",
+        "cost_optimization",
+        "reliability_optimization",
+        "throughput_optimization",
+        "serving_optimization"
+      ],
+      "description": "Primary optimization category"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Confidence score based on verified implementations"
+    },
+    "success_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of successful implementations"
+    },
+    "verified_environments": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of verified deployment environments"
+    },
+    "contributors": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Contributors to this optimization"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Last update date"
+    },
+    "environment_match": {
+      "type": "object",
+      "description": "Conditions for when this optimization applies",
+      "properties": {
+        "model_size": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "memory_pressure": { "type": "string" },
+        "quality_tolerance": { "type": "string" },
+        "deployment": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "optimization": {
+      "type": "object",
+      "required": ["technique"],
+      "properties": {
+        "technique": { "type": "string" },
+        "expected_memory_reduction": { "type": "string" },
+        "expected_quality_retention": { "type": "string" },
+        "expected_latency_improvement": { "type": "string" },
+        "expected_cost_reduction": { "type": "string" },
+        "effort_estimate": { "type": "string" },
+        "risk_level": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        }
+      }
+    },
+    "economics": {
+      "type": "object",
+      "properties": {
+        "baseline_calculation": { "type": "object" },
+        "projected_improvement": { "type": "object" },
+        "implementation_cost": { "type": "object" }
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "properties": {
+        "prerequisites": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "requirement": { "type": "string" },
+              "validation_command": { "type": "string" }
+            }
+          }
+        },
+        "automated_steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "step_id": { "type": "string" },
+              "name": { "type": "string" },
+              "executable": { "type": "boolean" },
+              "commands": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "validation": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    "monitoring": {
+      "type": "object",
+      "properties": {
+        "key_metrics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "metric": { "type": "string" },
+              "target": { "type": "string" },
+              "alert_threshold": { "type": "string" }
+            }
+          }
+        },
+        "rollback_triggers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "condition": { "type": "string" },
+              "action": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "results": {
+      "type": "object",
+      "properties": {
+        "recent_implementations": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    }
+  }
+}

@@ -108,16 +108,82 @@ npm install -g @kalmantic/peakinfer
 
 Requires Node.js 18+. That's it.
 
-### Add Your API Key (Optional)
+---
+
+## First-Time Setup
+
+PeakInfer uses Claude for semantic analysis. You provide your own Anthropic API key (BYOK mode).
+
+### Step 1: Get an Anthropic API Key
+
+1. Go to [console.anthropic.com](https://console.anthropic.com/)
+2. Create an account or sign in
+3. Navigate to API Keys and create a new key
+4. Copy the key (starts with `sk-ant-`)
+
+### Step 2: Configure Your API Key
+
+**Option A: Environment File (Recommended)**
+
+Create a `.env` file in your project root:
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
+# .env
+ANTHROPIC_API_KEY=sk-ant-your-key-here
 ```
 
-With a key: AI-powered semantic analysis.
-Without: Fast regex-based detection.
+PeakInfer automatically loads `.env` files.
 
-Both work. AI finds more.
+**Option B: Shell Export**
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-your-key-here
+```
+
+Add to your `.bashrc`, `.zshrc`, or shell profile for persistence.
+
+### Step 3: Verify Setup
+
+```bash
+peakinfer analyze . --verbose
+```
+
+If configured correctly, you'll see `[agent] Starting Claude Agent SDK analysis...`
+
+### What If I Don't Have an API Key?
+
+PeakInfer requires an Anthropic API key for all analysis. There is no regex-based fallback mode. The CLI will show an error if no key is configured.
+
+**BYOK Mode**: Your API key, your costs, full transparency. Analysis runs locally. No data sent to PeakInfer servers.
+
+---
+
+## Try It Out
+
+Create a sample file with LLM calls to see PeakInfer in action:
+
+```bash
+# Create a test file
+mkdir -p /tmp/peakinfer-demo && cat > /tmp/peakinfer-demo/app.ts << 'EOF'
+import Anthropic from '@anthropic-ai/sdk';
+
+const client = new Anthropic();
+
+export async function chat(prompt: string): Promise<string> {
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 2000,
+    messages: [{ role: 'user', content: prompt }],
+  });
+  return response.content[0].type === 'text' ? response.content[0].text : '';
+}
+EOF
+
+# Analyze it
+peakinfer analyze /tmp/peakinfer-demo --fixes
+```
+
+PeakInfer will find the inference point and suggest improvements like error handling, retry logic, and streaming.
 
 ---
 
@@ -197,15 +263,14 @@ jobs:
       - uses: kalmantic/peakinfer@v1
         with:
           path: ./src
-          runtime: ./traces/events.jsonl
+          events: ./traces/events.jsonl
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # Option 2: From URL (your observability platform)
       - uses: kalmantic/peakinfer@v1
         with:
           path: ./src
-          runtime-source: url
-          runtime: ${{ secrets.TRACES_URL }}
+          events-url: ${{ secrets.TRACES_URL }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
@@ -215,8 +280,9 @@ jobs:
 |-------|----------|-------------|
 | `path` | No | Path to analyze (default: `./src`) |
 | `github-token` | No | Token for PR comments |
-| `runtime` | No | Path to runtime events file (JSONL) |
-| `runtime-source` | No | Source type: `file` or `url` |
+| `events` | No | Path to runtime events file (JSONL) |
+| `events-url` | No | URL to fetch runtime events |
+| `events-map` | No | Field mapping for non-standard formats |
 | `baseline` | No | Path to baseline for comparison |
 | `target-p95` | No | Target p95 latency in ms |
 | `inline-comments` | No | Add inline PR comments (default: `true`) |
@@ -229,9 +295,46 @@ jobs:
 - Tracks regressions
 - Detects drift between code and runtime (if events provided)
 
-No API key needed. Uses managed service with 300 free analyses/month.
+Uses managed service. 50 free credits (one-time, 6-month expiry). Purchase additional credits at [peakinfer.com/pricing](https://peakinfer.com/pricing).
 
 See [Runtime Events Format](docs/events-format.md) for event schema details.
+
+---
+
+## Supported Runtime Formats
+
+PeakInfer auto-detects and normalizes runtime event data from 10 common formats:
+
+| Format | Auto-Detect | Notes |
+|--------|-------------|-------|
+| **JSONL** | ✅ | Native InferenceEvent schema |
+| **JSON Array** | ✅ | Native InferenceEvent schema |
+| **CSV** | ✅ | Header-based field detection |
+| **OpenTelemetry (OTLP)** | ✅ | Full trace/span extraction |
+| **Jaeger** | ✅ | Trace format with tags |
+| **Zipkin** | ✅ | Span-based traces |
+| **LangSmith** | ✅ | LangChain observability |
+| **LiteLLM** | ✅ | LiteLLM proxy logs |
+| **Helicone** | ✅ | Helicone logging format |
+| **Custom JSON** | ⚠️ | Agent-assisted field mapping |
+
+### Usage with Runtime Events
+
+```bash
+# From file
+peakinfer analyze ./src --events events.jsonl
+
+# From URL (observability platform export)
+peakinfer analyze ./src --events-url https://api.example.com/events
+
+# With format hint
+peakinfer analyze ./src --events data.json --format otel
+
+# With field mappings (for custom formats)
+peakinfer analyze ./src --events custom.json --map latency_ms=duration model=model_name
+```
+
+For unsupported or ambiguous formats, PeakInfer uses LLM-assisted field mapping (requires API key).
 
 ---
 
@@ -251,21 +354,36 @@ See [Runtime Events Format](docs/events-format.md) for event schema details.
 
 ## Community Templates
 
-PeakInfer ships with 27 battle-tested optimization templates across 6 stack layers:
+PeakInfer ships with **43 battle-tested templates** across two categories:
 
-| Layer | Examples |
-|-------|----------|
-| **Application** | Streaming drift, overpowered model selection |
-| **API** | Retry explosion, untested fallbacks |
-| **Gateway** | Missing caching, rate limit gaps |
-| **Runtime** | vLLM/sglang optimization opportunities |
-| **Model** | Context accumulation, token waste |
-| **Hardware** | GPU memory, quantization opportunities |
+### Insight Templates (12)
+
+Detect issues in your LLM code:
+
+| Category | Templates |
+|----------|-----------|
+| **Cost** | Overpowered model, prompt bloat, cost concentration, overpowered extraction |
+| **Drift** | Streaming drift, untested fallback, dead code |
+| **Performance** | Context accumulation, latency explainer, throughput gap |
+| **Waste** | Token underutilization, retry explosion |
+
+### Optimization Templates (31)
+
+Actionable fixes with implementation guides:
+
+| Category | Examples |
+|----------|----------|
+| **API Optimization** | Model routing, batch utilization, prompt caching, streaming vs batch |
+| **Application** | Smart model routing, context window optimization, max tokens |
+| **Infrastructure** | vLLM high-throughput, GPTQ quantization, TensorRT-LLM, sglang |
+| **Reliability** | Error handling, multi-provider fallback, auto-scaling |
+| **Operations** | APM, quality monitoring, A/B testing, multi-tenant |
 
 Templates provide:
 - **Detection**: Pattern-matched insights with evidence
 - **Impact estimates**: Cost/latency/throughput projections
 - **Code fixes**: One-click suggestions (CLI `--fixes`, PR comments)
+- **Economics**: ROI calculations and implementation costs
 
 ---
 
@@ -290,30 +408,37 @@ Templates provide:
 
 ## Pricing
 
-**CLI**: Free forever. Bring your own API key.
+**CLI**: Free forever. BYOK (Bring Your Own Key) — you provide your Anthropic API key.
 
 **GitHub Action**:
-- **Free**: $0 — 300 credits/10 days (hard cap, resets automatically)
-- **Pro**: $20 for 500 credits (one-time purchase), $0.05/credit overage
+- **Free**: 50 credits one-time (6-month expiry)
+- **Starter**: $19 for 200 credits
+- **Growth**: $49 for 600 credits
+- **Scale**: $149 for 2,000 credits
+- **Mega**: $499 for 10,000 credits
+
+No subscriptions. No per-seat pricing. Team pooling. FIFO credit consumption.
 
 [View pricing →](https://peakinfer.com/pricing)
 
 ---
 
-## What's Included (v1.8)
+## What's Included (v2.0)
 
 | Feature | Status |
 |---------|--------|
-| Static Analysis Engine | ✅ |
+| Unified Prompt-Based Analysis | ✅ |
 | GitHub Action with PR Comments | ✅ |
 | Code Fix Suggestions (`--fixes`) | ✅ |
 | LiteLLM Dynamic Pricing (600+ models) | ✅ |
-| 27 Optimization Templates | ✅ |
+| Optimization Templates | ✅ |
 | GitHub OAuth | ✅ |
 | Credits API & Billing | ✅ |
 | Run History | ✅ |
 | InferenceMap v0.1 Spec | ✅ |
 | Runtime Events Schema | ✅ |
+| BYOK Mode (CLI) | ✅ |
+| Demo Mode | ✅ |
 
 ---
 

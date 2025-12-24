@@ -17,7 +17,6 @@ import type {
   FieldChange,
   HistoryManifest,
 } from './types.js';
-import { getLatestRun, loadRun, type LoadedRun } from './history.js';
 
 // =============================================================================
 // TYPES
@@ -212,58 +211,6 @@ export function compareSnapshots(
 }
 
 /**
- * Compare current analysis with the latest historical run for a path.
- * Returns null if no history exists.
- */
-export async function compareWithLatest(
-  path: string,
-  current: AnalysisSnapshot,
-  options: CompareOptions = {}
-): Promise<ComparisonResult | null> {
-  // Get latest historical run
-  const latestRun = getLatestRun(path);
-  if (!latestRun) {
-    return null;
-  }
-
-  // Build baseline snapshot from historical data
-  const baseline: AnalysisSnapshot = {
-    runId: latestRun.manifest.runId,
-    timestamp: latestRun.manifest.timestamp,
-    callsites: latestRun.data.inferenceMap?.callsites || [],
-    insights: latestRun.data.insights,
-  };
-
-  return compareSnapshots(baseline, current, options);
-}
-
-/**
- * Compare current analysis with a specific historical run.
- * Returns null if the run doesn't exist.
- */
-export async function compareWithRun(
-  runId: string,
-  current: AnalysisSnapshot,
-  options: CompareOptions = {}
-): Promise<ComparisonResult | null> {
-  // Load specific run
-  const historicalRun = loadRun(runId);
-  if (!historicalRun) {
-    return null;
-  }
-
-  // Build baseline snapshot
-  const baseline: AnalysisSnapshot = {
-    runId: historicalRun.manifest.runId,
-    timestamp: historicalRun.manifest.timestamp,
-    callsites: historicalRun.data.inferenceMap?.callsites || [],
-    insights: historicalRun.data.insights,
-  };
-
-  return compareSnapshots(baseline, current, options);
-}
-
-/**
  * Format a comparison result as a human-readable summary.
  * Provides concise, actionable summary for pre-deploy review.
  */
@@ -295,13 +242,13 @@ export function formatComparisonSummary(comparison: ComparisonResult): string {
       lines.push(`  ! ${newCritical} new critical issue${newCritical !== 1 ? 's' : ''}`);
     }
     if (resolvedCritical > 0) {
-      lines.push(`  ✓ ${resolvedCritical} critical issue${resolvedCritical !== 1 ? 's' : ''} resolved`);
+      lines.push(`  [OK] ${resolvedCritical} critical issue${resolvedCritical !== 1 ? 's' : ''} resolved`);
     }
     if (newWarnings > 0) {
       lines.push(`  ! ${newWarnings} new warning${newWarnings !== 1 ? 's' : ''}`);
     }
     if (resolvedWarnings > 0) {
-      lines.push(`  ✓ ${resolvedWarnings} warning${resolvedWarnings !== 1 ? 's' : ''} resolved`);
+      lines.push(`  [OK] ${resolvedWarnings} warning${resolvedWarnings !== 1 ? 's' : ''} resolved`);
     }
   }
 

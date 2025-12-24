@@ -6,9 +6,12 @@
  * - XML-structured prompt from prompts/runtime-analyzer.yaml
  * - Returns condensed summary (insights, not raw data)
  * - Uses dynamic pricing from LiteLLM API
+ *
+ * Uses Claude Agent SDK (per TDD v1.9.3)
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { query } from '@anthropic-ai/claude-agent-sdk';
+import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { loadPrompt, type AnalysisPrompt } from '../templates.js';
 import { getPricingContext, calculateTotalCost, type PricingContext } from '../costs.js';
 import type { RuntimeSummary, InferenceEvent, Insight, ImpactEstimate } from '../types.js';
@@ -77,6 +80,23 @@ interface LLMRuntimeAnalysisResult {
 // =============================================================================
 // HELPERS
 // =============================================================================
+
+/**
+ * Extract text content from Claude Agent SDK messages
+ */
+function extractTextFromMessages(messages: SDKMessage[]): string {
+  let text = '';
+  for (const msg of messages) {
+    if (msg.type === 'assistant' && msg.message?.content) {
+      for (const block of msg.message.content) {
+        if (block.type === 'text') {
+          text += block.text;
+        }
+      }
+    }
+  }
+  return text;
+}
 
 function buildRuntimeContext(
   events: InferenceEvent[],
@@ -184,20 +204,25 @@ export const RuntimeAnalyzerAgent: BaseAgent<RuntimeAnalyzerInput, RuntimeAnalyz
     }
 
     try {
-      const client = new Anthropic();
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        messages: [
-          {
-            role: 'user',
-            content: `${promptConfig.prompt}\n\n${runtimeContext}`,
-          },
-        ],
+      // Use Claude Agent SDK query() function
+      const agentQuery = query({
+        prompt: `${promptConfig.prompt}\n\n${runtimeContext}`,
+        options: {
+          model: 'claude-sonnet-4-20250514',
+          tools: [],
+          permissionMode: 'plan',
+          cwd: process.cwd(),
+        },
       });
 
+      // Collect all messages from the async generator
+      const messages: SDKMessage[] = [];
+      for await (const message of agentQuery) {
+        messages.push(message);
+      }
+
       // Extract JSON from response
-      const text = response.content[0].type === 'text' ? response.content[0].text : '';
+      const text = extractTextFromMessages(messages);
       const jsonMatch = text.match(/\{[\s\S]*\}/);
 
       if (!jsonMatch) {

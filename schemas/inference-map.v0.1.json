@@ -1,0 +1,215 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://peakinfer.dev/schemas/inference-map.v0.1.json",
+  "title": "InferenceMap",
+  "description": "PeakInfer InferenceMap v0.1 - Schema for LLM inference point analysis results",
+  "type": "object",
+  "required": ["version", "root", "generatedAt", "summary", "callsites"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version",
+      "const": "0.1"
+    },
+    "root": {
+      "type": "string",
+      "description": "Root directory path that was analyzed"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the analysis was generated"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Optional metadata about the analysis run",
+      "properties": {
+        "absolutePath": {
+          "type": "string",
+          "description": "Full absolute path that was analyzed"
+        },
+        "promptId": {
+          "type": "string",
+          "description": "ID of the analysis prompt used"
+        },
+        "promptVersion": {
+          "type": "string",
+          "description": "Version of the analysis prompt"
+        },
+        "templatesVersion": {
+          "type": "string",
+          "description": "Version of peakinfer-templates used"
+        },
+        "llmProvider": {
+          "type": "string",
+          "description": "LLM provider used for analysis (e.g., 'anthropic')"
+        },
+        "llmModel": {
+          "type": "string",
+          "description": "LLM model used for analysis"
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "description": "Summary statistics for the analyzed codebase",
+      "required": ["totalCallsites", "providers", "models", "patterns"],
+      "properties": {
+        "totalCallsites": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of inference points found"
+        },
+        "providers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of unique LLM providers detected"
+        },
+        "models": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of unique models detected"
+        },
+        "patterns": {
+          "type": "object",
+          "description": "Count of detected patterns (streaming, batching, etc.)",
+          "additionalProperties": { "type": "integer" }
+        }
+      }
+    },
+    "callsites": {
+      "type": "array",
+      "description": "List of inference points (callsites) found in the codebase",
+      "items": {
+        "$ref": "#/definitions/Callsite"
+      }
+    }
+  },
+  "definitions": {
+    "Provider": {
+      "type": "string",
+      "enum": [
+        "openai", "anthropic", "google", "cohere", "mistral",
+        "bedrock", "azure_openai", "together", "fireworks",
+        "groq", "replicate", "perplexity",
+        "vllm", "sglang", "tgi", "ollama", "llamacpp",
+        "unknown"
+      ],
+      "description": "LLM provider identifier"
+    },
+    "Patterns": {
+      "type": "object",
+      "description": "Detected code patterns at an inference point",
+      "properties": {
+        "streaming": {
+          "type": "boolean",
+          "description": "Whether streaming is enabled"
+        },
+        "batching": {
+          "type": "boolean",
+          "description": "Whether batching is used"
+        },
+        "retries": {
+          "type": "boolean",
+          "description": "Whether retry logic is present"
+        },
+        "caching": {
+          "type": "boolean",
+          "description": "Whether caching is implemented"
+        },
+        "fallback": {
+          "type": "boolean",
+          "description": "Whether fallback logic exists"
+        }
+      }
+    },
+    "Callsite": {
+      "type": "object",
+      "description": "An LLM inference point in the codebase",
+      "required": ["id", "file", "line", "patterns", "confidence"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for this inference point"
+        },
+        "file": {
+          "type": "string",
+          "description": "Relative file path from root"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Line number in the file"
+        },
+        "provider": {
+          "oneOf": [
+            { "$ref": "#/definitions/Provider" },
+            { "type": "null" }
+          ],
+          "description": "Detected LLM provider"
+        },
+        "model": {
+          "type": ["string", "null"],
+          "description": "Detected model name"
+        },
+        "framework": {
+          "type": ["string", "null"],
+          "description": "Framework used (e.g., 'langchain', 'llamaindex')"
+        },
+        "runtime": {
+          "type": ["string", "null"],
+          "description": "Runtime environment (e.g., 'vllm', 'tgi')"
+        },
+        "patterns": {
+          "$ref": "#/definitions/Patterns"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence score of the detection (0-1)"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "version": "0.1",
+      "root": "./src",
+      "generatedAt": "2025-12-24T12:00:00.000Z",
+      "metadata": {
+        "absolutePath": "/Users/dev/myproject/src",
+        "promptId": "unified-analyzer",
+        "promptVersion": "1.6",
+        "llmProvider": "anthropic",
+        "llmModel": "claude-sonnet-4-20250514"
+      },
+      "summary": {
+        "totalCallsites": 3,
+        "providers": ["anthropic", "openai"],
+        "models": ["claude-sonnet-4-20250514", "gpt-4o"],
+        "patterns": {
+          "streaming": 2,
+          "retries": 1,
+          "caching": 0
+        }
+      },
+      "callsites": [
+        {
+          "id": "cs-001",
+          "file": "services/chat.ts",
+          "line": 42,
+          "provider": "anthropic",
+          "model": "claude-sonnet-4-20250514",
+          "framework": null,
+          "runtime": null,
+          "patterns": {
+            "streaming": true,
+            "retries": true
+          },
+          "confidence": 0.95
+        }
+      ]
+    }
+  ]
+}

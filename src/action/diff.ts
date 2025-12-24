@@ -59,6 +59,89 @@ export async function getChangedFiles(
 }
 
 /**
+ * Filter source files to only those changed in the PR.
+ * Used for faster "changed-files-only" analysis mode.
+ */
+export function filterFilesToChanged(
+  files: Array<{ path: string; content: string }>,
+  changedFiles: string[]
+): Array<{ path: string; content: string }> {
+  if (changedFiles.length === 0) {
+    return files; // No PR context, return all files
+  }
+
+  // Normalize paths for comparison
+  const normalizedChanged = new Set(
+    changedFiles.map(f => f.replace(/^\.\//, '').toLowerCase())
+  );
+
+  return files.filter(file => {
+    // Normalize the file path for comparison
+    const normalizedPath = file.path
+      .replace(/^\.\//, '')
+      .replace(/\\/g, '/')
+      .toLowerCase();
+
+    // Check if file or any of its path variants are in changed files
+    return normalizedChanged.has(normalizedPath) ||
+           changedFiles.some(cf =>
+             normalizedPath.endsWith(cf.replace(/^\.\//, '').toLowerCase())
+           );
+  });
+}
+
+/**
+ * Detect events file in PR (auto-discovery per PRD v1.9.3).
+ *
+ * User flow:
+ * 1. User sees PR comment showing static analysis
+ * 2. Curious about runtime — exports logs locally
+ * 3. Commits events.jsonl to branch or uploads to .peakinfer/
+ * 4. Action detects and re-runs with full correlation
+ */
+export async function detectEventsFile(
+  octokit: Octokit,
+  context: Context
+): Promise<string | null> {
+  const pr = context.payload.pull_request;
+  if (!pr) {
+    return null;
+  }
+
+  try {
+    const { data: files } = await octokit.rest.pulls.listFiles({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      pull_number: pr.number,
+    });
+
+    // Look for events files in order of preference:
+    // 1. .peakinfer/events.jsonl
+    // 2. events.jsonl in root
+    // 3. Any file ending with events.jsonl
+    // 4. Any file in .peakinfer/ with .jsonl extension
+    const eventPatterns = [
+      /^\.peakinfer\/events\.jsonl$/,
+      /^events\.jsonl$/,
+      /events\.jsonl$/,
+      /^\.peakinfer\/.+\.jsonl$/,
+      /^\.peakinfer\/.+\.json$/,
+    ];
+
+    for (const pattern of eventPatterns) {
+      const match = files.find((f: { filename: string }) => pattern.test(f.filename));
+      if (match) {
+        return match.filename;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Filter insights to those affecting changed files
  *
  * Returns:

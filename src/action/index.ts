@@ -12,9 +12,11 @@ import { join, extname } from 'path';
 import { generatePRComment, generateExhaustedComment } from './comments.js';
 import { postInlineComments } from './inline.js';
 import { parseEvents } from '../runtime.js';
-import { getChangedFiles, filterToChangedFiles } from './diff.js';
+import { getChangedFiles, filterToChangedFiles, filterFilesToChanged, detectEventsFile } from './diff.js';
 import { getBaseline, compareToBaseline } from './baseline.js';
 import { parseCommand, handleCommentCommand } from './commands.js';
+import { runStaticAnalysis } from '../orchestrator.js';
+import type { StaticAnalysisOutput, PerformanceProfile } from '../orchestrator.js';
 import type { Insight } from '../types.js';
 
 // API endpoint
@@ -33,8 +35,15 @@ interface ActionInputs {
   failOnRegression: boolean;
   targetP95?: number;
   // v1.8: Runtime correlation inputs
-  runtime?: string;
-  runtimeSource?: string;
+  events?: string;
+  eventsUrl?: string;
+  eventsMap?: string;
+  // v1.9: BYOK fallback
+  apiKey?: string;
+  // v1.9: Baseline comparison
+  compareBaseline: boolean;
+  // v1.9: Changed files only mode
+  changedFilesOnly: boolean;
 }
 
 // Issue type returned by API (LLM-generated fixes)
@@ -124,6 +133,83 @@ interface CreditExhaustedResponse {
 // HELPERS
 // =============================================================================
 
+const LANGUAGE_MAP: Record<string, string> = {
+  '.py': 'python',
+  '.ts': 'typescript',
+  '.tsx': 'typescript',
+  '.js': 'javascript',
+  '.jsx': 'javascript',
+  '.mjs': 'javascript',
+  '.cjs': 'javascript',
+  '.go': 'go',
+  '.java': 'java',
+  '.kt': 'kotlin',
+  '.rs': 'rust',
+  '.rb': 'ruby',
+  '.php': 'php',
+  '.cs': 'csharp',
+  '.swift': 'swift',
+  '.scala': 'scala',
+};
+
+function detectLanguage(filePath: string): string {
+  const ext = extname(filePath).toLowerCase();
+  return LANGUAGE_MAP[ext] || 'unknown';
+}
+
+function mapCostTier(level?: string | null): 'high' | 'medium' | 'low' | undefined {
+  if (!level) return undefined;
+  if (level === 'critical') return 'high';
+  if (level === 'high' || level === 'medium' || level === 'low') return level;
+  return undefined;
+}
+
+function mapInsightsToActionType(insights: StaticAnalysisOutput['insights']): Insight[] {
+  return insights.map(insight => {
+    if (!insight.impact) return insight as Insight;
+    const layer = insight.impact.layer === 'infrastructure' ? 'hardware' : insight.impact.layer;
+    return {
+      ...insight,
+      impact: {
+        ...insight.impact,
+        layer,
+      },
+    } as Insight;
+  });
+}
+
+function mapProfilesToInferencePoints(
+  profiles: PerformanceProfile[]
+): AnalysisResponse['analysis']['inferencePoints'] {
+  return profiles.map(profile => ({
+    id: profile.inference_point_id,
+    file: profile.file,
+    line: profile.line,
+    provider: profile.provider,
+    model: profile.model || 'unknown',
+    originalCode: profile.originalCode,
+    issues: profile.issues?.map(issue => ({
+      type: issue.type,
+      severity: issue.severity,
+      headline: issue.headline,
+      evidence: issue.evidence,
+      originalCode: issue.originalCode,
+      suggestedFix: issue.suggestedFix,
+      aiAgentPrompt: issue.aiAgentPrompt,
+    })),
+    hasStreaming: profile.latency?.streaming_analysis.streaming_enabled,
+    hasErrorHandling: profile.reliability?.error_handling.has_try_catch,
+    hasRetry: profile.reliability?.retry_strategy.has_retry,
+    hasFallback: profile.reliability?.fallback_strategy.has_fallback,
+    hasTimeout: profile.reliability?.timeout_handling.timeout_configured ?? profile.latency?.timeout_analysis.timeout_configured,
+    hasRateLimiting: profile.throughput?.rate_limiting.has_rate_limiter,
+    hasBatching: profile.throughput?.batching_analysis.batching_enabled,
+    estimatedP95Ms: profile.latency?.latency_estimate.p95_ms,
+    costTier: mapCostTier(profile.cost?.cost_risk.level),
+    reliabilityLevel: profile.reliability?.reliability_risk.level,
+  }));
+}
+
 /**
  * Parse action inputs
  */
@@ -134,8 +220,15 @@ function getInputs(): ActionInputs {
     failOnRegression: core.getInput('fail-on-regression') === 'true',
     targetP95: core.getInput('target-p95') ? parseInt(core.getInput('target-p95'), 10) : undefined,
     // v1.8: Runtime correlation inputs
-    runtime: core.getInput('runtime') || undefined,
-    runtimeSource: core.getInput('runtime-source') || 'file',
+    events: core.getInput('events') || undefined,
+    eventsUrl: core.getInput('events-url') || undefined,
+    eventsMap: core.getInput('events-map') || undefined,
+    // v1.9: BYOK fallback (uses user's Anthropic key if API unavailable)
+    apiKey: core.getInput('api-key') || process.env.ANTHROPIC_API_KEY || undefined,
+    // v1.9: Baseline comparison
+    compareBaseline: core.getInput('compare-baseline') === 'true',
+    // v1.9: Analyze only changed files (faster for large repos)
+    changedFilesOnly: core.getInput('changed-files-only') === 'true',
   };
 }
 
@@ -216,6 +309,50 @@ async function callAnalysisAPI(
   }
 
   return data as AnalysisResponse;
+}
+
+/**
+ * Run local analysis using BYOK mode (v1.9 fallback)
+ * Used when managed API is unavailable and user provides api-key
+ */
+async function runLocalAnalysis(
+  files: Array<{ path: string; content: string }>,
+  apiKey: string,
+  repo: string,
+  prNumber: number
+): Promise<AnalysisResponse> {
+  core.info('Running local analysis (BYOK mode)...');
+
+  const filesWithLanguage = files.map(file => ({
+    ...file,
+    language: detectLanguage(file.path),
+  }));
+  const output = await runStaticAnalysis({ files: filesWithLanguage }, apiKey);
+  const inferencePoints = mapProfilesToInferencePoints(output.performance_profiles);
+
+  // Convert orchestrator output to API response format
+  return {
+    success: true,
+    analysis: {
+      inferencePoints,
+      insights: mapInsightsToActionType(output.insights),
+      summary: {
+        totalInferencePoints: output.summary.total_inference_points,
+        totalFiles: output.summary.total_files,
+        providers: output.summary.providers,
+        models: output.summary.models,
+      },
+    },
+    credits: { used: 0, limit: 0, remaining: 0 }, // BYOK mode doesn't use credits
+    meta: {
+      repo,
+      prNumber,
+      analyzedAt: new Date().toISOString(),
+      filesAnalyzed: files.length,
+      version: 'byok',
+      analysisType: 'local',
+    },
+  };
 }
 
 /**
@@ -378,6 +515,19 @@ function determineStatus(
     if (status === 'pass') status = 'warning';
   }
 
+  // Check target-p95 latency threshold (v1.9)
+  if (inputs.targetP95 !== undefined) {
+    const worstP95 = Math.max(
+      ...analysis.inferencePoints
+        .map(p => p.estimatedP95Ms ?? 0)
+        .filter(v => v > 0)
+    );
+    if (worstP95 > inputs.targetP95) {
+      regressions.push(`Worst p95 latency (${worstP95}ms) exceeds target (${inputs.targetP95}ms)`);
+      if (status === 'pass') status = 'warning';
+    }
+  }
+
   // Override if fail-on-regression is set
   if (inputs.failOnRegression && regressions.length > 0) {
     status = 'fail';
@@ -441,8 +591,18 @@ async function run(): Promise<void> {
 
     // Collect files for analysis
     core.info('Collecting files for analysis...');
-    const files = collectFiles(inputs.path);
+    let files = collectFiles(inputs.path);
     core.info(`Found ${files.length} files to analyze`);
+
+    // v1.9: Filter to changed files only if requested
+    let changedFilesForFiltering: string[] = [];
+    if (inputs.changedFilesOnly && context.payload.pull_request) {
+      core.info('Changed-files-only mode enabled, filtering...');
+      changedFilesForFiltering = await getChangedFiles(octokit, context);
+      const originalCount = files.length;
+      files = filterFilesToChanged(files, changedFilesForFiltering);
+      core.info(`Filtered to ${files.length} files (${originalCount - files.length} excluded)`);
+    }
 
     if (files.length === 0) {
       core.warning('No supported files found for analysis');
@@ -450,52 +610,101 @@ async function run(): Promise<void> {
     }
 
     // v1.8: Load runtime events if provided (for gap messaging)
+    // v1.9.3: Auto-detect events file in PR if not explicitly provided
     let hasRuntime = false;
     let runtimeEventCount = 0;
+    let eventsPath = inputs.events;
 
-    if (inputs.runtime && existsSync(inputs.runtime)) {
+    // Auto-detect events file in PR (per PRD v1.9.3)
+    if (!eventsPath && context.payload.pull_request) {
+      const detectedEvents = await detectEventsFile(octokit, context);
+      if (detectedEvents) {
+        core.info(`Auto-detected runtime events file: ${detectedEvents}`);
+        eventsPath = detectedEvents;
+      }
+    }
+
+    if (eventsPath && existsSync(eventsPath)) {
       try {
-        core.info(`Loading runtime events from ${inputs.runtime}...`);
-        const events = await parseEvents(inputs.runtime);
-        hasRuntime = events.length > 0;
-        runtimeEventCount = events.length;
+        core.info(`Loading runtime events from ${eventsPath}...`);
+
+        // Parse events-map input (format: "timestamp=time,inputTokens=prompt_tokens")
+        const fieldHints: Record<string, string> = {};
+        if (inputs.eventsMap) {
+          const mappings = inputs.eventsMap.split(',');
+          for (const mapping of mappings) {
+            const [target, source] = mapping.trim().split('=');
+            if (target && source) {
+              fieldHints[target.trim()] = source.trim();
+            }
+          }
+          core.info(`Applied ${Object.keys(fieldHints).length} field mappings from events-map`);
+        }
+
+        const runtimeEvents = await parseEvents(eventsPath, {
+          field_hints: Object.keys(fieldHints).length > 0 ? fieldHints : undefined,
+        });
+        hasRuntime = runtimeEvents.length > 0;
+        runtimeEventCount = runtimeEvents.length;
         core.info(`Loaded ${runtimeEventCount} runtime events`);
       } catch (error) {
         core.warning(`Failed to parse runtime events: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 
-    // Call the managed API
-    core.info('Calling PeakInfer analysis API...');
-    const response = await callAnalysisAPI(orgId, files, repo, prNumber);
+    // Call the managed API (with BYOK fallback)
+    let response: AnalysisResponse | CreditExhaustedResponse;
+    let usedFallback = false;
 
-    // Check for credit exhaustion
-    if ('error' in response && response.error === 'Credit limit reached') {
-      core.warning('Credit limit reached');
-
-      // Post exhaustion comment if in PR context
-      if (context.payload.pull_request) {
-        const exhaustedResponse = response as CreditExhaustedResponse;
-        const comment = generateExhaustedComment(exhaustedResponse.used, exhaustedResponse.limit);
-        await octokit.rest.issues.createComment({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          issue_number: context.payload.pull_request.number,
-          body: comment,
-        });
+    try {
+      core.info('Calling PeakInfer analysis API...');
+      response = await callAnalysisAPI(orgId, files, repo, prNumber);
+    } catch (apiError) {
+      // Network error - try BYOK fallback if api-key provided
+      if (inputs.apiKey) {
+        core.warning(`API unavailable, using BYOK fallback: ${apiError instanceof Error ? apiError.message : 'Unknown error'}`);
+        response = await runLocalAnalysis(files, inputs.apiKey, repo, prNumber);
+        usedFallback = true;
+      } else {
+        throw apiError; // Re-throw if no fallback available
       }
+    }
 
-      // Don't fail the action, just warn
-      core.setOutput('status', 'skipped');
-      core.setOutput('reason', 'credit_limit_reached');
-      return;
+    // Check for credit exhaustion (only applies to managed API)
+    if (!usedFallback && 'error' in response && response.error === 'Credit limit reached') {
+      // Try BYOK fallback if available
+      if (inputs.apiKey) {
+        core.warning('Credits exhausted, using BYOK fallback');
+        response = await runLocalAnalysis(files, inputs.apiKey, repo, prNumber);
+        usedFallback = true;
+      } else {
+        core.warning('Credit limit reached');
+
+        // Post exhaustion comment if in PR context
+        if (context.payload.pull_request) {
+          const exhaustedResponse = response as CreditExhaustedResponse;
+          // Pass file count as unanalyzed count (closest approximation since analysis stopped)
+          const comment = generateExhaustedComment(exhaustedResponse.used, exhaustedResponse.limit, files.length);
+          await octokit.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.payload.pull_request.number,
+            body: comment,
+          });
+        }
+
+        // Don't fail the action, just warn
+        core.setOutput('status', 'skipped');
+        core.setOutput('reason', 'credit_limit_reached');
+        return;
+      }
     }
 
     const analysisResponse = response as AnalysisResponse;
     const { analysis, credits } = analysisResponse;
 
     core.info(`Analysis complete: ${analysis.summary.totalInferencePoints} inference points found`);
-    core.info(`Credits: ${credits.used}/${credits.limit} used`);
+    core.info(`Credits: ${credits.remaining} remaining (of ${credits.limit})`);
 
     // Load baseline for comparison
     let baseline = null;

@@ -23,9 +23,3 @@ export interface PDFOptions {
  * @param options - PDF formatting options
  */
 export declare function generatePDF(htmlContent: string, outputPath: string, options?: PDFOptions): Promise<void>;
-/**
- * Convert HTML file to PDF
- * @param htmlPath - Path to the HTML file
- * @param pdfPath - Where to save the PDF
- */
-export declare function htmlFileToPDF(htmlPath: string, pdfPath: string): Promise<void>;

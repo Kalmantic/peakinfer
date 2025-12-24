@@ -1,0 +1,143 @@
+id: prompt-caching-optimization
+name: Prompt Caching for Repetitive Workloads
+description: Reduce API costs by 50-90% through intelligent prompt caching
+category: api_optimization
+confidence: 0.92
+success_count: 1678
+verified_environments: 89
+contributors:
+  - inference_squeeze
+  - cache_engineer
+  - api_optimizer
+last_updated: "2025-01-20"
+source: "Inference Squeeze Chapter 4 - Prompt Optimization"
+
+environment_match:
+  system_prompt_usage: static_repetitive
+  prompt_patterns: templated
+  request_volume: ">10K/day"
+  cache_infrastructure: available
+
+optimization:
+  technique: prompt_caching
+  expected_cost_reduction: "50-90%"
+  expected_latency_improvement: "40-60%"
+  effort_estimate: "1 week"
+  risk_level: low
+
+economics:
+  baseline_calculation:
+    system_prompt_tokens: 1500
+    daily_requests: 50000
+    daily_system_prompt_tokens: 75000000
+    cost_per_input_token: 0.000015
+    daily_system_prompt_cost: 1125
+  projected_improvement:
+    cache_hit_rate: 0.95
+    cached_token_cost: 0.0000015
+    new_daily_cost: 118
+    monthly_savings: 30210
+  implementation_cost:
+    engineering_hours: 40
+    total_cost: 8000
+
+caching_strategies:
+  provider_native:
+    anthropic:
+      feature: "Prompt Caching"
+      discount: "90% on cached tokens"
+      cache_duration: "5 minutes"
+      min_tokens: 1024
+    openai:
+      feature: "Automatic caching on gpt-4o, o1"
+      discount: "50% on cached tokens"
+      cache_duration: "5-10 minutes"
+      min_tokens: 1024
+  application_level:
+    semantic_cache:
+      description: "Cache responses for semantically similar queries"
+      similarity_threshold: 0.95
+      storage: "Vector database (Pinecone, Weaviate)"
+      ttl: "24 hours"
+    exact_match:
+      description: "Cache exact query-response pairs"
+      storage: "Redis, Memcached"
+      ttl: "1-24 hours"
+
+implementation:
+  prerequisites:
+    - requirement: "Static system prompts"
+      validation: "System prompts don't change per-request"
+    - requirement: "Sufficient prompt length"
+      validation: "System prompt >= 1024 tokens for provider caching"
+  automated_steps:
+    - step_id: prompt_analysis
+      name: Analyze Prompt Patterns
+      executable: true
+      commands:
+        - "Identify static vs dynamic prompt components"
+        - "Measure system prompt token counts"
+        - "Calculate cache hit potential"
+      validation:
+        command: "Prompt analysis complete"
+        success_criteria: "static_components_identified AND cache_potential > 50%"
+        rollback_command: "Skip caching optimization"
+    - step_id: provider_native_caching
+      name: Enable Provider Native Caching
+      executable: true
+      commands:
+        - "Enable Anthropic prompt caching (if using Claude)"
+        - "Structure prompts with static prefix >= 1024 tokens"
+        - "Verify cache headers in responses"
+      validation:
+        command: "Check cache hit rate in API responses"
+        success_criteria: "cache_hit_rate > 80%"
+        rollback_command: "Disable prompt caching"
+    - step_id: application_cache
+      name: Implement Application-Level Cache
+      executable: true
+      commands:
+        - "Deploy semantic similarity cache (optional)"
+        - "Configure embedding model for queries"
+        - "Set similarity thresholds and TTL"
+      validation:
+        command: "Test cache hit rates"
+        success_criteria: "semantic_cache_hit_rate > 30%"
+        rollback_command: "Disable application cache"
+    - step_id: monitoring_setup
+      name: Cache Monitoring
+      executable: true
+      commands:
+        - "Track cache hit rates by endpoint"
+        - "Monitor cache staleness"
+        - "Alert on cache performance degradation"
+      validation:
+        command: "Verify monitoring dashboards"
+        success_criteria: "metrics_visible AND alerts_configured"
+        rollback_command: "Continue without monitoring"
+
+monitoring:
+  key_metrics:
+    - metric: cache_hit_rate
+      target: ">90%"
+      alert_threshold: "<70%"
+    - metric: cache_cost_savings
+      target: ">60%"
+      alert_threshold: "<40%"
+    - metric: cache_staleness_rate
+      target: "<5%"
+      alert_threshold: ">15%"
+  rollback_triggers:
+    - condition: "cache_hit_rate < 50% for 1 hour"
+      action: investigate_cache_invalidation
+    - condition: "cache_staleness_rate > 20% for 30 minutes"
+      action: reduce_cache_ttl
+
+results:
+  case_study:
+    environment: Legal document analysis
+    system_prompt_tokens: 2200
+    daily_requests: 75000
+    baseline_daily_cost: 2475
+    optimized_daily_cost: 371
+    cost_reduction_percent: 85

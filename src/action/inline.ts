@@ -78,11 +78,11 @@ function getSeverityLabel(severity: string): string {
 function getSeverityBadge(severity: string): { icon: string; label: string } {
   switch (severity) {
     case 'critical':
-      return { icon: '🔴', label: 'Critical' };
+      return { icon: '[!]', label: 'CRITICAL' };
     case 'warning':
-      return { icon: '🟡', label: 'Medium' };
+      return { icon: '[*]', label: 'MEDIUM' };
     default:
-      return { icon: '🔵', label: 'Low' };
+      return { icon: '[-]', label: 'LOW' };
   }
 }
 

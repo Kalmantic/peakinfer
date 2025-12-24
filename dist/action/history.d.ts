@@ -62,20 +62,17 @@ export declare function listRuns(path?: string, baseDir?: string): HistoryManife
  */
 export declare function getLatestRun(path: string, baseDir?: string): LoadedRun | null;
 /**
- * Get the previous run (second most recent) for a path.
- * Useful for comparison with current run.
- */
-export declare function getPreviousRun(path: string, baseDir?: string): LoadedRun | null;
-/**
- * Get run history count for a path.
- */
-export declare function getRunCount(path: string, baseDir?: string): number;
-/**
- * Check if history exists for a path.
- */
-export declare function hasHistory(path: string, baseDir?: string): boolean;
-/**
  * Prune old runs, keeping only the most recent N runs per path.
  * Returns the number of runs deleted.
  */
 export declare function pruneHistory(keepCount?: number, baseDir?: string): number;
+/**
+ * Delete a specific run by ID.
+ * Returns true if the run was deleted, false if not found.
+ */
+export declare function deleteRun(runId: string, baseDir?: string): boolean;
+/**
+ * Clear all history (delete everything).
+ * Returns the number of runs deleted.
+ */
+export declare function clearAllHistory(baseDir?: string): number;

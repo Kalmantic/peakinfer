@@ -59,11 +59,11 @@ function getSeverityLabel(severity) {
 function getSeverityBadge(severity) {
     switch (severity) {
         case 'critical':
-            return { icon: '🔴', label: 'Critical' };
+            return { icon: '[!]', label: 'CRITICAL' };
         case 'warning':
-            return { icon: '🟡', label: 'Medium' };
+            return { icon: '[*]', label: 'MEDIUM' };
         default:
-            return { icon: '🔵', label: 'Low' };
+            return { icon: '[-]', label: 'LOW' };
     }
 }
 /**

@@ -56,13 +56,13 @@ function getVerdictText(critical, warnings) {
 // MAIN
 // =============================================================================
 /**
- * Get severity badge (CodeRabbit style)
+ * Get severity badge (text-based per Julie Zhou design principles)
  */
 function getSeverityBadge(severity) {
     switch (severity) {
-        case 'critical': return '🔴 Critical';
-        case 'warning': return '🟡 Medium';
-        default: return '🔵 Low';
+        case 'critical': return '[CRITICAL]';
+        case 'warning': return '[MEDIUM]';
+        default: return '[LOW]';
     }
 }
 /**
@@ -77,20 +77,20 @@ export function generatePRComment(data) {
     const criticalIssues = newIssues.filter(i => i.severity === 'critical');
     const warningIssues = newIssues.filter(i => i.severity === 'warning');
     // Header
-    lines.push('## 🏔️ PeakInfer Analysis\n');
-    // Commits section (CodeRabbit style - collapsible)
+    lines.push('## PeakInfer Analysis\n');
+    // Commits section (collapsible)
     if (repoContext?.baseSha && repoContext?.sha) {
         lines.push('<details>');
-        lines.push('<summary>📝 Commits</summary>\n');
+        lines.push('<summary>Commits</summary>\n');
         const shortBase = repoContext.baseSha.substring(0, 7);
         const shortHead = repoContext.sha.substring(0, 7);
         lines.push(`Reviewing files from \`${shortBase}\` to \`${shortHead}\``);
         lines.push('\n</details>\n');
     }
-    // Files section (CodeRabbit style - collapsible)
+    // Files section (collapsible)
     if (changedFiles && changedFiles.length > 0) {
         lines.push('<details>');
-        lines.push(`<summary>📁 Files analyzed (${changedFiles.length})</summary>\n`);
+        lines.push(`<summary>Files analyzed (${changedFiles.length})</summary>\n`);
         for (const file of changedFiles.slice(0, 20)) {
             lines.push(`- \`${file}\``);
         }
@@ -105,35 +105,46 @@ export function generatePRComment(data) {
     if (newIssues.length > 0) {
         const parts = [];
         if (criticalIssues.length > 0)
-            parts.push(`🔴 ${criticalIssues.length} critical`);
+            parts.push(`${criticalIssues.length} critical`);
         if (warningIssues.length > 0)
-            parts.push(`🟡 ${warningIssues.length} warning${warningIssues.length > 1 ? 's' : ''}`);
+            parts.push(`${warningIssues.length} warning${warningIssues.length > 1 ? 's' : ''}`);
         lines.push(`**Issues:** ${parts.join(', ')}\n`);
     }
     else {
-        lines.push('**Issues:** ✅ None\n');
+        lines.push('**Issues:** None\n');
     }
     // v1.8: Runtime Correlation section (per PRD v1.9 §0 - Ship the JOIN)
+    // v1.8.2: Updated with concrete example per Magic Moment Implementation Spec
     lines.push('### Runtime Correlation\n');
     if (data.hasRuntime) {
-        lines.push(`✅ Analyzed **${data.runtimeEventCount?.toLocaleString() || 0} events**\n`);
+        lines.push(`Analyzed **${data.runtimeEventCount?.toLocaleString() || 0} runtime events**\n`);
+        if (results.joined?.drift && Array.isArray(results.joined.drift) && results.joined.drift.length > 0) {
+            lines.push('**DRIFT DETECTED** — Code behavior differs from runtime reality.\n');
+        }
     }
     else {
-        lines.push('🔒 **No runtime events provided.**\n');
+        // Concrete example instead of feature list (Magic Moment spec)
+        lines.push('**What You\'re Missing**\n');
         lines.push('');
-        lines.push('With runtime data, PeakInfer detects:');
-        lines.push('- Streaming declared but not working (2-5x latency impact)');
-        lines.push('- Model mismatches (code says gpt-4, runtime uses gpt-3.5)');
-        lines.push('- Retry logic that never fires');
-        lines.push('- Cache layers with 0% hit rate');
+        lines.push('**Real finding from similar codebase:**\n');
         lines.push('');
-        lines.push('**Add to your workflow:**');
+        lines.push('| Code | Runtime | Impact |');
+        lines.push('|------|---------|--------|');
+        lines.push('| `streaming: true` | 0% actual streams | **6x latency** |');
+        lines.push('');
+        lines.push(`This PR touches **${inferencePoints} inference point${inferencePoints !== 1 ? 's' : ''}**. What's YOUR drift?\n`);
+        lines.push('');
+        lines.push('<details>');
+        lines.push('<summary>Add runtime correlation</summary>\n');
         lines.push('```yaml');
         lines.push('- uses: kalmantic/peakinfer-action@v1');
         lines.push('  with:');
         lines.push('    path: ./src');
-        lines.push('    runtime: ./events.jsonl');
-        lines.push('```\n');
+        lines.push('    runtime: ./events.jsonl  # Your production logs');
+        lines.push('```');
+        lines.push('');
+        lines.push('[Events format guide](https://peakinfer.dev/docs/events)');
+        lines.push('\n</details>\n');
     }
     // Issues section with inline fixes
     if (newIssues.length > 0) {
@@ -166,13 +177,13 @@ export function generatePRComment(data) {
                     const badge = getSeverityBadge(issue.severity);
                     const fullLineFix = issue.fullLineFix;
                     const originalCode = issue.originalCode;
-                    lines.push(`**⚠️ ${title}** | ${badge}`);
+                    lines.push(`**${title}** | ${badge}`);
                     if (issue.evidence) {
                         lines.push(`> ${issue.evidence}`);
                     }
                     if (fullLineFix) {
                         lines.push('<details>');
-                        lines.push(`<summary>🔧 Proposed fix: ${issue.recommendation || 'Apply this change'}</summary>\n`);
+                        lines.push(`<summary>Proposed fix: ${issue.recommendation || 'Apply this change'}</summary>\n`);
                         if (originalCode) {
                             lines.push('```diff');
                             lines.push(`- ${originalCode.trim()}`);
@@ -188,7 +199,7 @@ export function generatePRComment(data) {
                         lines.push('\n</details>');
                     }
                     else if (issue.recommendation) {
-                        lines.push(`**🔧 Fix:** ${issue.recommendation}`);
+                        lines.push(`**Fix:** ${issue.recommendation}`);
                     }
                     lines.push('');
                 }
@@ -197,7 +208,7 @@ export function generatePRComment(data) {
         // Generic issues collapsed
         if (issuesWithoutLocations.length > 0) {
             lines.push('<details>');
-            lines.push(`<summary>📋 ${issuesWithoutLocations.length} general recommendations</summary>\n`);
+            lines.push(`<summary>${issuesWithoutLocations.length} general recommendations</summary>\n`);
             for (const issue of issuesWithoutLocations.slice(0, 10)) {
                 const title = getIssueTitle(issue);
                 lines.push(`- ${title}`);
@@ -209,42 +220,57 @@ export function generatePRComment(data) {
     lines.push('### Verdict\n');
     lines.push(getVerdictText(criticalIssues.length, warningIssues.length));
     lines.push('');
-    // Finishing touches section (CodeRabbit style)
+    // Finishing touches section
     lines.push('<details>');
-    lines.push('<summary>✨ Finishing touches</summary>\n');
+    lines.push('<summary>Finishing touches</summary>\n');
     lines.push('#### Follow-up actions');
     lines.push('- [ ] Review inline comments and apply suggested fixes');
     lines.push('- [ ] Add error handling where missing');
     lines.push('- [ ] Consider model downgrades for cost optimization');
     lines.push('\n</details>\n');
-    // Footer
+    // Footer with viral CTA
     lines.push('---');
     if (credits) {
-        lines.push(`<sub>📊 ${credits.used}/${credits.limit} free analyses this month · [PeakInfer](https://github.com/Kalmantic/peakinfer)</sub>`);
+        lines.push(`<sub>${credits.remaining} credits · [Add credits](https://peakinfer.dev/pricing) · [PeakInfer](https://github.com/Kalmantic/peakinfer)</sub>`);
     }
     else {
-        lines.push('<sub>Generated by [PeakInfer](https://github.com/Kalmantic/peakinfer)</sub>');
+        lines.push('<sub>Generated by [PeakInfer](https://github.com/Kalmantic/peakinfer) · [Get started](https://peakinfer.dev)</sub>');
     }
     return lines.join('\n');
 }
 /**
  * Generate comment for exhausted credits
+ * Updated per Business Model v1.9.3 - credit packs
+ * v2.0: Added unanalyzedCount to show gap (how many inference points weren't analyzed)
  */
-export function generateExhaustedComment(used, limit) {
+export function generateExhaustedComment(used, limit, unanalyzedCount) {
     const lines = [];
     lines.push('## PeakInfer Analysis\n');
-    lines.push('### Free Tier Limit Reached\n');
-    lines.push(`You've used **${used}/${limit}** free analyses this month.\n`);
+    lines.push('### Analysis Paused\n');
+    lines.push(`**0 credits remaining** (started with ${limit} free credits)\n`);
+    // Show the gap - how many files couldn't be analyzed
+    if (unanalyzedCount && unanalyzedCount > 0) {
+        lines.push(`**${unanalyzedCount} file${unanalyzedCount !== 1 ? 's' : ''} not analyzed** due to credit exhaustion.\n`);
+    }
     lines.push('**Options:**\n');
-    lines.push('1. **Wait** — Limit resets at the start of next month');
-    lines.push('2. **Use CLI (always free)** — Run with your own API key:');
-    lines.push('   ```bash');
-    lines.push('   npm i -g @kalmantic/peakinfer');
-    lines.push('   export ANTHROPIC_API_KEY=your-key');
-    lines.push('   peakinfer analyze ./src');
-    lines.push('   ```');
+    lines.push('');
+    lines.push('| Pack | Credits | Price | Best For |');
+    lines.push('|------|---------|-------|----------|');
+    lines.push('| Starter | 200 | $19 | Individual projects |');
+    lines.push('| Growth | 600 | $49 | Active development |');
+    lines.push('| Scale | 2,000 | $149 | Team use |');
+    lines.push('| Mega | 10,000 | $499 | Enterprise |');
+    lines.push('');
+    lines.push('[Purchase credits](https://peakinfer.dev/pricing)\n');
+    lines.push('');
+    lines.push('**Or use CLI (always free)** — Run with your own API key:');
+    lines.push('```bash');
+    lines.push('npm i -g @kalmantic/peakinfer');
+    lines.push('export ANTHROPIC_API_KEY=your-key');
+    lines.push('peakinfer analyze ./src');
+    lines.push('```');
     lines.push('\n---');
-    lines.push('<sub>Generated by [PeakInfer](https://github.com/Kalmantic/peakinfer)</sub>');
+    lines.push('<sub>Credits expire 6 months from purchase · [PeakInfer](https://github.com/Kalmantic/peakinfer)</sub>');
     return lines.join('\n');
 }
 //# sourceMappingURL=comments.js.map

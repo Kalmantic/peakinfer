@@ -1,18 +1,16 @@
 /**
  * Specialized Agents for PeakInfer
  *
- * From DESIGN.md v2.0 Section 2.1:
+ * Architecture v2.0 (Prompt-Based Analysis):
+ * - StaticAnalysisOrchestrator: Prompt-based unified analysis (synced from peakinfer-site)
+ * - RuntimeAnalyzerAgent: LLM-based runtime telemetry analysis
+ * - CorrelationAnalyzerAgent: LLM-based code-runtime drift detection
+ *
+ * Legacy agents (still available for compatibility):
  * - DiscoveryAgent: Scan and discover inference points
  * - AnalyzerAgent: Semantic classification with tool-limited analysis
  * - JoinerAgent: Correlate static + runtime truth
  * - InsightAgent: Generate findings from templates
- *
- * From Autonomous Agent Architecture Patterns v0.2:
- * - Two-pass execution (description → tool resolution → execute)
- * - Filesystem-based context with pointers
- * - Callback-driven architecture
- * - RuntimeAnalyzerAgent: LLM-based runtime telemetry analysis (NEW)
- * - CorrelationAnalyzerAgent: LLM-based code-runtime drift detection (NEW)
  */
 
 import { z } from 'zod';
@@ -28,16 +26,19 @@ import type { ScanResult, Callsite, InferenceEvent, JoinedOutput, Insight, Insig
 export { RuntimeAnalyzerAgent, type RuntimeAnalyzerInput, type RuntimeAnalyzerOutput } from './runtime-analyzer.js';
 export { CorrelationAnalyzerAgent, type CorrelationAnalyzerInput, type CorrelationAnalyzerOutput } from './correlation-analyzer.js';
 
-// Static analysis agents (6-agent parallel architecture)
-export { ImportAnalyzerAgent, type ImportAnalyzerInput, type ImportAnalyzerOutput } from './import-analyzer.js';
-export { CallSiteFinderAgent, type CallSiteFinderInput, type CallSiteFinderOutput, type InferencePoint } from './callsite-finder.js';
-export { CostAnalyzerAgent, type CostAnalyzerInput, type CostAnalyzerOutput, type CostProfile } from './cost-analyzer.js';
-export { LatencyAnalyzerAgent, type LatencyAnalyzerInput, type LatencyAnalyzerOutput, type LatencyProfile } from './latency-analyzer.js';
-export { ThroughputAnalyzerAgent, type ThroughputAnalyzerInput, type ThroughputAnalyzerOutput, type ThroughputProfile } from './throughput-analyzer.js';
-export { ReliabilityAnalyzerAgent, type ReliabilityAnalyzerInput, type ReliabilityAnalyzerOutput, type ReliabilityProfile } from './reliability-analyzer.js';
+// Static analysis orchestrator (prompt-based, synced from peakinfer-site)
+export { StaticAnalysisOrchestrator, runStaticAnalysis, type StaticAnalysisInput, type StaticAnalysisOutput, type PerformanceProfile } from '../orchestrator.js';
 
-// Static analysis orchestrator
-export { StaticAnalysisOrchestrator, runStaticAnalysis, type StaticAnalysisInput, type StaticAnalysisOutput, type PerformanceProfile } from './static-orchestrator.js';
+// Re-export analysis types
+export type {
+  InferencePoint,
+  CostProfile,
+  LatencyProfile,
+  ThroughputProfile,
+  ReliabilityProfile,
+  Insight,
+  Issue,
+} from '../analysis-types.js';
 
 // =============================================================================
 // AGENT INTERFACE (from Patterns v0.1 Section 4)
