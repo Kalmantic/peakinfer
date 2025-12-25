@@ -55,9 +55,9 @@ export declare const Callsite: z.ZodObject<{
     model: string | null;
     confidence: number;
     provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-    line: number;
-    file: string;
     framework: string | null;
+    file: string;
+    line: number;
     patterns: {
         streaming?: boolean | undefined;
         fallback?: boolean | undefined;
@@ -71,9 +71,9 @@ export declare const Callsite: z.ZodObject<{
     model: string | null;
     confidence: number;
     provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-    line: number;
-    file: string;
     framework: string | null;
+    file: string;
+    line: number;
     patterns: {
         streaming?: boolean | undefined;
         fallback?: boolean | undefined;
@@ -87,12 +87,12 @@ export declare const ScanCandidate: z.ZodObject<{
     line: z.ZodNumber;
     snippet: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    line: number;
     file: string;
+    line: number;
     snippet: string;
 }, {
-    line: number;
     file: string;
+    line: number;
     snippet: string;
 }>;
 export declare const ScannedFile: z.ZodObject<{
@@ -101,12 +101,12 @@ export declare const ScannedFile: z.ZodObject<{
     loc: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
     path: string;
-    loc: number;
     language: string;
+    loc: number;
 }, {
     path: string;
-    loc: number;
     language: string;
+    loc: number;
 }>;
 export declare const ScanResult: z.ZodObject<{
     root: z.ZodString;
@@ -116,24 +116,24 @@ export declare const ScanResult: z.ZodObject<{
         loc: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
         path: string;
-        loc: number;
         language: string;
+        loc: number;
     }, {
         path: string;
-        loc: number;
         language: string;
+        loc: number;
     }>, "many">;
     candidates: z.ZodArray<z.ZodObject<{
         file: z.ZodString;
         line: z.ZodNumber;
         snippet: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        line: number;
         file: string;
+        line: number;
         snippet: string;
     }, {
-        line: number;
         file: string;
+        line: number;
         snippet: string;
     }>, "many">;
     summary: z.ZodObject<{
@@ -162,12 +162,12 @@ export declare const ScanResult: z.ZodObject<{
     root: string;
     files: {
         path: string;
-        loc: number;
         language: string;
+        loc: number;
     }[];
     candidates: {
-        line: number;
         file: string;
+        line: number;
         snippet: string;
     }[];
 }, {
@@ -180,12 +180,12 @@ export declare const ScanResult: z.ZodObject<{
     root: string;
     files: {
         path: string;
-        loc: number;
         language: string;
+        loc: number;
     }[];
     candidates: {
-        line: number;
         file: string;
+        line: number;
         snippet: string;
     }[];
 }>;
@@ -265,9 +265,9 @@ export declare const InferenceMap: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -281,9 +281,9 @@ export declare const InferenceMap: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -305,9 +305,9 @@ export declare const InferenceMap: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -340,9 +340,9 @@ export declare const InferenceMap: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -644,9 +644,9 @@ export declare const EnrichedCallsite: z.ZodObject<{
     model: string | null;
     confidence: number;
     provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-    line: number;
-    file: string;
     framework: string | null;
+    file: string;
+    line: number;
     patterns: {
         streaming?: boolean | undefined;
         fallback?: boolean | undefined;
@@ -668,9 +668,9 @@ export declare const EnrichedCallsite: z.ZodObject<{
     model: string | null;
     confidence: number;
     provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-    line: number;
-    file: string;
     framework: string | null;
+    file: string;
+    line: number;
     patterns: {
         streaming?: boolean | undefined;
         fallback?: boolean | undefined;
@@ -745,9 +745,9 @@ export declare const JoinedOutput: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -769,9 +769,9 @@ export declare const JoinedOutput: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -822,9 +822,9 @@ export declare const JoinedOutput: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -838,9 +838,9 @@ export declare const JoinedOutput: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -937,9 +937,9 @@ export declare const JoinedOutput: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -962,9 +962,9 @@ export declare const JoinedOutput: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -1006,9 +1006,9 @@ export declare const JoinedOutput: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -1031,9 +1031,9 @@ export declare const JoinedOutput: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -2253,9 +2253,9 @@ export declare const ChangedInferencePoint: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -2269,9 +2269,9 @@ export declare const ChangedInferencePoint: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -2300,9 +2300,9 @@ export declare const ChangedInferencePoint: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -2323,9 +2323,9 @@ export declare const ChangedInferencePoint: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -2383,9 +2383,9 @@ export declare const ComparisonResult: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -2399,9 +2399,9 @@ export declare const ComparisonResult: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -2444,9 +2444,9 @@ export declare const ComparisonResult: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -2460,9 +2460,9 @@ export declare const ComparisonResult: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -2506,9 +2506,9 @@ export declare const ComparisonResult: z.ZodObject<{
             model: string | null;
             confidence: number;
             provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-            line: number;
-            file: string;
             framework: string | null;
+            file: string;
+            line: number;
             patterns: {
                 streaming?: boolean | undefined;
                 fallback?: boolean | undefined;
@@ -2522,9 +2522,9 @@ export declare const ComparisonResult: z.ZodObject<{
             model: string | null;
             confidence: number;
             provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-            line: number;
-            file: string;
             framework: string | null;
+            file: string;
+            line: number;
             patterns: {
                 streaming?: boolean | undefined;
                 fallback?: boolean | undefined;
@@ -2553,9 +2553,9 @@ export declare const ComparisonResult: z.ZodObject<{
             model: string | null;
             confidence: number;
             provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-            line: number;
-            file: string;
             framework: string | null;
+            file: string;
+            line: number;
             patterns: {
                 streaming?: boolean | undefined;
                 fallback?: boolean | undefined;
@@ -2576,9 +2576,9 @@ export declare const ComparisonResult: z.ZodObject<{
             model: string | null;
             confidence: number;
             provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-            line: number;
-            file: string;
             framework: string | null;
+            file: string;
+            line: number;
             patterns: {
                 streaming?: boolean | undefined;
                 fallback?: boolean | undefined;
@@ -2638,9 +2638,9 @@ export declare const ComparisonResult: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -2655,9 +2655,9 @@ export declare const ComparisonResult: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -2677,9 +2677,9 @@ export declare const ComparisonResult: z.ZodObject<{
             model: string | null;
             confidence: number;
             provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-            line: number;
-            file: string;
             framework: string | null;
+            file: string;
+            line: number;
             patterns: {
                 streaming?: boolean | undefined;
                 fallback?: boolean | undefined;
@@ -2715,9 +2715,9 @@ export declare const ComparisonResult: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -2732,9 +2732,9 @@ export declare const ComparisonResult: z.ZodObject<{
         model: string | null;
         confidence: number;
         provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-        line: number;
-        file: string;
         framework: string | null;
+        file: string;
+        line: number;
         patterns: {
             streaming?: boolean | undefined;
             fallback?: boolean | undefined;
@@ -2754,9 +2754,9 @@ export declare const ComparisonResult: z.ZodObject<{
             model: string | null;
             confidence: number;
             provider: "unknown" | "openai" | "anthropic" | "google" | "cohere" | "mistral" | "bedrock" | "azure_openai" | "together" | "fireworks" | "groq" | "replicate" | "perplexity" | "vllm" | "sglang" | "tgi" | "ollama" | "llamacpp" | null;
-            line: number;
-            file: string;
             framework: string | null;
+            file: string;
+            line: number;
             patterns: {
                 streaming?: boolean | undefined;
                 fallback?: boolean | undefined;
