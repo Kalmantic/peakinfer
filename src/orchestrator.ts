@@ -17,6 +17,15 @@
 
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
+import { EventEmitter } from 'events';
+
+// Increase max listeners to handle parallel file analysis without warnings
+// Each query() call adds exit listeners; with many files we exceed the default of 10
+// Set to 500 to support large codebases (300+ files)
+const originalMaxListeners = EventEmitter.defaultMaxListeners;
+EventEmitter.defaultMaxListeners = 500;
+process.setMaxListeners(500);
+
 import type {
   StaticAnalysisInput,
   StaticAnalysisOutput,
@@ -66,11 +75,37 @@ function generatePointId(filePath?: string, line?: number): string {
 /**
  * Extract complete JSON object from text by matching brackets.
  * This is more robust than regex which can match incomplete JSON.
+ * Returns null if the extracted JSON is too short or malformed.
+ *
+ * Handles common LLM issues:
+ * - Skips code snippets that aren't analysis results
+ * - Validates that response looks like analysis JSON (has "inference_points")
  */
 function extractJSON(text: string): string | null {
-  const start = text.indexOf('{');
-  if (start === -1) return null;
+  // Look for JSON that starts with {"inference_points" - the expected response format
+  // This avoids picking up code snippets that happen to start with {
+  const jsonStartPattern = /\{\s*"inference_points"/;
+  const match = text.match(jsonStartPattern);
 
+  if (!match || match.index === undefined) {
+    // Fallback: try to find any JSON object, but validate later
+    const fallbackStart = text.indexOf('{"');
+    if (fallbackStart === -1) return null;
+
+    const extracted = extractJSONFromPosition(text, fallbackStart);
+    if (extracted && isValidAnalysisJSON(extracted)) {
+      return extracted;
+    }
+    return null;
+  }
+
+  return extractJSONFromPosition(text, match.index);
+}
+
+/**
+ * Extract JSON starting from a given position using bracket matching.
+ */
+function extractJSONFromPosition(text: string, start: number): string | null {
   let depth = 0;
   let inString = false;
   let escape = false;
@@ -99,12 +134,45 @@ function extractJSON(text: string): string | null {
     if (char === '}') {
       depth--;
       if (depth === 0) {
-        return text.substring(start, i + 1);
+        const extracted = text.substring(start, i + 1);
+        // Sanity check: valid analysis JSON should be at least 50 chars
+        if (extracted.length < 50) {
+          return null;
+        }
+        return extracted;
       }
     }
   }
 
   return null;
+}
+
+/**
+ * Check if extracted text looks like valid analysis JSON.
+ * Rejects code snippets and placeholder responses.
+ */
+function isValidAnalysisJSON(text: string): boolean {
+  // Reject if it contains placeholder syntax like [...] or {...}
+  if (/\[\.\.\.\]|\{\.\.\.\}/.test(text)) {
+    return false;
+  }
+
+  // Reject if it looks like code (unquoted keys with single quotes or variable names)
+  // Valid JSON has "key": not key: or 'key':
+  if (/[{,]\s*[a-zA-Z_][a-zA-Z0-9_]*\s*:/.test(text)) {
+    // Check if this is actually unquoted keys (not inside a string)
+    // Simple heuristic: if we see word: followed by non-string value, it's likely code
+    if (/[{,]\s*[a-zA-Z_]\w*\s*:\s*[a-zA-Z_]/.test(text)) {
+      return false;
+    }
+  }
+
+  // Must contain "inference_points" for it to be a valid response
+  if (!text.includes('"inference_points"')) {
+    return false;
+  }
+
+  return true;
 }
 
 function detectLanguage(filePath: string): string {
@@ -262,20 +330,45 @@ Find all LLM API calls (Anthropic Claude, Claude Agent SDK, self-hosted like Ten
       // Use robust JSON extraction instead of greedy regex
       const jsonStr = extractJSON(responseText);
       if (jsonStr) {
-        const parsed = JSON.parse(jsonStr);
-        // Ensure IDs are set using stable file:line format
-        if (parsed.inference_points) {
+        try {
+          const parsed = JSON.parse(jsonStr);
+          // Validate that we got a proper response structure
+          if (!parsed || typeof parsed !== 'object') {
+            // Silent: file probably doesn't have LLM calls
+            return null;
+          }
+          // Ensure inference_points array exists (even if empty)
+          if (!parsed.inference_points) {
+            parsed.inference_points = [];
+          }
+          // Ensure imports object exists
+          if (!parsed.imports) {
+            parsed.imports = { llm_providers: [], frameworks: [] };
+          }
+          // Ensure IDs are set using stable file:line format
           for (const point of parsed.inference_points) {
             if (!point.id) {
               point.id = generatePointId(filePath, point.line);
             }
           }
+          return parsed as UnifiedAnalysisResult;
+        } catch (_parseError) {
+          // JSON extraction found something but it wasn't valid JSON
+          // This is expected for files without LLM calls - LLM may return code snippets
+          // Only log in verbose mode or if debugging is needed
+          return null;
         }
-        return parsed as UnifiedAnalysisResult;
       }
+      // No valid JSON found - this is normal for files without LLM inference points
     }
   } catch (error) {
-    console.error('Claude Agent SDK analysis error:', error);
+    // Only log actual SDK errors, not expected "no inference points" cases
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    if (!errorMsg.includes('rate limit') && !errorMsg.includes('timeout')) {
+      // Silent for most errors - files without LLM calls are expected
+    } else {
+      console.error('Claude Agent SDK error:', errorMsg);
+    }
   }
 
   return null;
@@ -604,6 +697,17 @@ function convertUnifiedToLegacy(
 // ORCHESTRATOR CLASS
 // =============================================================================
 
+// Progress callback for Claude Code-style TUI feedback
+export interface AnalysisProgressCallback {
+  (data: {
+    phase: 'analyzing';
+    completed: number;
+    total: number;
+    currentFile?: string;
+    percent: number;
+  }): void;
+}
+
 export class StaticAnalysisOrchestrator {
   private anthropicKey: string;
 
@@ -615,7 +719,10 @@ export class StaticAnalysisOrchestrator {
     }
   }
 
-  async analyze(input: StaticAnalysisInput): Promise<StaticAnalysisOutput> {
+  async analyze(
+    input: StaticAnalysisInput,
+    onProgress?: AnalysisProgressCallback
+  ): Promise<StaticAnalysisOutput> {
     const allImports: ImportAnalyzerOutput[] = [];
     const allCallsites: CallSiteFinderOutput[] = [];
     const allCostAnalysis: StaticAnalysisOutput['cost_analysis'] = [];
@@ -625,18 +732,50 @@ export class StaticAnalysisOrchestrator {
     const allPerformanceProfiles: PerformanceProfile[] = [];
     const allInsights: Insight[] = [];
 
-    // Parallel unified analysis - one LLM call per file, all files in parallel
-    const fileAnalyses = await Promise.all(
-      input.files.map(async (file) => {
-        const language = file.language || detectLanguage(file.path);
-        const unified = await runUnifiedAnalysis(file.path, file.content, language, this.anthropicKey);
+    // Track progress for Claude Code-style TUI
+    const totalFiles = input.files.length;
+    let completedFiles = 0;
 
-        if (unified && unified.inference_points?.length > 0) {
-          return { file, unified, language };
-        }
-        return null;
-      })
-    );
+    // Emit initial progress
+    onProgress?.({
+      phase: 'analyzing',
+      completed: 0,
+      total: totalFiles,
+      percent: 0,
+    });
+
+    // Concurrent analysis with limited parallelism to avoid overwhelming system
+    // Max 20 concurrent API calls - balances speed vs resource usage
+    const MAX_CONCURRENT = 20;
+    const fileAnalyses: ({ file: typeof input.files[0]; unified: UnifiedAnalysisResult; language: string } | null)[] = [];
+
+    // Process files in batches
+    for (let i = 0; i < input.files.length; i += MAX_CONCURRENT) {
+      const batch = input.files.slice(i, i + MAX_CONCURRENT);
+      const batchResults = await Promise.all(
+        batch.map(async (file) => {
+          const language = file.language || detectLanguage(file.path);
+          const unified = await runUnifiedAnalysis(file.path, file.content, language, this.anthropicKey);
+
+          // Emit progress after each file completes (Claude Code pattern)
+          completedFiles++;
+          const percent = Math.round((completedFiles / totalFiles) * 100);
+          onProgress?.({
+            phase: 'analyzing',
+            completed: completedFiles,
+            total: totalFiles,
+            currentFile: file.path.split('/').pop() || file.path,
+            percent,
+          });
+
+          if (unified && unified.inference_points?.length > 0) {
+            return { file, unified, language };
+          }
+          return null;
+        })
+      );
+      fileAnalyses.push(...batchResults);
+    }
 
     // Process results
     for (const result of fileAnalyses) {

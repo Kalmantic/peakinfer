@@ -27,7 +27,7 @@ export { RuntimeAnalyzerAgent, type RuntimeAnalyzerInput, type RuntimeAnalyzerOu
 export { CorrelationAnalyzerAgent, type CorrelationAnalyzerInput, type CorrelationAnalyzerOutput } from './correlation-analyzer.js';
 
 // Static analysis orchestrator (prompt-based, synced from peakinfer-site)
-export { StaticAnalysisOrchestrator, runStaticAnalysis, type StaticAnalysisInput, type StaticAnalysisOutput, type PerformanceProfile } from '../orchestrator.js';
+export { StaticAnalysisOrchestrator, runStaticAnalysis, type StaticAnalysisInput, type StaticAnalysisOutput, type PerformanceProfile, type AnalysisProgressCallback } from '../orchestrator.js';
 
 // Re-export analysis types
 export type {

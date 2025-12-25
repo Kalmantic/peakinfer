@@ -16,7 +16,7 @@ import { type ToolRegistry } from '../tools/index.js';
 import type { ScanResult, Callsite, InferenceEvent, JoinedOutput, Insight, InsightTemplate } from '../types.js';
 export { RuntimeAnalyzerAgent, type RuntimeAnalyzerInput, type RuntimeAnalyzerOutput } from './runtime-analyzer.js';
 export { CorrelationAnalyzerAgent, type CorrelationAnalyzerInput, type CorrelationAnalyzerOutput } from './correlation-analyzer.js';
-export { StaticAnalysisOrchestrator, runStaticAnalysis, type StaticAnalysisInput, type StaticAnalysisOutput, type PerformanceProfile } from '../orchestrator.js';
+export { StaticAnalysisOrchestrator, runStaticAnalysis, type StaticAnalysisInput, type StaticAnalysisOutput, type PerformanceProfile, type AnalysisProgressCallback } from '../orchestrator.js';
 export type { InferencePoint, CostProfile, LatencyProfile, ThroughputProfile, ReliabilityProfile, Insight, Issue, } from '../analysis-types.js';
 export interface AgentInput {
     description: string;

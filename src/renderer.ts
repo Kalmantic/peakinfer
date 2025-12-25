@@ -413,7 +413,7 @@ function renderDemoSection(streamingCount: number): void {
   }
   console.log('');
   console.log(dim('  → Find out: ') + 'peakinfer analyze . --events your-logs.jsonl');
-  console.log(dim('  → Events format: ') + 'https://peakinfer.dev/docs/events');
+  console.log(dim('  → Events format: ') + 'https://peakinfer.com/docs/events');
   console.log('');
 }
 
@@ -706,9 +706,9 @@ export interface RendererOptions {
 // Progress data for user-meaningful updates
 export interface ProgressData {
   phase: 'scanning' | 'analyzing' | 'profiling' | 'parsing' | 'correlating' | 'generating';
-  detail?: string; // e.g., "847 files" or "23 inference points"
+  detail?: string; // e.g., "3/47 files" or "23 inference points"
   percent?: number; // 0-100 for progress bar
-  currentFile?: string; // current file being analyzed
+  currentFile?: string; // current file being analyzed (shows most recently completed file)
 }
 
 // Render visual progress bar
@@ -792,8 +792,8 @@ export function createRenderer(opts: RendererOptions = {}) {
     }
   }
 
-  // Update spinner text with progress bar
-  function updateSpinnerProgress(phaseName: string, percent: number, currentFile?: string): void {
+  // Update spinner text with progress bar (Claude Code-style TUI)
+  function updateSpinnerProgress(phaseName: string, percent: number, currentFile?: string, detail?: string): void {
     if (!spinner || !isTTY) return;
 
     const filled = Math.floor((percent / 100) * BAR_WIDTH);
@@ -802,12 +802,20 @@ export function createRenderer(opts: RendererOptions = {}) {
       chalk.hex(COLORS.border)(BAR_EMPTY.repeat(empty));
     const percentStr = `${percent}%`.padStart(4);
 
+    // Build status line: "analyzing codebase... ████░░░░░░  42%  12/47 files  utils.ts"
     let text = `${phaseName}... ${bar} ${percentStr}`;
+
+    // Show file count if available (e.g., "12/47 files")
+    if (detail) {
+      text += chalk.dim(`  ${detail}`);
+    }
+
+    // Show current file being processed
     if (currentFile) {
-      const fileDisplay = currentFile.length > 30
-        ? '...' + currentFile.slice(-27)
+      const fileDisplay = currentFile.length > 25
+        ? '...' + currentFile.slice(-22)
         : currentFile;
-      text += chalk.dim(` ${fileDisplay}`);
+      text += chalk.dim(`  ${fileDisplay}`);
     }
 
     spinner.text = text;
@@ -879,6 +887,7 @@ export function createRenderer(opts: RendererOptions = {}) {
 
     // Julie Zhou: Progress with meaningful completion data
     // Enhanced with ora spinner and progress bar from peakinfer patterns
+    // Claude Code-style: shows progress bar + file count + current file
     renderProgress(data: ProgressData): void {
       if (isResumed) return;
 
@@ -895,7 +904,7 @@ export function createRenderer(opts: RendererOptions = {}) {
       // Update spinner if available, otherwise just skip (can't show progress bar in non-TTY)
       if (data.percent !== undefined) {
         if (isTTY && spinner) {
-          updateSpinnerProgress(phaseLabel, data.percent, data.currentFile);
+          updateSpinnerProgress(phaseLabel, data.percent, data.currentFile, data.detail);
         }
         return; // Don't fall through to completion logic for progress updates
       }

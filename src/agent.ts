@@ -650,12 +650,21 @@ async function executeTask(
             break;
           }
 
-          // Emit progress: starting LLM analysis (visible feedback during long-running call)
-          onProgress?.({ phase: 'analyzing', detail: `analyzing ${filesToAnalyze.length} files with LLM...` });
-
           // Run unified analysis (discovery + profiling in one LLM call)
+          // Pass progress callback for Claude Code-style per-file progress updates
           const orchestrator = new StaticAnalysisOrchestrator();
-          ctx.staticAnalysis = await orchestrator.analyze({ files: filesToAnalyze });
+          ctx.staticAnalysis = await orchestrator.analyze(
+            { files: filesToAnalyze },
+            (progressData) => {
+              // Forward progress to renderer with percent for progress bar
+              onProgress?.({
+                phase: 'analyzing',
+                percent: progressData.percent,
+                currentFile: progressData.currentFile,
+                detail: `${progressData.completed}/${progressData.total} files`,
+              });
+            }
+          );
 
           // Extract callsites from unified analysis for rest of pipeline
           const callsitesFromAnalysis: Callsite[] = [];
