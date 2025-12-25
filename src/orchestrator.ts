@@ -63,6 +63,50 @@ function generatePointId(filePath?: string, line?: number): string {
   return 'pt_' + Math.random().toString(36).substring(2, 10);
 }
 
+/**
+ * Extract complete JSON object from text by matching brackets.
+ * This is more robust than regex which can match incomplete JSON.
+ */
+function extractJSON(text: string): string | null {
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < text.length; i++) {
+    const char = text[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === '\\' && inString) {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"' && !escape) {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) continue;
+
+    if (char === '{') depth++;
+    if (char === '}') {
+      depth--;
+      if (depth === 0) {
+        return text.substring(start, i + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
 function detectLanguage(filePath: string): string {
   const ext = filePath.split('.').pop()?.toLowerCase() || '';
   const languageMap: Record<string, string> = {
@@ -215,9 +259,10 @@ Find all LLM API calls (Anthropic Claude, Claude Agent SDK, self-hosted like Ten
     const responseText = extractTextFromMessages(messages);
 
     if (responseText) {
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+      // Use robust JSON extraction instead of greedy regex
+      const jsonStr = extractJSON(responseText);
+      if (jsonStr) {
+        const parsed = JSON.parse(jsonStr);
         // Ensure IDs are set using stable file:line format
         if (parsed.inference_points) {
           for (const point of parsed.inference_points) {
