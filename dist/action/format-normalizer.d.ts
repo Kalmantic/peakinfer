@@ -53,3 +53,18 @@ export declare function getPredefinedMappings(formatType: FormatType): FieldMapp
  * Check if a format type requires agent normalization.
  */
 export declare function requiresAgentNormalization(formatType: FormatType): boolean;
+export interface MappingValidationResult {
+    valid: boolean;
+    mappings: Array<{
+        target: string;
+        source: string;
+    }>;
+    errors: string[];
+    warnings: string[];
+}
+/**
+ * Parse and validate a field mapping string.
+ * Format: "target=source,target2=source2,..."
+ * Example: "model=llm_model,latency_ms=duration_ms"
+ */
+export declare function validateFieldMappings(mappingStr: string | undefined): MappingValidationResult;

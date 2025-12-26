@@ -1,0 +1,78 @@
+id: vllm-migration-memory-bound
+name: vLLM Migration from Memory-Bound Workloads
+description: Migrate from traditional serving to vLLM for memory-bound inference workloads
+category: runtime_optimization
+confidence: 0.90
+success_count: 1123
+verified_environments: 52
+contributors:
+  - vllm_specialist
+  - migration_engineer
+last_updated: "2025-01-10"
+
+environment_match:
+  current_runtime:
+    - huggingface
+    - pytorch
+  memory_bound: true
+  batch_size: "<4"
+
+optimization:
+  technique: vllm_migration
+  expected_throughput_improvement: "3-6x"
+  expected_cost_reduction: "60-80%"
+  effort_estimate: "1-2 weeks"
+  risk_level: low
+
+economics:
+  projected_improvement:
+    throughput_multiplier: 4.5
+    cost_reduction_percent: 70
+  implementation_cost:
+    engineering_hours: 60
+    total_cost: 12000
+
+implementation:
+  prerequisites:
+    - requirement: "vLLM compatible model"
+      validation_command: "python scripts/check_vllm_compatibility.py --model ./model"
+    - requirement: "GPU with 16GB+ memory"
+  automated_steps:
+    - step_id: compatibility_check
+      name: Compatibility Verification
+      executable: true
+      commands:
+        - "python scripts/verify_model_format.py"
+        - "python scripts/test_vllm_loading.py"
+      validation:
+        command: "python scripts/validate_loading.py"
+        success_criteria: "model_loads_successfully"
+    - step_id: migration
+      name: vLLM Migration
+      executable: true
+      commands:
+        - "python scripts/setup_vllm_server.py --model ./model --tensor-parallel-size 1"
+        - "python scripts/configure_batching.py --max-tokens 8192"
+      validation:
+        command: "python scripts/benchmark_vllm.py"
+        success_criteria: "throughput > baseline * 3"
+        rollback_command: "python scripts/revert_to_original.py"
+
+monitoring:
+  key_metrics:
+    - metric: throughput_rps
+      target: ">baseline * 3"
+      alert_threshold: "<baseline * 2"
+    - metric: latency_p99
+      target: "<baseline * 1.2"
+      alert_threshold: ">baseline * 2"
+  rollback_triggers:
+    - condition: "throughput < baseline for 15 minutes"
+      action: automatic_rollback
+
+results:
+  recent_implementations:
+    - environment: api_inference_service
+      baseline_throughput: 50
+      optimized_throughput: 220
+      improvement_factor: 4.4

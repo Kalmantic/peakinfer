@@ -3,6 +3,7 @@ name: Throughput Gap Detection
 version: "1.0"
 category: throughput
 severity: warning
+layer: runtime
 
 match:
   scope: envelope

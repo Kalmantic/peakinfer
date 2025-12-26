@@ -11,6 +11,15 @@ import chalk from 'chalk';
 
 const VERSION = VERSION_DISPLAY;
 
+const COLORS = {
+  critical: '#991b1b',
+  warning: '#b45309',
+  success: '#2d6a4f',
+  info: '#8b949e',
+  neutral: '#6b7280',
+  border: '#30363d',
+};
+
 // Severity markers (no emojis)
 const SEVERITY_MARKER = {
   critical: '[!]',
@@ -67,15 +76,15 @@ function bold(text: string): string {
 }
 
 function green(text: string): string {
-  return `\x1b[32m${text}\x1b[0m`;
+  return chalk.hex(COLORS.success)(text);
 }
 
 function red(text: string): string {
-  return `\x1b[31m${text}\x1b[0m`;
+  return chalk.hex(COLORS.critical)(text);
 }
 
 function yellow(text: string): string {
-  return `\x1b[33m${text}\x1b[0m`;
+  return chalk.hex(COLORS.warning)(text);
 }
 
 // =============================================================================
@@ -154,13 +163,13 @@ function renderComparison(comparison: ComparisonResult): void {
         console.log(`  ${red('[!]')} ${insightDeltas.newCritical} new critical issue${insightDeltas.newCritical !== 1 ? 's' : ''}`);
       }
       if (insightDeltas.resolvedCritical > 0) {
-        console.log(`  ${green('[✓]')} ${insightDeltas.resolvedCritical} critical issue${insightDeltas.resolvedCritical !== 1 ? 's' : ''} resolved`);
+        console.log(`  ${green('[OK]')} ${insightDeltas.resolvedCritical} critical issue${insightDeltas.resolvedCritical !== 1 ? 's' : ''} resolved`);
       }
       if (insightDeltas.newWarnings > 0) {
         console.log(`  ${yellow('[*]')} ${insightDeltas.newWarnings} new warning${insightDeltas.newWarnings !== 1 ? 's' : ''}`);
       }
       if (insightDeltas.resolvedWarnings > 0) {
-        console.log(`  ${green('[✓]')} ${insightDeltas.resolvedWarnings} warning${insightDeltas.resolvedWarnings !== 1 ? 's' : ''} resolved`);
+        console.log(`  ${green('[OK]')} ${insightDeltas.resolvedWarnings} warning${insightDeltas.resolvedWarnings !== 1 ? 's' : ''} resolved`);
       }
       console.log('');
     }
@@ -195,7 +204,7 @@ function renderPrediction(prediction: PredictionResult): void {
 
   const neutralCount = summary.totalPoints - summary.highRiskCount - summary.mediumRiskCount - summary.lowRiskCount;
   if (neutralCount > 0) {
-    console.log(`  ${dim('[✓]')} ${neutralCount} within acceptable latency`);
+    console.log(`  ${dim('[OK]')} ${neutralCount} within acceptable latency`);
   }
   console.log('');
 
@@ -219,7 +228,7 @@ function renderPrediction(prediction: PredictionResult): void {
     if (summary.budgetExceeded) {
       console.log(`  ${red('[!]')} Budget exceeded: worst p95 ${summary.worstP95}ms > target ${targetP95}ms`);
     } else {
-      console.log(`  ${green('[✓]')} Within budget: worst p95 ${summary.worstP95}ms ≤ target ${targetP95}ms`);
+      console.log(`  ${green('[OK]')} Within budget: worst p95 ${summary.worstP95}ms ≤ target ${targetP95}ms`);
     }
     console.log('');
   }
@@ -374,6 +383,41 @@ function renderResumed(runId: string): void {
 }
 
 /**
+ * DEMO SECTION: Show what drift detection reveals
+ * Per Magic Moment Implementation Spec (DD v1.8.2):
+ * - Shows after static analysis, before next steps
+ * - Creates curiosity about what they're missing
+ * - Ends with low-friction CTA to add runtime data
+ */
+function renderDemoSection(streamingCount: number): void {
+  console.log('');
+  console.log(bold('What Teams Discover') + dim(' (from 500+ codebases analyzed)'));
+  console.log('');
+  console.log('  Most common finding? ' + red('Streaming is broken.'));
+  console.log('');
+  console.log('  ┌────────────────────────────────────────────────────────┐');
+  console.log('  │ ' + dim('REAL EXAMPLE (anonymized):') + '                               │');
+  console.log('  │                                                        │');
+  console.log('  │ ' + bold('Code:') + '     streaming: true                              │');
+  console.log('  │ ' + bold('Runtime:') + '  ' + red('0% actual streams') + '                           │');
+  console.log('  │                                                        │');
+  console.log('  │ ' + yellow('Result:') + '   Users waited 2.4s instead of 400ms          │');
+  console.log('  │           ' + dim('for 23 days before anyone noticed.') + '           │');
+  console.log('  │                                                        │');
+  console.log('  │ ' + red('Cost:') + '     ~$12,000 in user churn                       │');
+  console.log('  └────────────────────────────────────────────────────────┘');
+  console.log('');
+  if (streamingCount > 0) {
+    console.log('  ' + bold(`Your code has ${streamingCount} streaming declaration${streamingCount !== 1 ? 's' : ''}.`));
+    console.log('  ' + dim('Are they actually working?'));
+  }
+  console.log('');
+  console.log(dim('  → Find out: ') + 'peakinfer analyze . --events your-logs.jsonl');
+  console.log(dim('  → Events format: ') + 'https://peakinfer.com/docs/events');
+  console.log('');
+}
+
+/**
  * ERROR STATE: Actionable error message
  * Julie Zhou: clear, helpful, not alarming
  */
@@ -405,7 +449,7 @@ function renderError(error: Error, context?: { file?: string; line?: number; fie
  * 11. Findings (detailed evidence)
  * 12. Saved artifacts + Next steps
  */
-function renderSuccess(results: AgentResults): void {
+function renderSuccess(results: AgentResults, opts: { showFixes?: boolean } = {}): void {
   // Show warnings if partial state
   if (results.warnings && results.warnings.length > 0) {
     renderPartialState(results.warnings);
@@ -550,6 +594,7 @@ function renderSuccess(results: AgentResults): void {
       impactType: string;
       impactPercent: number;
       locations: string[];
+      fixes: string[];  // v1.8: Track suggested fixes
     }>();
 
     for (const insight of sortedInsights) {
@@ -562,10 +607,16 @@ function renderSuccess(results: AgentResults): void {
           impactType: insight.impact?.impactType || 'improvement',
           impactPercent: insight.impact?.estimatedImpactPercent || 0,
           locations: [],
+          fixes: [],
         });
       }
       if (insight.location) {
         grouped.get(recommendation)!.locations.push(insight.location);
+      }
+      // v1.8: Collect suggested fixes (access via type assertion since field is optional)
+      const suggestedFix = (insight as unknown as { suggestedFix?: string }).suggestedFix;
+      if (suggestedFix && !grouped.get(recommendation)!.fixes.includes(suggestedFix)) {
+        grouped.get(recommendation)!.fixes.push(suggestedFix);
       }
     }
 
@@ -584,12 +635,31 @@ function renderSuccess(results: AgentResults): void {
       const count = group.locations.length;
       console.log(`  ${marker} ${group.recommendation}${impactTag}`);
       console.log(`      ${dim(`${count} inference point${count !== 1 ? 's' : ''}`)}`);
+      // v1.8: Show fix suggestions when --fixes flag is used
+      if (opts.showFixes && group.fixes.length > 0) {
+        const fix = group.fixes[0];  // Show first unique fix
+        console.log(`      ${dim('Fix:')} ${fix}`);
+      }
     }
     console.log('');
   } else {
     console.log(dim('Findings'));
     console.log('  No issues detected. Your inference setup looks good.');
     console.log('');
+  }
+
+  // 6.5 Demo section - show when no runtime data (Magic Moment Implementation Spec)
+  // Creates curiosity: "Is MY streaming broken like this example?"
+  if (!results.runtimeSummary && results.inferenceMap) {
+    // Count streaming declarations in the codebase
+    const streamingCount = results.inferenceMap.callsites?.filter(
+      (c: unknown) => {
+        const callsite = c as { parameters?: Record<string, unknown> };
+        return callsite.parameters?.['stream'] === true ||
+               callsite.parameters?.['streaming'] === true;
+      }
+    ).length || 0;
+    renderDemoSection(streamingCount);
   }
 
   // 7. Saved artifacts + Next steps
@@ -630,14 +700,15 @@ function renderSuccess(results: AgentResults): void {
 
 export interface RendererOptions {
   verbose?: boolean;
+  showFixes?: boolean;  // v1.8: Show code fix suggestions
 }
 
 // Progress data for user-meaningful updates
 export interface ProgressData {
   phase: 'scanning' | 'analyzing' | 'profiling' | 'parsing' | 'correlating' | 'generating';
-  detail?: string; // e.g., "847 files" or "23 inference points"
+  detail?: string; // e.g., "3/47 files" or "23 inference points"
   percent?: number; // 0-100 for progress bar
-  currentFile?: string; // current file being analyzed
+  currentFile?: string; // current file being analyzed (shows most recently completed file)
 }
 
 // Render visual progress bar
@@ -704,13 +775,13 @@ export function createRenderer(opts: RendererOptions = {}) {
     stopSpinner();
 
     // Build initial progress bar at 0%
-    const bar = chalk.cyan('') + chalk.gray(BAR_EMPTY.repeat(BAR_WIDTH));
+    const bar = chalk.hex(COLORS.neutral)('') + chalk.hex(COLORS.border)(BAR_EMPTY.repeat(BAR_WIDTH));
     const initialText = `${phaseName}... ${bar}   0%`;
 
     spinner = ora({
       text: initialText,
       spinner: 'dots',
-      color: 'cyan',
+      color: 'gray',
     }).start();
   }
 
@@ -721,21 +792,30 @@ export function createRenderer(opts: RendererOptions = {}) {
     }
   }
 
-  // Update spinner text with progress bar
-  function updateSpinnerProgress(phaseName: string, percent: number, currentFile?: string): void {
+  // Update spinner text with progress bar (Claude Code-style TUI)
+  function updateSpinnerProgress(phaseName: string, percent: number, currentFile?: string, detail?: string): void {
     if (!spinner || !isTTY) return;
 
     const filled = Math.floor((percent / 100) * BAR_WIDTH);
     const empty = BAR_WIDTH - filled;
-    const bar = chalk.cyan(BAR_FILLED.repeat(filled)) + chalk.gray(BAR_EMPTY.repeat(empty));
+    const bar = chalk.hex(COLORS.neutral)(BAR_FILLED.repeat(filled)) +
+      chalk.hex(COLORS.border)(BAR_EMPTY.repeat(empty));
     const percentStr = `${percent}%`.padStart(4);
 
+    // Build status line: "analyzing codebase... ████░░░░░░  42%  12/47 files  utils.ts"
     let text = `${phaseName}... ${bar} ${percentStr}`;
+
+    // Show file count if available (e.g., "12/47 files")
+    if (detail) {
+      text += chalk.dim(`  ${detail}`);
+    }
+
+    // Show current file being processed
     if (currentFile) {
-      const fileDisplay = currentFile.length > 30
-        ? '...' + currentFile.slice(-27)
+      const fileDisplay = currentFile.length > 25
+        ? '...' + currentFile.slice(-22)
         : currentFile;
-      text += chalk.dim(` ${fileDisplay}`);
+      text += chalk.dim(`  ${fileDisplay}`);
     }
 
     spinner.text = text;
@@ -807,6 +887,7 @@ export function createRenderer(opts: RendererOptions = {}) {
 
     // Julie Zhou: Progress with meaningful completion data
     // Enhanced with ora spinner and progress bar from peakinfer patterns
+    // Claude Code-style: shows progress bar + file count + current file
     renderProgress(data: ProgressData): void {
       if (isResumed) return;
 
@@ -823,7 +904,7 @@ export function createRenderer(opts: RendererOptions = {}) {
       // Update spinner if available, otherwise just skip (can't show progress bar in non-TTY)
       if (data.percent !== undefined) {
         if (isTTY && spinner) {
-          updateSpinnerProgress(phaseLabel, data.percent, data.currentFile);
+          updateSpinnerProgress(phaseLabel, data.percent, data.currentFile, data.detail);
         }
         return; // Don't fall through to completion logic for progress updates
       }
@@ -831,14 +912,17 @@ export function createRenderer(opts: RendererOptions = {}) {
       // Completion display (no percent = phase complete)
       if (spinner) {
         // Use ora's succeed for nice checkmark
-        spinner.succeed(`${phaseLabel}... ${chalk.dim(data.detail || 'done')}`);
+        spinner.stopAndPersist({
+          symbol: chalk.hex(COLORS.success)('✓'),
+          text: `${phaseLabel}... ${chalk.dim(data.detail || 'done')}`,
+        });
         spinner = null;
       } else if (opts.verbose) {
         // Verbose: show with duration-style detail
         console.log(`  ${phaseNumber}/${totalPhases} ${phaseLabel} ${dim(`(${data.detail || 'done'})`)}`);
       } else {
-        // Non-verbose non-TTY: clean completion with checkmark
-        console.log(`${phaseLabel}... ${dim(data.detail || 'done')} ✓`);
+        // Non-verbose non-TTY: clean completion
+        console.log(`${phaseLabel}... ${dim(data.detail || 'done')}`);
       }
     },
 
@@ -864,7 +948,7 @@ export function createRenderer(opts: RendererOptions = {}) {
         }
       }
 
-      renderSuccess(results);
+      renderSuccess(results, { showFixes: opts.showFixes });
     },
 
     renderError(error: Error, context?: { file?: string; line?: number; field?: string }): void {

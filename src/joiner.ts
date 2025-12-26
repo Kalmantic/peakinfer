@@ -2,6 +2,24 @@ import { percentile } from './runtime.js';
 import type { Callsite, InferenceEvent, JoinedOutput, DriftSignal, EnrichedCallsite, UsageStats } from './types.js';
 
 // =============================================================================
+// CONFIGURABLE THRESHOLDS
+// =============================================================================
+
+export interface DriftThresholds {
+  /** Percentage threshold for streaming drift (0-100). Default: 50 */
+  streamingDriftPercent: number;
+  /** Minimum events before flagging retry/fallback drift. Default: 10 */
+  minEventsForPatternDrift: number;
+}
+
+const DEFAULT_THRESHOLDS: DriftThresholds = {
+  streamingDriftPercent: 50,
+  minEventsForPatternDrift: 10,
+};
+
+const currentThresholds = { ...DEFAULT_THRESHOLDS };
+
+// =============================================================================
 // HELPERS
 // =============================================================================
 
@@ -57,7 +75,7 @@ function detectPatternDrift(
   // 1. Streaming drift detection
   if (patterns.streaming === true) {
     // Code declares streaming, check if runtime confirms
-    if (nonStreamingPercent > 50) {
+    if (nonStreamingPercent > currentThresholds.streamingDriftPercent) {
       driftSignals.push({
         type: 'patternDrift',
         callsiteId: callsite.id,
@@ -77,7 +95,7 @@ function detectPatternDrift(
     }
   } else if (patterns.streaming === false) {
     // Code explicitly non-streaming, but runtime shows streaming
-    if (streamingPercent > 50) {
+    if (streamingPercent > currentThresholds.streamingDriftPercent) {
       driftSignals.push({
         type: 'patternDrift',
         callsiteId: callsite.id,
@@ -114,7 +132,7 @@ function detectPatternDrift(
   if (patterns.retries === true && retriedEvents === 0) {
     // This could be good (no failures) or indicate retries aren't working
     // Only flag if there are a significant number of events
-    if (events.length >= 10) {
+    if (events.length >= currentThresholds.minEventsForPatternDrift) {
       driftSignals.push({
         type: 'patternDrift',
         callsiteId: callsite.id,
@@ -129,7 +147,7 @@ function detectPatternDrift(
   if (patterns.fallback === true && fallbackEvents === 0) {
     // This could be good (primary always works) or indicate fallback isn't working
     // Only flag if there are a significant number of events
-    if (events.length >= 10) {
+    if (events.length >= currentThresholds.minEventsForPatternDrift) {
       driftSignals.push({
         type: 'patternDrift',
         callsiteId: callsite.id,

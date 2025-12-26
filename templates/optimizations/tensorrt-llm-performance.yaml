@@ -1,0 +1,77 @@
+id: tensorrt-llm-performance
+name: TensorRT-LLM Maximum Performance
+description: Deploy models with TensorRT-LLM for maximum inference performance on NVIDIA GPUs
+category: runtime_optimization
+confidence: 0.88
+success_count: 789
+verified_environments: 38
+contributors:
+  - tensorrt_specialist
+  - nvidia_partner
+last_updated: "2025-01-03"
+
+environment_match:
+  gpu_vendor: nvidia
+  performance_requirement: maximum
+  model_support: transformer
+
+optimization:
+  technique: tensorrt_llm_deployment
+  expected_throughput_improvement: "3-5x"
+  expected_latency_improvement: "50-70%"
+  effort_estimate: "2-3 weeks"
+  risk_level: medium
+
+economics:
+  projected_improvement:
+    throughput_multiplier: 4
+    cost_per_token_reduction: 0.75
+  implementation_cost:
+    engineering_hours: 120
+    total_cost: 24000
+
+implementation:
+  prerequisites:
+    - requirement: "NVIDIA GPU (A100/H100 recommended)"
+    - requirement: "TensorRT-LLM installation"
+      validation_command: "python -c 'import tensorrt_llm'"
+    - requirement: "Sufficient disk space for compiled engines"
+  automated_steps:
+    - step_id: engine_build
+      name: TensorRT Engine Build
+      executable: true
+      commands:
+        - "python scripts/convert_to_trt.py --model ./model --dtype fp16"
+        - "python scripts/build_trt_engine.py --max-batch-size 64 --max-input-len 2048"
+      validation:
+        command: "python scripts/validate_engine.py"
+        success_criteria: "engine_valid AND accuracy > 0.99"
+    - step_id: deployment
+      name: TensorRT Deployment
+      executable: true
+      commands:
+        - "python scripts/deploy_trt_server.py --engine ./engine"
+        - "python scripts/configure_inflight_batching.py"
+      validation:
+        command: "python scripts/benchmark_trt.py"
+        success_criteria: "throughput > baseline * 3"
+        rollback_command: "python scripts/fallback_to_pytorch.py"
+
+monitoring:
+  key_metrics:
+    - metric: throughput_tokens_per_second
+      target: ">5000"
+      alert_threshold: "<3000"
+    - metric: gpu_memory_utilization
+      target: "70-85%"
+      alert_threshold: ">95%"
+  rollback_triggers:
+    - condition: "engine_error_rate > 0.01 for 5 minutes"
+      action: automatic_rollback
+
+results:
+  recent_implementations:
+    - environment: high_volume_api
+      baseline_throughput: 800
+      optimized_throughput: 3500
+      improvement_factor: 4.4

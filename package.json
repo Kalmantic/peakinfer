@@ -1,6 +1,6 @@
 {
   "name": "@kalmantic/peakinfer",
-  "version": "1.0.93",
+  "version": "1.0.129",
   "description": "LLM inference performance analysis CLI",
   "type": "module",
   "main": "dist/cli.js",
@@ -9,13 +9,17 @@
   },
   "scripts": {
     "prebuild": "npm version patch --no-git-tag-version",
-    "build": "tsc && npm run build:action",
-    "build:noversion": "tsc && npm run build:action",
-    "build:action": "ncc build src/action/index.ts -o dist/action --minify --no-source-map-register",
+    "build": "tsc",
+    "build:noversion": "tsc",
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
     "test": "vitest",
     "test:watch": "vitest --watch",
+    "test:perf": "vitest run tests/performance/",
+    "benchmark": "tsx scripts/benchmark.ts",
+    "benchmark:ci": "tsx scripts/benchmark.ts --ci",
+    "sync": "bash scripts/sync-from-site.sh",
+    "sync:check": "bash scripts/sync-from-site.sh --check",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "clean": "rm -rf dist"
@@ -38,8 +42,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@actions/core": "^2.0.1",
-    "@actions/github": "^6.0.1",
+    "@anthropic-ai/claude-agent-sdk": "^0.1.76",
     "@anthropic-ai/sdk": "^0.27.0",
     "chalk": "^5.6.2",
     "commander": "^12.0.0",
@@ -47,13 +50,13 @@
     "glob": "^10.3.10",
     "ignore": "^5.3.0",
     "ora": "^9.0.0",
+    "posthog-node": "^4.0.0",
     "puppeteer": "^24.33.0",
     "yaml": "^2.3.4",
     "zod": "^3.22.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
-    "@vercel/ncc": "^0.38.4",
     "tsx": "^4.7.0",
     "typescript": "^5.3.0",
     "vitest": "^1.2.0"

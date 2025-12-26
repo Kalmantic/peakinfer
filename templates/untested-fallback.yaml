@@ -3,6 +3,7 @@ name: Untested Fallback Detection
 version: "1.0"
 category: reliability
 severity: critical
+layer: api
 
 match:
   scope: joined

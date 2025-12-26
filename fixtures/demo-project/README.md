@@ -1,6 +1,6 @@
-# PeakInfer v1.5 Demo Project
+# PeakInfer v2.0 Demo Project
 
-This is a sample project for demonstrating PeakInfer v1.5 features.
+This is a sample project for demonstrating PeakInfer v2.0 features.
 
 ## Files
 

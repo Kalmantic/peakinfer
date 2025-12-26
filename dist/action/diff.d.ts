@@ -12,6 +12,27 @@ type Context = any;
  */
 export declare function getChangedFiles(octokit: Octokit, context: Context): Promise<string[]>;
 /**
+ * Filter source files to only those changed in the PR.
+ * Used for faster "changed-files-only" analysis mode.
+ */
+export declare function filterFilesToChanged(files: Array<{
+    path: string;
+    content: string;
+}>, changedFiles: string[]): Array<{
+    path: string;
+    content: string;
+}>;
+/**
+ * Detect events file in PR (auto-discovery per PRD v1.9.3).
+ *
+ * User flow:
+ * 1. User sees PR comment showing static analysis
+ * 2. Curious about runtime — exports logs locally
+ * 3. Commits events.jsonl to branch or uploads to .peakinfer/
+ * 4. Action detects and re-runs with full correlation
+ */
+export declare function detectEventsFile(octokit: Octokit, context: Context): Promise<string | null>;
+/**
  * Filter insights to those affecting changed files
  *
  * Returns:

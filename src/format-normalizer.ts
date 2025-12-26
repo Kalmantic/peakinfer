@@ -11,7 +11,8 @@
  * - State Completeness: Handle all format states (known, agent-required, unknown)
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { query } from '@anthropic-ai/claude-agent-sdk';
+import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import type {
   FormatType,
   FieldMapping,
@@ -21,6 +22,24 @@ import type {
   InferenceEvent,
   ScanResult,
 } from './types.js';
+import { loadPrompt } from './templates.js';
+
+/**
+ * Extract text content from Claude Agent SDK messages
+ */
+function extractTextFromMessages(messages: SDKMessage[]): string {
+  let text = '';
+  for (const msg of messages) {
+    if (msg.type === 'assistant' && msg.message?.content) {
+      for (const block of msg.message.content) {
+        if (block.type === 'text') {
+          text += block.text;
+        }
+      }
+    }
+  }
+  return text;
+}
 
 // =============================================================================
 // CONSTANTS
@@ -325,6 +344,180 @@ const PREDEFINED_MAPPINGS: Record<string, FieldMapping[]> = {
       evidence: 'Zipkin duration field (microseconds -> ms)',
     },
   ],
+  langsmith: [
+    {
+      target: 'id',
+      source_path: 'run_id',
+      extraction_type: 'direct',
+      transform: 'none',
+      confidence: 0.95,
+      evidence: 'LangSmith run ID',
+    },
+    {
+      target: 'ts',
+      source_path: 'start_time',
+      extraction_type: 'direct',
+      transform: 'none',  // Already ISO format
+      confidence: 0.95,
+      evidence: 'LangSmith start timestamp',
+    },
+    {
+      target: 'provider',
+      source_path: 'extra.invocation_params.model_provider',
+      extraction_type: 'jsonpath',
+      transform: 'provider_normalize',
+      confidence: 0.8,
+      evidence: 'LangSmith invocation params provider',
+    },
+    {
+      target: 'model',
+      source_path: 'extra.invocation_params.model',
+      extraction_type: 'jsonpath',
+      transform: 'none',
+      confidence: 0.85,
+      evidence: 'LangSmith invocation params model',
+    },
+    {
+      target: 'input_tokens',
+      source_path: 'token_usage.prompt_tokens',
+      extraction_type: 'jsonpath',
+      transform: 'parse_int',
+      confidence: 0.9,
+      evidence: 'LangSmith token usage prompt_tokens',
+    },
+    {
+      target: 'output_tokens',
+      source_path: 'token_usage.completion_tokens',
+      extraction_type: 'jsonpath',
+      transform: 'parse_int',
+      confidence: 0.9,
+      evidence: 'LangSmith token usage completion_tokens',
+    },
+    {
+      target: 'latency_ms',
+      source_path: 'latency',
+      extraction_type: 'direct',
+      transform: 'duration_to_ms',
+      confidence: 0.9,
+      evidence: 'LangSmith latency field',
+    },
+  ],
+  litellm: [
+    {
+      target: 'id',
+      source_path: 'id',
+      extraction_type: 'direct',
+      transform: 'none',
+      confidence: 0.95,
+      evidence: 'LiteLLM request ID',
+    },
+    {
+      target: 'ts',
+      source_path: 'startTime',
+      extraction_type: 'direct',
+      transform: 'unix_ms_to_iso',
+      confidence: 0.9,
+      evidence: 'LiteLLM start timestamp',
+    },
+    {
+      target: 'provider',
+      source_path: 'model',
+      extraction_type: 'direct',
+      transform: 'provider_normalize',  // LiteLLM uses model format like "openai/gpt-4"
+      confidence: 0.85,
+      evidence: 'LiteLLM model field (provider/model format)',
+    },
+    {
+      target: 'model',
+      source_path: 'model',
+      extraction_type: 'direct',
+      transform: 'none',
+      confidence: 0.95,
+      evidence: 'LiteLLM model field',
+    },
+    {
+      target: 'input_tokens',
+      source_path: 'usage.prompt_tokens',
+      extraction_type: 'jsonpath',
+      transform: 'parse_int',
+      confidence: 0.95,
+      evidence: 'LiteLLM usage prompt_tokens',
+    },
+    {
+      target: 'output_tokens',
+      source_path: 'usage.completion_tokens',
+      extraction_type: 'jsonpath',
+      transform: 'parse_int',
+      confidence: 0.95,
+      evidence: 'LiteLLM usage completion_tokens',
+    },
+    {
+      target: 'latency_ms',
+      source_path: 'response_time_ms',
+      extraction_type: 'direct',
+      transform: 'none',
+      confidence: 1.0,
+      evidence: 'LiteLLM response_time_ms field',
+    },
+  ],
+  helicone: [
+    {
+      target: 'id',
+      source_path: 'helicone_request_id',
+      extraction_type: 'direct',
+      transform: 'none',
+      confidence: 0.95,
+      evidence: 'Helicone request ID',
+    },
+    {
+      target: 'ts',
+      source_path: 'created_at',
+      extraction_type: 'direct',
+      transform: 'none',  // Helicone uses ISO format
+      confidence: 0.9,
+      evidence: 'Helicone created_at timestamp',
+    },
+    {
+      target: 'provider',
+      source_path: 'provider',
+      extraction_type: 'direct',
+      transform: 'provider_normalize',
+      confidence: 0.9,
+      evidence: 'Helicone provider field',
+    },
+    {
+      target: 'model',
+      source_path: 'model',
+      extraction_type: 'direct',
+      transform: 'none',
+      confidence: 0.95,
+      evidence: 'Helicone model field',
+    },
+    {
+      target: 'input_tokens',
+      source_path: 'prompt_tokens',
+      extraction_type: 'direct',
+      transform: 'parse_int',
+      confidence: 0.9,
+      evidence: 'Helicone prompt_tokens',
+    },
+    {
+      target: 'output_tokens',
+      source_path: 'completion_tokens',
+      extraction_type: 'direct',
+      transform: 'parse_int',
+      confidence: 0.9,
+      evidence: 'Helicone completion_tokens',
+    },
+    {
+      target: 'latency_ms',
+      source_path: 'latency_ms',
+      extraction_type: 'direct',
+      transform: 'none',
+      confidence: 1.0,
+      evidence: 'Helicone latency_ms field',
+    },
+  ],
 };
 
 // =============================================================================
@@ -583,7 +776,14 @@ function detectNonJSONFormat(
 // AGENT-BASED NORMALIZATION
 // =============================================================================
 
-const NORMALIZATION_PROMPT = `You are an expert at parsing log formats and trace data. Analyze the following sample data and determine field mappings to the InferenceEvent schema.
+// Load normalization prompt from YAML (with hardcoded fallback)
+function getNormalizationPrompt(): string {
+  const prompt = loadPrompt('format-normalizer');
+  if (prompt) {
+    return prompt.prompt;
+  }
+  // Fallback to hardcoded prompt if YAML not available
+  return `You are an expert at parsing log formats and trace data. Analyze the following sample data and determine field mappings to the InferenceEvent schema.
 
 The target InferenceEvent schema requires these fields:
 - id (string): Unique event identifier
@@ -622,6 +822,7 @@ Respond in JSON format:
   "unmapped_fields": ["fields that could not be mapped"],
   "warnings": ["any issues or caveats"]
 }`;
+}
 
 /**
  * Use LLM agent to normalize an unknown format.
@@ -663,14 +864,9 @@ This may help identify logging patterns and field names used in the application.
   }
 
   try {
-    const client = new Anthropic({ apiKey });
-    const response = await client.messages.create({
-      model: LLM_MODEL,
-      max_tokens: 2000,
-      messages: [
-        {
-          role: 'user',
-          content: `${NORMALIZATION_PROMPT}${contextPrompt}${hintsPrompt}
+    // Use Claude Agent SDK query() function
+    const agentQuery = query({
+      prompt: `${getNormalizationPrompt()}${contextPrompt}${hintsPrompt}
 
 Detected format: ${detection.format_type} (confidence: ${detection.confidence})
 
@@ -678,12 +874,22 @@ Sample data:
 \`\`\`
 ${sampleContent}
 \`\`\``,
-        },
-      ],
+      options: {
+        model: LLM_MODEL,
+        tools: [],
+        permissionMode: 'plan',
+        cwd: process.cwd(),
+      },
     });
 
+    // Collect all messages from the async generator
+    const messages: SDKMessage[] = [];
+    for await (const message of agentQuery) {
+      messages.push(message);
+    }
+
     // Parse LLM response
-    const responseText = response.content[0].type === 'text' ? response.content[0].text : '';
+    const responseText = extractTextFromMessages(messages);
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
 
     if (!jsonMatch) {
@@ -1204,4 +1410,77 @@ export function getPredefinedMappings(formatType: FormatType): FieldMapping[] | 
  */
 export function requiresAgentNormalization(formatType: FormatType): boolean {
   return !['jsonl', 'json_array', 'csv', 'tsv'].includes(formatType);
+}
+
+// =============================================================================
+// FIELD MAPPING VALIDATION
+// =============================================================================
+
+export interface MappingValidationResult {
+  valid: boolean;
+  mappings: Array<{ target: string; source: string }>;
+  errors: string[];
+  warnings: string[];
+}
+
+/**
+ * Parse and validate a field mapping string.
+ * Format: "target=source,target2=source2,..."
+ * Example: "model=llm_model,latency_ms=duration_ms"
+ */
+export function validateFieldMappings(mappingStr: string | undefined): MappingValidationResult {
+  const result: MappingValidationResult = {
+    valid: true,
+    mappings: [],
+    errors: [],
+    warnings: [],
+  };
+
+  if (!mappingStr || mappingStr.trim() === '') {
+    return result; // Empty mapping is valid (no custom mappings)
+  }
+
+  // Parse mapping string
+  const pairs = mappingStr.split(',').map(p => p.trim()).filter(p => p);
+
+  for (const pair of pairs) {
+    const parts = pair.split('=');
+    if (parts.length !== 2) {
+      result.errors.push(`Invalid mapping format: "${pair}" (expected target=source)`);
+      result.valid = false;
+      continue;
+    }
+
+    const [target, source] = parts.map(p => p.trim());
+
+    if (!target || !source) {
+      result.errors.push(`Empty target or source in mapping: "${pair}"`);
+      result.valid = false;
+      continue;
+    }
+
+    // Validate target is a known InferenceEvent field
+    const validTargets = [
+      'id', 'ts', 'provider', 'model', 'input_tokens', 'output_tokens',
+      'latency_ms', 'callsite_id', 'streaming', 'cached', 'batch_id',
+      'batch_size', 'retry_count', 'fallback_used', 'error_code', 'error_message'
+    ];
+
+    if (!validTargets.includes(target)) {
+      result.warnings.push(`Unknown target field "${target}" - may not be used`);
+    }
+
+    result.mappings.push({ target, source });
+  }
+
+  // Check for required fields coverage
+  const mappedTargets = new Set(result.mappings.map(m => m.target));
+  const criticalFields = ['model', 'latency_ms'];
+  for (const field of criticalFields) {
+    if (!mappedTargets.has(field)) {
+      result.warnings.push(`Consider mapping "${field}" for better analysis`);
+    }
+  }
+
+  return result;
 }

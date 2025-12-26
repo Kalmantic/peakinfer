@@ -17,16 +17,3 @@ export declare function getEnvelope(model: string, runtime?: string): Performanc
  * @returns Percentage (0-100+) or null if no envelope found
  */
 export declare function getThroughputPercent(model: string, actualTps: number, runtime?: string): number | null;
-/**
- * Check if TTFT is within expected range.
- *
- * @param model - Model name
- * @param actualTtft - Actual time to first token in ms
- * @param runtime - Optional runtime
- * @returns 'fast' | 'normal' | 'slow' | null
- */
-export declare function getTtftStatus(model: string, actualTtft: number, runtime?: string): 'fast' | 'normal' | 'slow' | null;
-/**
- * Get all available model names in envelopes.
- */
-export declare function getAvailableModels(): string[];

@@ -1,0 +1,76 @@
+id: error-handling-optimization
+name: Exponential Backoff and Error Handling Optimization
+description: Optimize retry logic to reduce wasted API calls and improve reliability
+category: application_optimization
+confidence: 0.94
+success_count: 2123
+verified_environments: 98
+contributors:
+  - reliability_engineer
+  - api_specialist
+last_updated: "2024-12-29"
+
+environment_match:
+  error_rate: ">1%"
+  retry_strategy: "fixed or none"
+  api_cost_sensitivity: high
+
+optimization:
+  technique: intelligent_retry
+  expected_cost_reduction: "10-25%"
+  effort_estimate: "3-5 days"
+  risk_level: low
+
+economics:
+  baseline_calculation:
+    wasted_retry_percent: 15
+  projected_improvement:
+    optimized_retry_success_rate: 0.95
+    cost_reduction_percent: 18
+  implementation_cost:
+    engineering_hours: 24
+    total_cost: 4800
+
+implementation:
+  prerequisites:
+    - requirement: "Error logging infrastructure"
+    - requirement: "Retry configuration access"
+  automated_steps:
+    - step_id: error_analysis
+      name: Error Pattern Analysis
+      executable: true
+      commands:
+        - "python scripts/analyze_error_patterns.py --logs ./error_logs"
+        - "python scripts/classify_error_types.py"
+      validation:
+        command: "python scripts/validate_analysis.py"
+        success_criteria: "patterns_identified"
+    - step_id: retry_optimization
+      name: Retry Strategy Optimization
+      executable: true
+      commands:
+        - "python scripts/implement_exponential_backoff.py --base 1 --max 60"
+        - "python scripts/add_circuit_breaker.py --threshold 5 --timeout 30"
+      validation:
+        command: "python scripts/test_retry_logic.py"
+        success_criteria: "retry_success_rate > 0.9"
+        rollback_command: "python scripts/revert_retry_config.py"
+
+monitoring:
+  key_metrics:
+    - metric: retry_success_rate
+      target: ">0.95"
+      alert_threshold: "<0.8"
+    - metric: circuit_breaker_trips
+      target: "<5/hour"
+      alert_threshold: ">20/hour"
+  rollback_triggers:
+    - condition: "retry_success_rate < 0.7 for 10 minutes"
+      action: automatic_rollback
+
+results:
+  recent_implementations:
+    - environment: api_gateway
+      baseline_wasted_calls_percent: 18
+      optimized_wasted_calls_percent: 4
+      cost_reduction_percent: 14

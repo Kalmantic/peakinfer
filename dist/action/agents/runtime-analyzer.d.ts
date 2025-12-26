@@ -6,6 +6,8 @@
  * - XML-structured prompt from prompts/runtime-analyzer.yaml
  * - Returns condensed summary (insights, not raw data)
  * - Uses dynamic pricing from LiteLLM API
+ *
+ * Uses Claude Agent SDK (per TDD v1.9.3)
  */
 import { type PricingContext } from '../costs.js';
 import type { RuntimeSummary, InferenceEvent, Insight } from '../types.js';

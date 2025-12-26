@@ -3,6 +3,11 @@ name: Overpowered Model Detection
 version: "1.0"
 category: waste
 severity: info
+layer: model
+
+source:
+  url: https://openai.com/pricing
+  title: "Model Pricing and Capability Tiers"
 
 match:
   scope: callsite

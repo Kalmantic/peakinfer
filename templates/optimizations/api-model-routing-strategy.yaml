@@ -1,0 +1,126 @@
+id: api-model-routing-strategy
+name: Multi-Provider Model Routing for Cost-Quality Optimization
+description: Route API requests to appropriate model tiers based on task complexity, achieving 60-80% cost reduction
+category: api_optimization
+confidence: 0.93
+success_count: 2341
+verified_environments: 112
+contributors:
+  - inference_squeeze
+  - api_optimizer
+  - cost_engineer
+last_updated: "2025-01-20"
+source: "Inference Squeeze Chapter 4 - Smart Model Routing"
+
+environment_match:
+  api_usage: multi_provider
+  monthly_api_cost: ">$5K"
+  task_complexity: variable
+  quality_tolerance: task_dependent
+
+optimization:
+  technique: tiered_model_routing
+  expected_cost_reduction: "60-80%"
+  expected_quality_impact: "<2%"
+  effort_estimate: "1-2 weeks"
+  risk_level: low
+
+economics:
+  baseline_calculation:
+    monthly_api_calls: 500000
+    premium_model_cost_per_call: 0.03
+    current_monthly_cost: 15000
+  projected_improvement:
+    task_distribution:
+      extraction: 0.40
+      qa: 0.35
+      generation: 0.25
+    tier_costs:
+      extraction: 0.003
+      qa: 0.01
+      generation: 0.03
+    new_avg_cost: 0.0117
+    monthly_savings: 9150
+  implementation_cost:
+    engineering_hours: 80
+    total_cost: 16000
+
+implementation:
+  prerequisites:
+    - requirement: "Task classification capability"
+      validation: "Ability to categorize requests by complexity"
+    - requirement: "Multi-provider API access"
+      validation: "API keys for OpenAI, Anthropic, or alternatives"
+  automated_steps:
+    - step_id: task_analysis
+      name: Analyze Task Distribution
+      executable: true
+      commands:
+        - "Audit last 30 days of API calls by task type"
+        - "Categorize: extraction, QA, summarization, generation, reasoning"
+        - "Measure quality requirements per task type"
+      validation:
+        command: "Task distribution documented with quality thresholds"
+        success_criteria: "task_types_identified AND quality_thresholds_set"
+        rollback_command: "Revert to single-model configuration"
+    - step_id: routing_rules
+      name: Define Routing Rules
+      executable: true
+      commands:
+        - "Map task types to model tiers"
+        - "Define fallback logic for edge cases"
+        - "Set quality thresholds for tier escalation"
+      routing_matrix:
+        extraction:
+          primary: "claude-3-haiku / gpt-4o-mini"
+          cost_per_1k_tokens: 0.25
+        qa:
+          primary: "claude-3-5-sonnet / gpt-4o-mini"
+          cost_per_1k_tokens: 3.00
+        generation:
+          primary: "claude-3-5-sonnet / gpt-4o"
+          cost_per_1k_tokens: 15.00
+        reasoning:
+          primary: "claude-opus-4 / o1-preview"
+          cost_per_1k_tokens: 75.00
+      validation:
+        command: "Routing matrix validated"
+        success_criteria: "all_task_types_mapped AND fallbacks_defined"
+        rollback_command: "Disable routing, use premium model"
+    - step_id: implementation
+      name: Implement Routing Layer
+      executable: true
+      commands:
+        - "Add task classifier to API gateway"
+        - "Implement model selector based on classification"
+        - "Add quality monitoring and fallback triggers"
+      validation:
+        command: "Test routing with sample requests"
+        success_criteria: "routing_accuracy > 0.93 AND quality_maintained"
+        rollback_command: "Revert to single-model configuration"
+
+monitoring:
+  key_metrics:
+    - metric: cost_per_successful_task
+      target: "<baseline * 0.4"
+      alert_threshold: ">baseline * 0.6"
+    - metric: task_quality_score
+      target: ">0.95"
+      alert_threshold: "<0.92"
+    - metric: routing_accuracy
+      target: ">0.93"
+      alert_threshold: "<0.88"
+  rollback_triggers:
+    - condition: "quality_score < 0.90 for 1 hour"
+      action: escalate_to_premium_model
+    - condition: "routing_accuracy < 0.85 for 30 minutes"
+      action: disable_routing_use_premium
+
+results:
+  case_study:
+    environment: Legal document processing SaaS
+    baseline_monthly_cost: 47000
+    optimized_monthly_cost: 14100
+    cost_reduction_percent: 70
+    quality_retention: 97.2
+    implementation_days: 12

@@ -1,291 +1,36 @@
 /**
  * Agent-based Semantic Analyzer for PeakInfer
  *
- * Uses Claude's tool use capability for multi-step code analysis:
+ * Uses Claude Agent SDK (per TDD v1.9.3) for multi-step code analysis:
  * 1. Read source files
  * 2. Extract patterns and variable assignments
  * 3. Trace variable definitions to resolve model names
  * 4. Identify actual LLM callsites (not client initialization)
+ *
+ * Architecture: Claude Agent SDK = Engine, TypeScript = Glue (per TDD §1)
  */
 
 import 'dotenv/config';
-import Anthropic from '@anthropic-ai/sdk';
+import { query, tool, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
+import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
+import { z } from 'zod';
 import { readFileSync, existsSync } from 'fs';
-import { join, relative } from 'path';
-import { glob } from 'glob';
+import { join } from 'path';
 import type { ScanResult, Callsite, Provider, Patterns } from './types.js';
 import { createHash } from 'crypto';
-import { loadPrompt, getDefaultPrompt, loadConfig, getConfiguredModel } from './templates.js';
+import { loadPrompt, loadConfig, getConfiguredModel } from './templates.js';
 
-// =============================================================================
-// TYPES
-// =============================================================================
+// Type for MCP tool result
+type ToolResult = { content: Array<{ type: 'text'; text: string }> };
 
-interface AgentCallsite {
-  file: string;
-  line: number;
-  provider: string | null;
-  model: string | null;
-  framework: string | null;
-  patterns: Partial<Patterns>;
-  confidence: number;
-  reasoning: string;
-}
-
-interface AgentInsight {
-  severity: 'critical' | 'warning' | 'info';
-  category: string;
-  headline: string;
-  evidence: string;
-  location: string;
-  recommendation?: string;
-}
-
-interface AgentAnalysisResult {
-  callsites: AgentCallsite[];
-  insights: AgentInsight[];
-}
-
-interface ToolResult {
-  type: 'tool_result';
-  tool_use_id: string;
-  content: string;
-}
-
-// =============================================================================
-// TOOLS DEFINITION
-// =============================================================================
-
-const AGENT_TOOLS: Anthropic.Tool[] = [
-  {
-    name: 'read_file',
-    description: 'Read the contents of a source code file. Use this to examine code in detail.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        file_path: {
-          type: 'string',
-          description: 'Relative path to the file from project root',
-        },
-      },
-      required: ['file_path'],
-    },
-  },
-  {
-    name: 'search_pattern',
-    description: 'Search for a regex pattern across all source files. Returns matching lines with file and line number.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        pattern: {
-          type: 'string',
-          description: 'Regex pattern to search for (e.g., "dspy\\.LM\\(" or "model\\s*=")',
-        },
-        file_filter: {
-          type: 'string',
-          description: 'Optional glob pattern to filter files (e.g., "*.py" or "*.ts")',
-        },
-      },
-      required: ['pattern'],
-    },
-  },
-  {
-    name: 'trace_variable',
-    description: 'Find where a variable is defined or assigned in a file. Useful for tracing model names.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        file_path: {
-          type: 'string',
-          description: 'File to search in',
-        },
-        variable_name: {
-          type: 'string',
-          description: 'Variable name to trace (e.g., "model", "lm", "client")',
-        },
-      },
-      required: ['file_path', 'variable_name'],
-    },
-  },
-  {
-    name: 'report_callsites',
-    description: 'Report discovered LLM callsites. Call this when you have identified callsites with their details.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        callsites: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              file: { type: 'string', description: 'File path' },
-              line: { type: 'number', description: 'Line number of the actual inference call' },
-              provider: { type: 'string', description: 'Provider: openai, anthropic, google, etc.' },
-              model: { type: 'string', description: 'Exact model name as found in code' },
-              framework: { type: 'string', description: 'Framework: dspy, langchain, llamaindex, or null' },
-              reasoning: { type: 'string', description: 'Brief explanation of how you identified this' },
-            },
-            required: ['file', 'line', 'provider', 'reasoning'],
-          },
-          description: 'Array of identified callsites',
-        },
-      },
-      required: ['callsites'],
-    },
-  },
-];
-
-// =============================================================================
-// TOOL EXECUTION
-// =============================================================================
-
-class AgentToolExecutor {
-  private projectRoot: string;
-  private fileContents: Map<string, string>;
-  private reportedCallsites: AgentCallsite[] = [];
-
-  constructor(projectRoot: string, fileContents: Map<string, string>) {
-    this.projectRoot = projectRoot;
-    this.fileContents = fileContents;
+// Load agent system prompt from YAML (with hardcoded fallback)
+function getAgentSystemPrompt(): string {
+  const prompt = loadPrompt('agent-analyzer');
+  if (prompt) {
+    return prompt.prompt;
   }
-
-  async execute(toolName: string, toolInput: Record<string, unknown>): Promise<string> {
-    switch (toolName) {
-      case 'read_file':
-        return this.readFile(toolInput.file_path as string);
-
-      case 'search_pattern':
-        return this.searchPattern(
-          toolInput.pattern as string,
-          toolInput.file_filter as string | undefined
-        );
-
-      case 'trace_variable':
-        return this.traceVariable(
-          toolInput.file_path as string,
-          toolInput.variable_name as string
-        );
-
-      case 'report_callsites':
-        return this.reportCallsites(toolInput.callsites as AgentCallsite[]);
-
-      default:
-        return `Unknown tool: ${toolName}`;
-    }
-  }
-
-  private readFile(filePath: string): string {
-    // Try from cache first
-    if (this.fileContents.has(filePath)) {
-      const content = this.fileContents.get(filePath)!;
-      // Add line numbers for easier reference
-      const numbered = content.split('\n')
-        .map((line, i) => `${i + 1}: ${line}`)
-        .join('\n');
-      return numbered.slice(0, 8000); // Limit size
-    }
-
-    // Try reading from disk
-    const absPath = join(this.projectRoot, filePath);
-    if (existsSync(absPath)) {
-      try {
-        const content = readFileSync(absPath, 'utf-8');
-        const numbered = content.split('\n')
-          .map((line, i) => `${i + 1}: ${line}`)
-          .join('\n');
-        return numbered.slice(0, 8000);
-      } catch (e) {
-        return `Error reading file: ${e}`;
-      }
-    }
-
-    return `File not found: ${filePath}`;
-  }
-
-  private searchPattern(pattern: string, fileFilter?: string): string {
-    const results: string[] = [];
-    const regex = new RegExp(pattern, 'gi');
-
-    for (const [filePath, content] of this.fileContents) {
-      // Apply file filter if provided
-      if (fileFilter && !filePath.match(new RegExp(fileFilter.replace('*', '.*')))) {
-        continue;
-      }
-
-      const lines = content.split('\n');
-      for (let i = 0; i < lines.length; i++) {
-        if (regex.test(lines[i])) {
-          results.push(`${filePath}:${i + 1}: ${lines[i].trim().slice(0, 100)}`);
-          if (results.length >= 20) break; // Limit results
-        }
-      }
-      if (results.length >= 20) break;
-    }
-
-    return results.length > 0
-      ? results.join('\n')
-      : 'No matches found';
-  }
-
-  private traceVariable(filePath: string, variableName: string): string {
-    const content = this.fileContents.get(filePath);
-    if (!content) {
-      return `File not found: ${filePath}`;
-    }
-
-    const results: string[] = [];
-    const lines = content.split('\n');
-
-    // Look for assignments and definitions
-    const patterns = [
-      new RegExp(`\\b${variableName}\\s*=\\s*(.+)`, 'g'),
-      new RegExp(`\\bconst\\s+${variableName}\\s*=\\s*(.+)`, 'g'),
-      new RegExp(`\\blet\\s+${variableName}\\s*=\\s*(.+)`, 'g'),
-      new RegExp(`\\bvar\\s+${variableName}\\s*=\\s*(.+)`, 'g'),
-      new RegExp(`\\bdef\\s+.*${variableName}.*:`, 'g'), // Python function param
-      new RegExp(`${variableName}\\s*:\\s*(.+)`, 'g'), // Type annotation or dict key
-    ];
-
-    for (let i = 0; i < lines.length; i++) {
-      for (const pattern of patterns) {
-        if (pattern.test(lines[i])) {
-          results.push(`Line ${i + 1}: ${lines[i].trim()}`);
-          break;
-        }
-      }
-    }
-
-    return results.length > 0
-      ? `Found ${results.length} references to "${variableName}":\n${results.join('\n')}`
-      : `No definitions found for "${variableName}"`;
-  }
-
-  private reportCallsites(callsites: AgentCallsite[]): string {
-    for (const cs of callsites) {
-      this.reportedCallsites.push({
-        file: cs.file,
-        line: cs.line,
-        provider: cs.provider || null,
-        model: cs.model || null,
-        framework: cs.framework || null,
-        patterns: {},
-        confidence: 0.9, // High confidence since agent verified
-        reasoning: cs.reasoning,
-      });
-    }
-    return `Recorded ${callsites.length} callsites. Total: ${this.reportedCallsites.length}`;
-  }
-
-  getReportedCallsites(): AgentCallsite[] {
-    return this.reportedCallsites;
-  }
-}
-
-// =============================================================================
-// AGENT LOOP
-// =============================================================================
-
-const AGENT_SYSTEM_PROMPT = `You are an expert code analyst specializing in identifying LLM/AI inference points in source code.
+  // Fallback to hardcoded prompt if YAML not available
+  return `You are an expert code analyst specializing in identifying LLM/AI inference points in source code.
 
 Your task is to analyze code and find ALL actual LLM inference points with accurate provider and model information.
 
@@ -325,6 +70,236 @@ Your task is to analyze code and find ALL actual LLM inference points with accur
 4. Use report_callsites to report your findings
 
 Be thorough but precise. Only report actual inference points, not initialization or configuration.`;
+}
+
+// =============================================================================
+// TYPES
+// =============================================================================
+
+interface AgentCallsite {
+  file: string;
+  line: number;
+  provider: string | null;
+  model: string | null;
+  framework: string | null;
+  patterns: Partial<Patterns>;
+  confidence: number;
+  reasoning: string;
+}
+
+interface AgentInsight {
+  severity: 'critical' | 'warning' | 'info';
+  category: string;
+  headline: string;
+  evidence: string;
+  location: string;
+  recommendation?: string;
+}
+
+interface AgentAnalysisResult {
+  callsites: AgentCallsite[];
+  insights: AgentInsight[];
+}
+
+// =============================================================================
+// TOOL CONTEXT (shared state for tool execution)
+// =============================================================================
+
+interface ToolContext {
+  projectRoot: string;
+  fileContents: Map<string, string>;
+  reportedCallsites: AgentCallsite[];
+}
+
+// =============================================================================
+// MCP TOOLS USING CLAUDE AGENT SDK
+// =============================================================================
+
+/**
+ * Helper to create ToolResult from string
+ */
+function makeToolResult(text: string): ToolResult {
+  return {
+    content: [{ type: 'text', text }],
+  };
+}
+
+/**
+ * Create MCP server with analysis tools using Claude Agent SDK
+ */
+function createAnalysisMcpServer(ctx: ToolContext) {
+  // Tool: read_file - Read source code file contents
+  const readFileTool = tool(
+    'read_file',
+    'Read the contents of a source code file. Use this to examine code in detail.',
+    {
+      file_path: z.string().describe('Relative path to the file from project root'),
+    },
+    async ({ file_path }): Promise<ToolResult> => {
+      // Try from cache first
+      if (ctx.fileContents.has(file_path)) {
+        const content = ctx.fileContents.get(file_path)!;
+        const numbered = content.split('\n')
+          .map((line, i) => `${i + 1}: ${line}`)
+          .join('\n');
+        return makeToolResult(numbered.slice(0, 8000)); // Limit size
+      }
+
+      // Try reading from disk
+      const absPath = join(ctx.projectRoot, file_path);
+      if (existsSync(absPath)) {
+        try {
+          const content = readFileSync(absPath, 'utf-8');
+          const numbered = content.split('\n')
+            .map((line, i) => `${i + 1}: ${line}`)
+            .join('\n');
+          return makeToolResult(numbered.slice(0, 8000));
+        } catch (e) {
+          return makeToolResult(`Error reading file: ${e}`);
+        }
+      }
+
+      return makeToolResult(`File not found: ${file_path}`);
+    }
+  );
+
+  // Tool: search_pattern - Search for regex patterns across files
+  const searchPatternTool = tool(
+    'search_pattern',
+    'Search for a regex pattern across all source files. Returns matching lines with file and line number.',
+    {
+      pattern: z.string().describe('Regex pattern to search for (e.g., "dspy\\.LM\\(" or "model\\s*=")'),
+      file_filter: z.string().optional().describe('Optional glob pattern to filter files (e.g., "*.py" or "*.ts")'),
+    },
+    async ({ pattern, file_filter }): Promise<ToolResult> => {
+      const results: string[] = [];
+      const regex = new RegExp(pattern, 'gi');
+
+      for (const [filePath, content] of ctx.fileContents) {
+        // Apply file filter if provided
+        if (file_filter && !filePath.match(new RegExp(file_filter.replace('*', '.*')))) {
+          continue;
+        }
+
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (regex.test(lines[i])) {
+            results.push(`${filePath}:${i + 1}: ${lines[i].trim().slice(0, 100)}`);
+            if (results.length >= 20) break;
+          }
+        }
+        if (results.length >= 20) break;
+      }
+
+      return makeToolResult(results.length > 0 ? results.join('\n') : 'No matches found');
+    }
+  );
+
+  // Tool: trace_variable - Find variable definitions and assignments
+  const traceVariableTool = tool(
+    'trace_variable',
+    'Find where a variable is defined or assigned in a file. Useful for tracing model names.',
+    {
+      file_path: z.string().describe('File to search in'),
+      variable_name: z.string().describe('Variable name to trace (e.g., "model", "lm", "client")'),
+    },
+    async ({ file_path, variable_name }): Promise<ToolResult> => {
+      const content = ctx.fileContents.get(file_path);
+      if (!content) {
+        return makeToolResult(`File not found: ${file_path}`);
+      }
+
+      const results: string[] = [];
+      const lines = content.split('\n');
+
+      // Look for assignments and definitions
+      const patterns = [
+        new RegExp(`\\b${variable_name}\\s*=\\s*(.+)`, 'g'),
+        new RegExp(`\\bconst\\s+${variable_name}\\s*=\\s*(.+)`, 'g'),
+        new RegExp(`\\blet\\s+${variable_name}\\s*=\\s*(.+)`, 'g'),
+        new RegExp(`\\bvar\\s+${variable_name}\\s*=\\s*(.+)`, 'g'),
+        new RegExp(`\\bdef\\s+.*${variable_name}.*:`, 'g'),
+        new RegExp(`${variable_name}\\s*:\\s*(.+)`, 'g'),
+      ];
+
+      for (let i = 0; i < lines.length; i++) {
+        for (const p of patterns) {
+          if (p.test(lines[i])) {
+            results.push(`Line ${i + 1}: ${lines[i].trim()}`);
+            break;
+          }
+        }
+      }
+
+      return makeToolResult(
+        results.length > 0
+          ? `Found ${results.length} references to "${variable_name}":\n${results.join('\n')}`
+          : `No definitions found for "${variable_name}"`
+      );
+    }
+  );
+
+  // Tool: report_callsites - Report discovered LLM callsites
+  const reportCallsitesTool = tool(
+    'report_callsites',
+    'Report discovered LLM callsites. Call this when you have identified callsites with their details.',
+    {
+      callsites: z.array(z.object({
+        file: z.string().describe('File path'),
+        line: z.number().describe('Line number of the actual inference call'),
+        provider: z.string().describe('Provider: openai, anthropic, google, etc.'),
+        model: z.string().optional().describe('Exact model name as found in code'),
+        framework: z.string().optional().describe('Framework: dspy, langchain, llamaindex, or null'),
+        reasoning: z.string().describe('Brief explanation of how you identified this'),
+      })).describe('Array of identified callsites'),
+    },
+    async ({ callsites }): Promise<ToolResult> => {
+      for (const cs of callsites) {
+        ctx.reportedCallsites.push({
+          file: cs.file,
+          line: cs.line,
+          provider: cs.provider || null,
+          model: cs.model || null,
+          framework: cs.framework || null,
+          patterns: {},
+          confidence: 0.9,
+          reasoning: cs.reasoning,
+        });
+      }
+      return makeToolResult(`Recorded ${callsites.length} callsites. Total: ${ctx.reportedCallsites.length}`);
+    }
+  );
+
+  // Create MCP server with all tools
+  return createSdkMcpServer({
+    name: 'peakinfer-analyzer',
+    version: '1.0.0',
+    tools: [readFileTool, searchPatternTool, traceVariableTool, reportCallsitesTool],
+  });
+}
+
+// =============================================================================
+// AGENT LOOP USING CLAUDE AGENT SDK
+// =============================================================================
+
+// AGENT_SYSTEM_PROMPT is now loaded from prompts/agent-analyzer.yaml via getAgentSystemPrompt()
+
+/**
+ * Extract text content from SDK messages
+ */
+function extractTextFromMessages(messages: SDKMessage[]): string {
+  let text = '';
+  for (const msg of messages) {
+    if (msg.type === 'assistant' && msg.message?.content) {
+      for (const block of msg.message.content) {
+        if (block.type === 'text') {
+          text += block.text;
+        }
+      }
+    }
+  }
+  return text;
+}
 
 export async function analyzeWithAgent(
   scanResult: ScanResult,
@@ -332,14 +307,12 @@ export async function analyzeWithAgent(
 ): Promise<AgentAnalysisResult> {
   // Load configuration
   const config = loadConfig();
-  const { verbose = config.agent.verbose, maxIterations = config.agent.max_iterations } = options;
+  const { verbose = config.agent.verbose } = options;
 
   // Check for API key
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY required for agent analysis');
   }
-
-  const client = new Anthropic();
 
   // Build file contents map
   const fileContents = new Map<string, string>();
@@ -352,7 +325,15 @@ export async function analyzeWithAgent(
     }
   }
 
-  const toolExecutor = new AgentToolExecutor(scanResult.root, fileContents);
+  // Create tool context for shared state
+  const ctx: ToolContext = {
+    projectRoot: scanResult.root,
+    fileContents,
+    reportedCallsites: [],
+  };
+
+  // Create MCP server with analysis tools
+  const mcpServer = createAnalysisMcpServer(ctx);
 
   // Build initial task with candidate info
   const candidateInfo = scanResult.candidates
@@ -361,7 +342,7 @@ export async function analyzeWithAgent(
 
   const fileList = scanResult.files.map(f => f.path).join('\n');
 
-  const initialTask = `Analyze this codebase to identify all LLM inference callsites.
+  const prompt = `Analyze this codebase to identify all LLM inference callsites.
 
 ## Files in project:
 ${fileList}
@@ -378,99 +359,96 @@ ${candidateInfo}
 
 Begin your analysis.`;
 
-  const messages: Anthropic.MessageParam[] = [
-    { role: 'user', content: initialTask },
-  ];
-
-  // Agentic loop
-  let iteration = 0;
-
-  while (iteration < maxIterations) {
-    iteration++;
-
-    if (verbose) {
-      console.log(`[agent] Iteration ${iteration}/${maxIterations}`);
-    }
-
-    // Get models from config
-    const primaryModel = getConfiguredModel('agent', false);
-    const fallbackModel = getConfiguredModel('agent', true);
-
-    // Try primary model first, fall back if unavailable
-    let response: Anthropic.Message;
-    try {
-      response = await client.messages.create({
-        model: primaryModel,
-        max_tokens: 4096,
-        system: AGENT_SYSTEM_PROMPT,
-        tools: AGENT_TOOLS,
-        messages,
-      });
-    } catch (error) {
-      // Fallback to secondary model if primary unavailable
-      if (verbose) {
-        console.log(`[agent] ${primaryModel} unavailable, using ${fallbackModel}`);
-      }
-      response = await client.messages.create({
-        model: fallbackModel,
-        max_tokens: 4096,
-        system: AGENT_SYSTEM_PROMPT,
-        tools: AGENT_TOOLS,
-        messages,
-      });
-    }
-
-    // Add assistant response to history
-    messages.push({
-      role: 'assistant',
-      content: response.content,
-    });
-
-    // Check if done
-    if (response.stop_reason === 'end_turn') {
-      if (verbose) {
-        console.log('[agent] Analysis complete');
-      }
-      break;
-    }
-
-    // Process tool calls
-    if (response.stop_reason === 'tool_use') {
-      const toolResults: ToolResult[] = [];
-
-      for (const block of response.content) {
-        if (block.type === 'tool_use') {
-          if (verbose) {
-            console.log(`[agent] Tool: ${block.name}`);
-          }
-
-          const result = await toolExecutor.execute(
-            block.name,
-            block.input as Record<string, unknown>
-          );
-
-          toolResults.push({
-            type: 'tool_result',
-            tool_use_id: block.id,
-            content: result,
-          });
-        }
-      }
-
-      messages.push({
-        role: 'user',
-        content: toolResults,
-      });
-    }
+  if (verbose) {
+    console.log('[agent] Starting Claude Agent SDK analysis...');
   }
 
-  // Get reported callsites
-  const callsites = toolExecutor.getReportedCallsites();
+  // Get model from config
+  const model = getConfiguredModel('agent', false);
 
-  return {
-    callsites,
-    insights: [], // Agent could also report insights in future
-  };
+  try {
+    // Use Claude Agent SDK query() function with MCP server
+    const agentQuery = query({
+      prompt,
+      options: {
+        systemPrompt: getAgentSystemPrompt(),
+        model,
+        mcpServers: {
+          'peakinfer-analyzer': mcpServer,
+        },
+        permissionMode: 'default',
+        cwd: scanResult.root,
+      },
+    });
+
+    // Collect all messages from the agent
+    const messages: SDKMessage[] = [];
+    for await (const message of agentQuery) {
+      messages.push(message);
+
+      if (verbose && message.type === 'assistant') {
+        // Log tool usage for debugging
+        if (message.message?.content) {
+          for (const block of message.message.content) {
+            if (block.type === 'tool_use') {
+              console.log(`[agent] Tool: ${block.name}`);
+            }
+          }
+        }
+      }
+    }
+
+    if (verbose) {
+      console.log('[agent] Analysis complete');
+      console.log(`[agent] Found ${ctx.reportedCallsites.length} callsites`);
+    }
+
+    return {
+      callsites: ctx.reportedCallsites,
+      insights: [],
+    };
+  } catch (error) {
+    // If primary model fails, try fallback
+    const fallbackModel = getConfiguredModel('agent', true);
+
+    if (verbose) {
+      console.log(`[agent] ${model} failed, trying ${fallbackModel}`);
+    }
+
+    const agentQuery = query({
+      prompt,
+      options: {
+        systemPrompt: getAgentSystemPrompt(),
+        model: fallbackModel,
+        mcpServers: {
+          'peakinfer-analyzer': mcpServer,
+        },
+        permissionMode: 'default',
+        cwd: scanResult.root,
+      },
+    });
+
+    for await (const message of agentQuery) {
+      if (verbose && message.type === 'assistant') {
+        if (message.message?.content) {
+          for (const block of message.message.content) {
+            if (block.type === 'tool_use') {
+              console.log(`[agent] Tool: ${block.name}`);
+            }
+          }
+        }
+      }
+    }
+
+    if (verbose) {
+      console.log('[agent] Analysis complete (fallback)');
+    }
+
+    return {
+      callsites: ctx.reportedCallsites,
+      insights: [],
+    };
+  }
 }
 
 // =============================================================================

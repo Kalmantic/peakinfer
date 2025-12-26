@@ -141,30 +141,30 @@ const PATTERN_IMPACTS: Record<string, PatternImpact> = {
     description: 'Use speculative decoding for faster generation',
   },
 
-  // Infrastructure Layer - Hosting
+  // Hardware Layer - GPU/Hosting (v1.8: renamed from infrastructure)
   'dedicated-gpu': {
-    layer: 'infrastructure',
+    layer: 'hardware',
     impactType: 'cost',
     impactPercent: 60,
     effort: 'high',
     description: 'Self-host on dedicated GPUs vs API',
   },
   'spot-instances': {
-    layer: 'infrastructure',
+    layer: 'hardware',
     impactType: 'cost',
     impactPercent: 70,
     effort: 'medium',
     description: 'Use spot/preemptible instances',
   },
   'regional-deployment': {
-    layer: 'infrastructure',
+    layer: 'hardware',
     impactType: 'latency',
     impactPercent: 30,
     effort: 'low',
     description: 'Deploy closer to users',
   },
   'autoscaling': {
-    layer: 'infrastructure',
+    layer: 'hardware',
     impactType: 'cost',
     impactPercent: 40,
     effort: 'medium',
@@ -385,7 +385,7 @@ export function generateImpactSummary(insights: Insight[]): ImpactSummary {
 
   // Build stack ranking
   const stackRanking: StackRanking[] = [];
-  const layerOrder: StackLayer[] = ['application', 'model', 'runtime', 'infrastructure'];
+  const layerOrder: StackLayer[] = ['application', 'api', 'gateway', 'runtime', 'model', 'hardware'];
 
   for (const layer of layerOrder) {
     const layerInsights = layerGroups.get(layer) || [];

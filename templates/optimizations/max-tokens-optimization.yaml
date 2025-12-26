@@ -1,0 +1,76 @@
+id: max-tokens-optimization
+name: Max Tokens Configuration Optimization
+description: Optimize max_tokens settings to reduce wasted output token capacity
+category: cost_optimization
+confidence: 0.93
+success_count: 2345
+verified_environments: 112
+contributors:
+  - token_optimizer
+  - cost_analyst
+last_updated: "2024-12-31"
+
+environment_match:
+  max_tokens_setting: ">1000"
+  avg_output_tokens: "<max_tokens * 0.3"
+  monthly_cost: ">$5K"
+
+optimization:
+  technique: max_tokens_right_sizing
+  expected_cost_reduction: "20-40%"
+  effort_estimate: "1-3 days"
+  risk_level: low
+
+economics:
+  baseline_calculation:
+    wasted_token_capacity_percent: 70
+  projected_improvement:
+    optimized_waste_percent: 20
+    cost_reduction_percent: 30
+  implementation_cost:
+    engineering_hours: 16
+    total_cost: 3200
+
+implementation:
+  prerequisites:
+    - requirement: "Output length analytics"
+    - requirement: "API configuration access"
+  automated_steps:
+    - step_id: analysis
+      name: Output Length Analysis
+      executable: true
+      commands:
+        - "python scripts/analyze_output_lengths.py --logs ./request_logs"
+        - "python scripts/calculate_optimal_max_tokens.py"
+      validation:
+        command: "python scripts/validate_analysis.py"
+        success_criteria: "analysis_complete"
+    - step_id: configuration
+      name: Max Tokens Configuration
+      executable: true
+      commands:
+        - "python scripts/configure_dynamic_max_tokens.py --percentile 95"
+        - "python scripts/add_overflow_handling.py"
+      validation:
+        command: "python scripts/test_configuration.py"
+        success_criteria: "truncation_rate < 0.01"
+        rollback_command: "python scripts/revert_max_tokens.py"
+
+monitoring:
+  key_metrics:
+    - metric: truncation_rate
+      target: "<0.01"
+      alert_threshold: ">0.05"
+    - metric: token_efficiency
+      target: ">0.8"
+      alert_threshold: "<0.5"
+  rollback_triggers:
+    - condition: "truncation_rate > 0.1 for 5 minutes"
+      action: automatic_rollback
+
+results:
+  recent_implementations:
+    - environment: content_generation
+      baseline_max_tokens: 2000
+      optimized_max_tokens: 650
+      cost_reduction_percent: 28

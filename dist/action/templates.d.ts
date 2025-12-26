@@ -1,4 +1,4 @@
-import { InsightTemplate } from './types.js';
+import { InsightTemplate, OptimizationTemplate } from './types.js';
 /**
  * Analysis prompt configuration loaded from YAML
  * Used for LLM-based code analysis with configurable focus areas
@@ -30,6 +30,15 @@ export declare function getTemplate(id: string, opts?: LoadOptions): Promise<Ins
  */
 export declare function clearCache(): void;
 /**
+ * Load bundled optimization templates from templates/optimizations/
+ * These are community optimization runbooks with implementation steps
+ */
+export declare function loadOptimizationTemplates(): OptimizationTemplate[];
+/**
+ * Get a single optimization template by ID
+ */
+export declare function getOptimizationTemplate(id: string): OptimizationTemplate | null;
+/**
  * Load an analysis prompt by ID from the prompts directory
  * @param id - Prompt ID (e.g., 'peak-performance')
  * @returns AnalysisPrompt or null if not found
@@ -40,11 +49,6 @@ export declare function loadPrompt(id: string): AnalysisPrompt | null;
  * @returns Array of prompt IDs
  */
 export declare function listPrompts(): string[];
-/**
- * Load all available analysis prompts
- * @returns Map of prompt ID to AnalysisPrompt
- */
-export declare function loadAllPrompts(): Map<string, AnalysisPrompt>;
 /**
  * Get the default analysis prompt (peak-performance)
  * @returns AnalysisPrompt
@@ -113,7 +117,3 @@ export declare function getConfiguredMode(): 'agent' | 'llm' | 'regex';
  * @returns true if cascade is enabled
  */
 export declare function isCascadeEnabled(): boolean;
-/**
- * Clear cached configuration (useful for testing)
- */
-export declare function clearConfigCache(): void;

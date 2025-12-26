@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import Anthropic from '@anthropic-ai/sdk';
+import { query } from '@anthropic-ai/claude-agent-sdk';
+import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import type { ScanResult, Callsite, Patterns, Provider } from './types.js';
 import { createHash } from 'crypto';
 import { loadPrompt, getDefaultPrompt, loadConfig, getConfiguredMode, isCascadeEnabled, type AnalysisPrompt } from './templates.js';
@@ -76,9 +77,9 @@ interface LLMCallsite {
   reasoning: string;
 }
 
-// LLM-generated impact estimate
+// LLM-generated impact estimate (v1.8: 6-layer architecture)
 export interface LLMImpactEstimate {
-  layer: 'application' | 'model' | 'runtime' | 'infrastructure';
+  layer: 'application' | 'api' | 'gateway' | 'runtime' | 'model' | 'hardware';
   impactType: 'cost' | 'latency' | 'throughput';
   estimatedImpactPercent: number;
   effort: 'low' | 'medium' | 'high';
@@ -133,10 +134,30 @@ function truncateContent(content: string): string {
 }
 
 // =============================================================================
-// LLM ANALYSIS
+// LLM ANALYSIS (Claude Agent SDK)
 // =============================================================================
 
-const ANALYSIS_PROMPT = `You are an expert at analyzing code to identify LLM inference usage and potential issues.
+/**
+ * Extract text content from Claude Agent SDK messages
+ */
+function extractTextFromMessages(messages: SDKMessage[]): string {
+  let text = '';
+  for (const msg of messages) {
+    if (msg.type === 'assistant' && msg.message?.content) {
+      for (const block of msg.message.content) {
+        if (block.type === 'text') {
+          text += block.text;
+        }
+      }
+    }
+  }
+  return text;
+}
+
+// Legacy static analysis prompt (hardcoded fallback)
+// NOTE: Primary analysis now uses unified-analyzer.yaml via StaticAnalysisOrchestrator
+function getStaticAnalysisPrompt(): string {
+  return `You are an expert at analyzing code to identify LLM inference usage and potential issues.
 
 Analyze the following code and:
 
@@ -204,6 +225,7 @@ Return ONLY valid JSON:
 }
 
 If no issues found, return empty arrays: {"callsites": [], "insights": []}`;
+}
 
 interface LLMAnalysisOutput {
   callsitesByFile: Map<string, LLMCallsite[]>;
@@ -240,7 +262,6 @@ function normalizeInsight(insight: LLMInsight): LLMInsight {
 
 async function analyzewithLLM(
   files: Array<{ path: string; content: string; candidateLines: number[] }>,
-  client: Anthropic,
   analysisPrompt: string,
   onProgress?: (data: { percent: number; currentFile?: string }) => void
 ): Promise<LLMAnalysisOutput> {
@@ -264,19 +285,25 @@ async function analyzewithLLM(
     }).join('\n\n');
 
     try {
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        messages: [
-          {
-            role: 'user',
-            content: `${analysisPrompt}\n\n${fileContents}`,
-          },
-        ],
+      // Use Claude Agent SDK query() function
+      const agentQuery = query({
+        prompt: `${analysisPrompt}\n\n${fileContents}`,
+        options: {
+          model: 'claude-sonnet-4-20250514',
+          tools: [],
+          permissionMode: 'plan',
+          cwd: process.cwd(),
+        },
       });
 
-      // Extract JSON from response
-      const text = response.content[0].type === 'text' ? response.content[0].text : '';
+      // Collect all messages from the async generator
+      const messages: SDKMessage[] = [];
+      for await (const message of agentQuery) {
+        messages.push(message);
+      }
+
+      // Extract text content from messages
+      const text = extractTextFromMessages(messages);
       const jsonMatch = text.match(/\{[\s\S]*\}/);
 
       if (jsonMatch) {
@@ -309,7 +336,7 @@ async function analyzewithLLM(
         const shortErr = errMsg.includes('authentication_error') ? 'invalid API key'
           : errMsg.includes('rate_limit') ? 'rate limited'
           : 'API error';
-        console.warn(`[analyzer] LLM unavailable (${shortErr}), using pattern matching`);
+        console.warn(`[analyzer] Claude Agent SDK unavailable (${shortErr}), using pattern matching`);
       }
     }
 
@@ -456,7 +483,7 @@ export async function analyze(
   const fileContents = new Map<string, string>();
 
   // Load analysis prompt (from YAML config or fallback)
-  let analysisPromptText = ANALYSIS_PROMPT; // Fallback to hardcoded prompt
+  let analysisPromptText = getStaticAnalysisPrompt(); // Load from YAML or fallback
   if (promptId) {
     const customPrompt = loadPrompt(promptId);
     if (customPrompt) {
@@ -492,12 +519,11 @@ export async function analyze(
     candidatesByFile.set(candidate.file, existing);
   }
 
-  // Try LLM analysis if API key available
+  // Try LLM analysis if API key available (Claude Agent SDK uses env var)
   let llmOutput: LLMAnalysisOutput | null = null;
 
   if (useLLM && process.env.ANTHROPIC_API_KEY) {
     try {
-      const client = new Anthropic();
       const filesToAnalyze = Array.from(candidatesByFile.entries())
         .filter(([path]) => fileContents.has(path))
         .map(([path, lines]) => ({
@@ -507,12 +533,12 @@ export async function analyze(
         }));
 
       if (filesToAnalyze.length > 0) {
-        llmOutput = await analyzewithLLM(filesToAnalyze, client, analysisPromptText, onProgress);
+        llmOutput = await analyzewithLLM(filesToAnalyze, analysisPromptText, onProgress);
         // Collect LLM-generated insights (phase 1)
         llmInsights.push(...llmOutput.insights);
       }
     } catch (error) {
-      console.warn('[analyzer] LLM initialization failed, using regex fallback');
+      console.warn('[analyzer] Claude Agent SDK initialization failed, using regex fallback');
     }
   }
 
@@ -587,7 +613,7 @@ export async function analyzeFile(
   const llmInsights: LLMInsight[] = [];
 
   // Load analysis prompt (from YAML config or fallback)
-  let analysisPromptText = ANALYSIS_PROMPT;
+  let analysisPromptText = getStaticAnalysisPrompt();
   if (promptId) {
     const customPrompt = loadPrompt(promptId);
     if (customPrompt) {
@@ -602,15 +628,13 @@ export async function analyzeFile(
     }
   }
 
-  // Try LLM analysis
+  // Try LLM analysis (Claude Agent SDK uses env var)
   let llmCallsites: LLMCallsite[] = [];
 
   if (useLLM && process.env.ANTHROPIC_API_KEY) {
     try {
-      const client = new Anthropic();
       const output = await analyzewithLLM(
         [{ path: filePath, content, candidateLines: lines }],
-        client,
         analysisPromptText
       );
       llmCallsites = output.callsitesByFile.get(filePath) || [];

@@ -6,6 +6,8 @@
  * - XML-structured prompt from prompts/correlation-analyzer.yaml
  * - Detects drift between code intent and runtime reality
  * - Returns drift signals and alignment score
+ *
+ * Uses Claude Agent SDK (per TDD v1.9.3)
  */
 import type { Callsite, InferenceEvent, RuntimeSummary, Insight, DriftSignal } from '../types.js';
 import type { BaseAgent } from './index.js';

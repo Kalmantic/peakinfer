@@ -1,6 +1,6 @@
 import type { ScanResult, Callsite } from './types.js';
 export interface LLMImpactEstimate {
-    layer: 'application' | 'model' | 'runtime' | 'infrastructure';
+    layer: 'application' | 'api' | 'gateway' | 'runtime' | 'model' | 'hardware';
     impactType: 'cost' | 'latency' | 'throughput';
     estimatedImpactPercent: number;
     effort: 'low' | 'medium' | 'high';

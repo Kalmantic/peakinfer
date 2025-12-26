@@ -1,4 +1,4 @@
-import { existsSync, statSync, readFileSync } from 'fs';
+import { existsSync, statSync, readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import type { ExecutionPlan, PlannedTask, TaskResult, ScanResult, Callsite, InferenceEvent, JoinedOutput, Insight, RuntimeSummary, InferenceMap, ImpactEstimate, EnrichedCallsite } from './types.js';
 import { scan } from './scanner.js';
@@ -208,9 +208,11 @@ function convertPerformanceToInsights(analysis: StaticAnalysisOutput): Array<{
 export interface AgentOptions {
   path: string;
   events?: string;
+  eventsUrl?: string;             // URL to fetch runtime events
   html?: boolean;
   pdf?: boolean;
   open?: boolean;
+  out?: string;                   // Write output to file
   offline?: boolean;
   verbose?: boolean;
   noCache?: boolean; // Force fresh analysis, ignore cached runs
@@ -336,6 +338,17 @@ function isDirectory(path: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Fetch runtime events from a URL
+ */
+async function fetchEventsFromUrl(url: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch events from ${url}: ${response.status} ${response.statusText}`);
+  }
+  return response.text();
 }
 
 export interface PlanResult {
@@ -588,6 +601,9 @@ async function executeTask(
           const models = Object.keys(ctx.runtimeSummary.byModel);
           const pricingContext = getPricingContext(models);
 
+          // Emit progress: starting runtime pattern analysis
+          onProgress?.({ phase: 'analyzing', detail: `analyzing ${ctx.events.length} runtime events...` });
+
           const runtimeResult = await RuntimeAnalyzerAgent.execute({
             events: ctx.events,
             runtimeSummary: ctx.runtimeSummary,
@@ -611,9 +627,8 @@ async function executeTask(
         try {
           const scanRoot = ctx.scanResult.root;
 
-          // Read all source files
+          // Read all source files (no artificial limit - process all candidates)
           const filesToAnalyze = ctx.scanResult.files
-            .slice(0, 20) // Limit for performance
             .map(f => {
               const fullPath = resolve(scanRoot, f.path);
               try {
@@ -636,8 +651,20 @@ async function executeTask(
           }
 
           // Run unified analysis (discovery + profiling in one LLM call)
+          // Pass progress callback for Claude Code-style per-file progress updates
           const orchestrator = new StaticAnalysisOrchestrator();
-          ctx.staticAnalysis = await orchestrator.analyze({ files: filesToAnalyze });
+          ctx.staticAnalysis = await orchestrator.analyze(
+            { files: filesToAnalyze },
+            (progressData) => {
+              // Forward progress to renderer with percent for progress bar
+              onProgress?.({
+                phase: 'analyzing',
+                percent: progressData.percent,
+                currentFile: progressData.currentFile,
+                detail: `${progressData.completed}/${progressData.total} files`,
+              });
+            }
+          );
 
           // Extract callsites from unified analysis for rest of pipeline
           const callsitesFromAnalysis: Callsite[] = [];
@@ -722,7 +749,6 @@ async function executeTask(
       break;
 
     case 'parse_events': {
-      const eventsPath = ctx.opts.events || ctx.opts.path;
       try {
         // Build normalization options from CLI flags (PRD §6.4)
         const normalizationOptions = {
@@ -733,7 +759,18 @@ async function executeTask(
           codebase_context: ctx.scanResult, // Pass codebase context for smarter normalization
         };
 
-        ctx.events = await parseEvents(eventsPath, normalizationOptions);
+        // Handle --events-url: fetch from URL first
+        if (ctx.opts.eventsUrl) {
+          const eventsContent = await fetchEventsFromUrl(ctx.opts.eventsUrl);
+          // Write to temp file for parsing
+          const tempPath = '.peakinfer/.tmp_events.jsonl';
+          writeFileSync(tempPath, eventsContent);
+          ctx.events = await parseEvents(tempPath, normalizationOptions);
+        } else {
+          const eventsPath = ctx.opts.events || ctx.opts.path;
+          ctx.events = await parseEvents(eventsPath, normalizationOptions);
+        }
+
         ctx.runtimeSummary = aggregate(ctx.events);
         // Emit progress with event count
         onProgress?.({ phase: 'parsing', detail: `${ctx.events.length} events` });
@@ -754,6 +791,9 @@ async function executeTask(
           break;
         }
         try {
+          // Emit progress: starting drift detection analysis
+          onProgress?.({ phase: 'correlating', detail: 'detecting code-runtime drift...' });
+
           const correlationResult = await CorrelationAnalyzerAgent.execute({
             callsites: ctx.callsites,
             events: ctx.events,
@@ -1046,13 +1086,14 @@ function buildInferenceMap(
   }
 
   return {
-    version: VERSION,
+    version: '0.1',  // InferenceMap schema version (not CLI version)
     root,
     generatedAt: new Date().toISOString(),
     metadata: {
       absolutePath: resolve(root),
       promptId: metadata.promptId || 'peak-performance',
       promptVersion: metadata.promptVersion,
+      templatesVersion: VERSION,  // CLI version for audit trail
       llmProvider: metadata.llmUsed ? 'anthropic' : 'none',
       llmModel: metadata.llmUsed ? 'claude-sonnet-4-20250514' : undefined,
     },
@@ -1164,6 +1205,26 @@ export class Agent {
       pdfPath: ctx.pdfPath,
       warnings: ctx.warnings.length > 0 ? ctx.warnings : undefined,
     };
+
+    // Handle --out: write output to file
+    if (opts.out) {
+      const outputData = {
+        schema: 'peakinfer-analysis',
+        version: '1.0',  // Analysis export format version
+        cliVersion: VERSION,
+        mode: agentResults.mode,
+        runId: agentResults.runId,
+        timestamp: new Date().toISOString(),
+        inferenceMap: agentResults.inferenceMap,
+        insights: agentResults.insights,
+        impactSummary: agentResults.impactSummary,
+        comparison: agentResults.comparison,
+        prediction: agentResults.prediction,
+        counterfactuals: agentResults.counterfactuals,
+        runtimeSummary: agentResults.runtimeSummary,
+      };
+      writeFileSync(opts.out, JSON.stringify(outputData, null, 2));
+    }
 
     this.callbacks.onComplete?.(agentResults);
     return agentResults;

@@ -812,31 +812,3 @@ export function getThroughputPercent(
   if (!envelope) return null;
   return Math.round((actualTps / envelope.tps_median) * 100);
 }
-
-/**
- * Check if TTFT is within expected range.
- *
- * @param model - Model name
- * @param actualTtft - Actual time to first token in ms
- * @param runtime - Optional runtime
- * @returns 'fast' | 'normal' | 'slow' | null
- */
-export function getTtftStatus(
-  model: string,
-  actualTtft: number,
-  runtime?: string
-): 'fast' | 'normal' | 'slow' | null {
-  const envelope = getEnvelope(model, runtime);
-  if (!envelope) return null;
-
-  if (actualTtft <= envelope.ttft_p50_ms) return 'fast';
-  if (actualTtft <= envelope.ttft_p95_ms) return 'normal';
-  return 'slow';
-}
-
-/**
- * Get all available model names in envelopes.
- */
-export function getAvailableModels(): string[] {
-  return Object.keys(ENVELOPES);
-}

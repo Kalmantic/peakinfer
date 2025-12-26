@@ -16,7 +16,7 @@
  */
 
 import { createHash, randomUUID } from 'crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync } from 'fs';
 import { join, resolve } from 'path';
 import type {
   HistoryManifest,
@@ -296,35 +296,6 @@ export function getLatestRun(path: string, baseDir: string = '.'): LoadedRun | n
 }
 
 /**
- * Get the previous run (second most recent) for a path.
- * Useful for comparison with current run.
- */
-export function getPreviousRun(path: string, baseDir: string = '.'): LoadedRun | null {
-  const runs = listRuns(path, baseDir);
-
-  if (runs.length < 2) {
-    return null;
-  }
-
-  // Second run is previous
-  return loadRun(runs[1].runId, baseDir);
-}
-
-/**
- * Get run history count for a path.
- */
-export function getRunCount(path: string, baseDir: string = '.'): number {
-  return listRuns(path, baseDir).length;
-}
-
-/**
- * Check if history exists for a path.
- */
-export function hasHistory(path: string, baseDir: string = '.'): boolean {
-  return getRunCount(path, baseDir) > 0;
-}
-
-/**
  * Prune old runs, keeping only the most recent N runs per path.
  * Returns the number of runs deleted.
  */
@@ -354,8 +325,13 @@ export function pruneHistory(keepCount: number = 10, baseDir: string = '.'): num
     }
   }
 
-  // Note: Actual file deletion not implemented yet
-  // This would require fs.rmSync for each run directory
+  // Delete run directories
+  for (const runId of runsToDelete) {
+    const runDir = join(historyDir, runId);
+    if (existsSync(runDir)) {
+      rmSync(runDir, { recursive: true });
+    }
+  }
 
   // Update index to remove deleted runs
   if (runsToDelete.length > 0) {
@@ -365,4 +341,60 @@ export function pruneHistory(keepCount: number = 10, baseDir: string = '.'): num
   }
 
   return runsToDelete.length;
+}
+
+/**
+ * Delete a specific run by ID.
+ * Returns true if the run was deleted, false if not found.
+ */
+export function deleteRun(runId: string, baseDir: string = '.'): boolean {
+  const historyDir = getHistoryDir(baseDir);
+  const runDir = join(historyDir, runId);
+
+  // Check if run exists
+  if (!existsSync(runDir)) {
+    return false;
+  }
+
+  // Delete the run directory
+  rmSync(runDir, { recursive: true });
+
+  // Update the index
+  const index = loadIndex(historyDir);
+  const originalLength = index.runs.length;
+  index.runs = index.runs.filter(r => r.runId !== runId);
+
+  if (index.runs.length < originalLength) {
+    saveIndex(historyDir, index);
+  }
+
+  return true;
+}
+
+/**
+ * Clear all history (delete everything).
+ * Returns the number of runs deleted.
+ */
+export function clearAllHistory(baseDir: string = '.'): number {
+  const historyDir = getHistoryDir(baseDir);
+  const index = loadIndex(historyDir);
+  const count = index.runs.length;
+
+  // Delete all run directories
+  for (const run of index.runs) {
+    const runDir = join(historyDir, run.runId);
+    if (existsSync(runDir)) {
+      rmSync(runDir, { recursive: true });
+    }
+  }
+
+  // Reset the index
+  const emptyIndex: HistoryIndex = {
+    version: HISTORY_VERSION,
+    lastUpdated: new Date().toISOString(),
+    runs: [],
+  };
+  saveIndex(historyDir, emptyIndex);
+
+  return count;
 }

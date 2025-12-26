@@ -42,7 +42,7 @@ jobs:
           ref: ${{ github.event_name == 'issue_comment' && format('refs/pull/{0}/head', github.event.issue.number) || '' }}
 
       - name: Run PeakInfer
-        uses: kalmantic/peakinfer-action@v1
+        uses: Kalmantic/peakinfer@v1
         with:
           path: './src'
           inline-comments: 'true'
