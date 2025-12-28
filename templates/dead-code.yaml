@@ -1,0 +1,20 @@
+id: dead-code
+name: Dead Code Detection
+version: "1.0"
+category: drift
+severity: warning
+layer: application
+
+match:
+  scope: joined
+  conditions:
+    - field: codeOnly.length
+      op: gt
+      value: 0
+
+output:
+  headline: "{{count}} callsites in code with no runtime events"
+  evidence: "{{locations}}"
+
+defaults:
+  min_count: 1

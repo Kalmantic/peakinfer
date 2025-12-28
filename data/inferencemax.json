@@ -1,0 +1,274 @@
+{
+  "version": "1.0",
+  "last_updated": "2025-12-28",
+  "source": "InferenceMAX Benchmark Suite",
+  "benchmarks": {
+    "gpt-4o:api:api": {
+      "model": "gpt-4o",
+      "provider": "openai",
+      "framework": "api",
+      "hardware": "api",
+      "metrics": {
+        "ttft_ms": 180,
+        "p50_latency_ms": 800,
+        "p95_latency_ms": 1200,
+        "p99_latency_ms": 1800,
+        "throughput_tps": 45,
+        "cost_per_1k_input": 0.005,
+        "cost_per_1k_output": 0.015
+      },
+      "notes": "OpenAI API baseline"
+    },
+    "gpt-4o-mini:api:api": {
+      "model": "gpt-4o-mini",
+      "provider": "openai",
+      "framework": "api",
+      "hardware": "api",
+      "metrics": {
+        "ttft_ms": 120,
+        "p50_latency_ms": 400,
+        "p95_latency_ms": 600,
+        "p99_latency_ms": 900,
+        "throughput_tps": 90,
+        "cost_per_1k_input": 0.00015,
+        "cost_per_1k_output": 0.0006
+      },
+      "notes": "OpenAI API baseline - mini model"
+    },
+    "gpt-4-turbo:api:api": {
+      "model": "gpt-4-turbo",
+      "provider": "openai",
+      "framework": "api",
+      "hardware": "api",
+      "metrics": {
+        "ttft_ms": 250,
+        "p50_latency_ms": 1200,
+        "p95_latency_ms": 2000,
+        "p99_latency_ms": 3000,
+        "throughput_tps": 30,
+        "cost_per_1k_input": 0.01,
+        "cost_per_1k_output": 0.03
+      },
+      "notes": "OpenAI API baseline - GPT-4 Turbo"
+    },
+    "claude-3-5-sonnet:api:api": {
+      "model": "claude-3-5-sonnet-20241022",
+      "provider": "anthropic",
+      "framework": "api",
+      "hardware": "api",
+      "metrics": {
+        "ttft_ms": 150,
+        "p50_latency_ms": 600,
+        "p95_latency_ms": 1000,
+        "p99_latency_ms": 1500,
+        "throughput_tps": 50,
+        "cost_per_1k_input": 0.003,
+        "cost_per_1k_output": 0.015
+      },
+      "notes": "Anthropic API baseline"
+    },
+    "claude-3-5-haiku:api:api": {
+      "model": "claude-3-5-haiku-20241022",
+      "provider": "anthropic",
+      "framework": "api",
+      "hardware": "api",
+      "metrics": {
+        "ttft_ms": 80,
+        "p50_latency_ms": 300,
+        "p95_latency_ms": 500,
+        "p99_latency_ms": 750,
+        "throughput_tps": 100,
+        "cost_per_1k_input": 0.001,
+        "cost_per_1k_output": 0.005
+      },
+      "notes": "Anthropic API baseline - Haiku"
+    },
+    "claude-3-opus:api:api": {
+      "model": "claude-3-opus-20240229",
+      "provider": "anthropic",
+      "framework": "api",
+      "hardware": "api",
+      "metrics": {
+        "ttft_ms": 300,
+        "p50_latency_ms": 1500,
+        "p95_latency_ms": 2500,
+        "p99_latency_ms": 4000,
+        "throughput_tps": 20,
+        "cost_per_1k_input": 0.015,
+        "cost_per_1k_output": 0.075
+      },
+      "notes": "Anthropic API baseline - Opus"
+    },
+    "gemini-2.0-flash:api:api": {
+      "model": "gemini-2.0-flash-exp",
+      "provider": "google",
+      "framework": "api",
+      "hardware": "api",
+      "metrics": {
+        "ttft_ms": 100,
+        "p50_latency_ms": 350,
+        "p95_latency_ms": 550,
+        "p99_latency_ms": 800,
+        "throughput_tps": 85,
+        "cost_per_1k_input": 0.00035,
+        "cost_per_1k_output": 0.0007
+      },
+      "notes": "Google API baseline - Gemini Flash"
+    },
+    "gemini-1.5-pro:api:api": {
+      "model": "gemini-1.5-pro",
+      "provider": "google",
+      "framework": "api",
+      "hardware": "api",
+      "metrics": {
+        "ttft_ms": 200,
+        "p50_latency_ms": 700,
+        "p95_latency_ms": 1100,
+        "p99_latency_ms": 1600,
+        "throughput_tps": 40,
+        "cost_per_1k_input": 0.00125,
+        "cost_per_1k_output": 0.005
+      },
+      "notes": "Google API baseline - Gemini Pro"
+    },
+    "llama-3.1-70b:vllm:h100": {
+      "model": "llama-3.1-70b-instruct",
+      "provider": "meta",
+      "framework": "vllm",
+      "hardware": "h100",
+      "metrics": {
+        "ttft_ms": 50,
+        "p50_latency_ms": 200,
+        "p95_latency_ms": 400,
+        "p99_latency_ms": 600,
+        "throughput_tps": 120,
+        "cost_per_1k_input": 0.0,
+        "cost_per_1k_output": 0.0
+      },
+      "optimal_config": {
+        "tensor_parallelism": 4,
+        "max_model_len": 8192,
+        "gpu_memory_utilization": 0.9
+      },
+      "notes": "Self-hosted on 4xH100"
+    },
+    "llama-3.1-70b:vllm:a100": {
+      "model": "llama-3.1-70b-instruct",
+      "provider": "meta",
+      "framework": "vllm",
+      "hardware": "a100",
+      "metrics": {
+        "ttft_ms": 80,
+        "p50_latency_ms": 350,
+        "p95_latency_ms": 600,
+        "p99_latency_ms": 900,
+        "throughput_tps": 70,
+        "cost_per_1k_input": 0.0,
+        "cost_per_1k_output": 0.0
+      },
+      "optimal_config": {
+        "tensor_parallelism": 4,
+        "max_model_len": 8192,
+        "gpu_memory_utilization": 0.9
+      },
+      "notes": "Self-hosted on 4xA100-80GB"
+    },
+    "llama-3.1-8b:vllm:a100": {
+      "model": "llama-3.1-8b-instruct",
+      "provider": "meta",
+      "framework": "vllm",
+      "hardware": "a100",
+      "metrics": {
+        "ttft_ms": 20,
+        "p50_latency_ms": 100,
+        "p95_latency_ms": 180,
+        "p99_latency_ms": 250,
+        "throughput_tps": 250,
+        "cost_per_1k_input": 0.0,
+        "cost_per_1k_output": 0.0
+      },
+      "optimal_config": {
+        "tensor_parallelism": 1,
+        "max_model_len": 8192,
+        "gpu_memory_utilization": 0.9
+      },
+      "notes": "Self-hosted on 1xA100-80GB"
+    },
+    "mistral-large:api:api": {
+      "model": "mistral-large-latest",
+      "provider": "mistral",
+      "framework": "api",
+      "hardware": "api",
+      "metrics": {
+        "ttft_ms": 160,
+        "p50_latency_ms": 550,
+        "p95_latency_ms": 900,
+        "p99_latency_ms": 1300,
+        "throughput_tps": 55,
+        "cost_per_1k_input": 0.004,
+        "cost_per_1k_output": 0.012
+      },
+      "notes": "Mistral API baseline"
+    },
+    "mixtral-8x7b:vllm:a100": {
+      "model": "mixtral-8x7b-instruct",
+      "provider": "mistral",
+      "framework": "vllm",
+      "hardware": "a100",
+      "metrics": {
+        "ttft_ms": 40,
+        "p50_latency_ms": 180,
+        "p95_latency_ms": 320,
+        "p99_latency_ms": 480,
+        "throughput_tps": 150,
+        "cost_per_1k_input": 0.0,
+        "cost_per_1k_output": 0.0
+      },
+      "optimal_config": {
+        "tensor_parallelism": 2,
+        "max_model_len": 32768,
+        "gpu_memory_utilization": 0.9
+      },
+      "notes": "Self-hosted on 2xA100-80GB"
+    },
+    "deepseek-v3:api:api": {
+      "model": "deepseek-chat",
+      "provider": "deepseek",
+      "framework": "api",
+      "hardware": "api",
+      "metrics": {
+        "ttft_ms": 120,
+        "p50_latency_ms": 450,
+        "p95_latency_ms": 750,
+        "p99_latency_ms": 1100,
+        "throughput_tps": 65,
+        "cost_per_1k_input": 0.00014,
+        "cost_per_1k_output": 0.00028
+      },
+      "notes": "DeepSeek API baseline"
+    }
+  },
+  "model_aliases": {
+    "gpt-4o": "gpt-4o:api:api",
+    "gpt-4o-mini": "gpt-4o-mini:api:api",
+    "gpt-4-turbo": "gpt-4-turbo:api:api",
+    "claude-3-5-sonnet": "claude-3-5-sonnet:api:api",
+    "claude-3.5-sonnet": "claude-3-5-sonnet:api:api",
+    "claude-3-5-haiku": "claude-3-5-haiku:api:api",
+    "claude-3.5-haiku": "claude-3-5-haiku:api:api",
+    "claude-3-opus": "claude-3-opus:api:api",
+    "gemini-2.0-flash": "gemini-2.0-flash:api:api",
+    "gemini-flash": "gemini-2.0-flash:api:api",
+    "gemini-1.5-pro": "gemini-1.5-pro:api:api",
+    "gemini-pro": "gemini-1.5-pro:api:api",
+    "llama-3.1-70b": "llama-3.1-70b:vllm:h100",
+    "llama-70b": "llama-3.1-70b:vllm:h100",
+    "llama-3.1-8b": "llama-3.1-8b:vllm:a100",
+    "llama-8b": "llama-3.1-8b:vllm:a100",
+    "mistral-large": "mistral-large:api:api",
+    "mixtral-8x7b": "mixtral-8x7b:vllm:a100",
+    "mixtral": "mixtral-8x7b:vllm:a100",
+    "deepseek-v3": "deepseek-v3:api:api",
+    "deepseek": "deepseek-v3:api:api"
+  }
+}

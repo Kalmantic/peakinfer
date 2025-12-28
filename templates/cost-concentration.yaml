@@ -1,0 +1,20 @@
+id: cost-concentration
+name: Cost Concentration
+version: "1.0"
+category: cost
+severity: warning
+layer: application
+
+match:
+  scope: global
+  conditions:
+    - field: top_callsite_cost_percent
+      op: gt
+      value: 50
+
+output:
+  headline: "{{percent}}% of inference cost from one callsite"
+  evidence: "{{model}} at {{location}}"
+
+defaults:
+  threshold_percent: 50

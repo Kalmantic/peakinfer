@@ -1,0 +1,142 @@
+{
+  "version": "1.0.0",
+  "generated": "2025-12-24T00:00:00.000Z",
+  "description": "Pre-computed demo analysis for offline `peakinfer demo` command",
+  "inferencePoints": [
+    {
+      "id": "demo-ai-service-chat-1",
+      "file": "ai-service.ts",
+      "line": 13,
+      "function": "chat",
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-20250514",
+      "streaming": true,
+      "costProfile": {
+        "estimatedCostPer1K": 0.015,
+        "inputTokens": 500,
+        "outputTokens": 2000
+      }
+    },
+    {
+      "id": "demo-ai-service-classify-2",
+      "file": "ai-service.ts",
+      "line": 29,
+      "function": "classifyIntent",
+      "provider": "openai",
+      "model": "gpt-4",
+      "streaming": false,
+      "costProfile": {
+        "estimatedCostPer1K": 0.03,
+        "inputTokens": 100,
+        "outputTokens": 50
+      }
+    },
+    {
+      "id": "demo-ai-service-summarize-3",
+      "file": "ai-service.ts",
+      "line": 42,
+      "function": "summarize",
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-20250514",
+      "streaming": false,
+      "costProfile": {
+        "estimatedCostPer1K": 0.015,
+        "inputTokens": 2000,
+        "outputTokens": 500
+      }
+    },
+    {
+      "id": "demo-ai-service-batch-4",
+      "file": "ai-service.ts",
+      "line": 52,
+      "function": "batchAnalyze",
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-20250514",
+      "streaming": false,
+      "costProfile": {
+        "estimatedCostPer1K": 0.015,
+        "inputTokens": 200,
+        "outputTokens": 200
+      }
+    }
+  ],
+  "drift": {
+    "detected": true,
+    "type": "streaming",
+    "description": "Code declares streaming but runtime shows 0% actual streams",
+    "evidence": {
+      "code": "stream: true",
+      "runtime": "0% streaming responses observed",
+      "impact": "p95 latency 2.4s instead of 400ms",
+      "duration": "23 days"
+    }
+  },
+  "issues": [
+    {
+      "id": "issue-1",
+      "severity": "critical",
+      "category": "drift",
+      "title": "Streaming Drift Detected",
+      "description": "Code says `stream: true` but runtime shows 0% streaming responses",
+      "impact": "6x slower response times, poor user experience",
+      "file": "ai-service.ts",
+      "line": 15,
+      "fix": {
+        "description": "Verify streaming is working end-to-end",
+        "effort": "1 hour"
+      }
+    },
+    {
+      "id": "issue-2",
+      "severity": "high",
+      "category": "cost",
+      "title": "Overpowered Model for Classification",
+      "description": "GPT-4 ($0.03/1K) used for simple intent classification that GPT-4o-mini ($0.00015/1K) handles equally well",
+      "impact": "200x cost waste on this endpoint",
+      "savings": "$4,200/month",
+      "file": "ai-service.ts",
+      "line": 30,
+      "fix": {
+        "description": "Switch to gpt-4o-mini for classification",
+        "effort": "5 minutes"
+      }
+    },
+    {
+      "id": "issue-3",
+      "severity": "high",
+      "category": "reliability",
+      "title": "No Error Handling",
+      "description": "LLM call has no try/catch, no retry logic, no timeout",
+      "impact": "Single API failure crashes the application",
+      "file": "ai-service.ts",
+      "line": 42,
+      "fix": {
+        "description": "Add retry with exponential backoff and timeout",
+        "effort": "30 minutes"
+      }
+    },
+    {
+      "id": "issue-4",
+      "severity": "medium",
+      "category": "throughput",
+      "title": "Sequential Batch Processing",
+      "description": "Items processed one at a time in a loop instead of parallel",
+      "impact": "50x throughput loss for batch operations",
+      "file": "ai-service.ts",
+      "line": 51,
+      "fix": {
+        "description": "Use Promise.all() for parallel processing",
+        "effort": "15 minutes"
+      }
+    }
+  ],
+  "summary": {
+    "totalInferencePoints": 4,
+    "providers": ["anthropic", "openai"],
+    "criticalIssues": 1,
+    "highIssues": 2,
+    "mediumIssues": 1,
+    "estimatedMonthlySavings": "$4,200",
+    "estimatedLatencyImprovement": "6x faster"
+  }
+}

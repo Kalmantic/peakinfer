@@ -1,0 +1,64 @@
+# PeakInfer Analysis Workflow
+# Add this to your repository to analyze LLM inference on every PR
+# Supports comment commands: /peakinfer, /fix N, /fix all, /dismiss N
+
+name: PeakInfer Analysis
+
+on:
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'src/**'
+      - 'lib/**'
+      - 'app/**'
+
+  # Enable comment commands
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write  # Needed for /fix commands to create commits
+  pull-requests: write
+
+jobs:
+  analyze:
+    name: Analyze Inference
+    runs-on: ubuntu-latest
+
+    # Run on PR events, or on PR comments containing peakinfer commands
+    if: >
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       (contains(github.event.comment.body, '/peakinfer') ||
+        contains(github.event.comment.body, '/fix') ||
+        contains(github.event.comment.body, '/dismiss')))
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # For issue_comment, we need to checkout the PR branch
+          ref: ${{ github.event_name == 'issue_comment' && format('refs/pull/{0}/head', github.event.issue.number) || '' }}
+
+      - name: Run PeakInfer
+        uses: Kalmantic/peakinfer@v1
+        with:
+          path: './src'
+          inline-comments: 'true'
+          fail-on-regression: 'false'
+          # Pass the event type so action knows if this is a command
+          event-type: ${{ github.event_name }}
+          comment-body: ${{ github.event.comment.body || '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      # Optional: Upload artifacts
+      - name: Upload Analysis
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: peakinfer-results
+          path: .peakinfer/
+          retention-days: 30

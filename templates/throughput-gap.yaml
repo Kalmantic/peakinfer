@@ -1,0 +1,21 @@
+id: throughput-gap
+name: Throughput Gap Detection
+version: "1.0"
+category: throughput
+severity: warning
+layer: runtime
+
+match:
+  scope: envelope
+  conditions:
+    - field: actual_tps
+      op: ratio_lt
+      compare_to: envelope.tps_median
+      value: 0.5
+
+output:
+  headline: "Running at {{percent}}% of achievable throughput"
+  evidence: "Your {{model}}: {{actual}} tok/s, reference: {{reference}} tok/s median"
+
+defaults:
+  gap_threshold: 0.5

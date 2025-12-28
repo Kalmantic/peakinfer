@@ -1,0 +1,23 @@
+id: latency-explainer
+name: Latency Explainer
+version: "1.0"
+category: latency
+severity: warning
+layer: application
+
+match:
+  scope: callsite
+  conditions:
+    - field: usage.latency_p95
+      op: gt
+      value: 3000
+    - field: patterns.streaming
+      op: neq
+      value: true
+
+output:
+  headline: "High tail latency: {{p95}}ms at p95"
+  evidence: "No streaming enabled; full response wait contributes to latency"
+
+defaults:
+  latency_threshold_ms: 3000

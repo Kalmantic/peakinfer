@@ -1,0 +1,23 @@
+# Based on: https://www.kalmantic.com/posts/conversation-history-costs-context-windows-drain-budgets
+# "Why Context Windows Drain AI Budgets 10x Faster"
+
+id: context-accumulation
+name: Context Window Bloat Detection
+version: "1.0"
+category: cost
+severity: warning
+layer: model
+
+match:
+  scope: callsite
+  conditions:
+    - field: usage.tokens_in
+      op: gt
+      value: 50000
+
+output:
+  headline: "High context usage at {{location}}"
+  evidence: "Averaging {{avg_tokens_in}} input tokens per call. Consider sliding window or summarization."
+
+defaults:
+  high_context_threshold: 50000

@@ -1,0 +1,2 @@
+{"id":"1","ts":"2024-01-01T00:00:00Z","provider":"openai","model":"gpt-4o","input_tokens":100,"output_tokens":50,"latency_ms":420}
+{"id":"2","ts":"2024-01-01T00:01:00Z","provider":"openai","model":"gpt-4o","input_tokens":200,"output_tokens":80,"latency_ms":580}

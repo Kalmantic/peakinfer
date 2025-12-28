@@ -1,0 +1,15 @@
+{"id":"evt_001","ts":"2024-12-15T10:00:00Z","provider":"openai","model":"gpt-4","input_tokens":150,"output_tokens":500,"latency_ms":4500}
+{"id":"evt_002","ts":"2024-12-15T10:00:05Z","provider":"openai","model":"gpt-4","input_tokens":200,"output_tokens":800,"latency_ms":5200}
+{"id":"evt_003","ts":"2024-12-15T10:00:10Z","provider":"anthropic","model":"claude-3-opus-20240229","input_tokens":1000,"output_tokens":2000,"latency_ms":8500}
+{"id":"evt_004","ts":"2024-12-15T10:00:15Z","provider":"openai","model":"gpt-4-turbo","input_tokens":300,"output_tokens":400,"latency_ms":3800}
+{"id":"evt_005","ts":"2024-12-15T10:00:20Z","provider":"openai","model":"gpt-4o-mini","input_tokens":100,"output_tokens":150,"latency_ms":1200}
+{"id":"evt_006","ts":"2024-12-15T10:00:25Z","provider":"openai","model":"gpt-4o-mini","input_tokens":80,"output_tokens":120,"latency_ms":1100}
+{"id":"evt_007","ts":"2024-12-15T10:00:30Z","provider":"anthropic","model":"claude-3-haiku-20240307","input_tokens":50,"output_tokens":200,"latency_ms":900}
+{"id":"evt_008","ts":"2024-12-15T10:00:35Z","provider":"openai","model":"gpt-4o","input_tokens":200,"output_tokens":600,"latency_ms":2100,"streaming":true}
+{"id":"evt_009","ts":"2024-12-15T10:00:40Z","provider":"openai","model":"text-embedding-3-small","input_tokens":100,"output_tokens":0,"latency_ms":150}
+{"id":"evt_010","ts":"2024-12-15T10:00:45Z","provider":"openai","model":"gpt-4","input_tokens":180,"output_tokens":550,"latency_ms":4800}
+{"id":"evt_011","ts":"2024-12-15T10:01:00Z","provider":"anthropic","model":"claude-3-sonnet-20240229","input_tokens":400,"output_tokens":800,"latency_ms":3500}
+{"id":"evt_012","ts":"2024-12-15T10:01:05Z","provider":"openai","model":"gpt-4o-mini","input_tokens":90,"output_tokens":180,"latency_ms":1300}
+{"id":"evt_013","ts":"2024-12-15T10:01:10Z","provider":"openai","model":"gpt-4","input_tokens":220,"output_tokens":700,"latency_ms":5500}
+{"id":"evt_014","ts":"2024-12-15T10:01:15Z","provider":"anthropic","model":"claude-3-opus-20240229","input_tokens":1200,"output_tokens":2500,"latency_ms":9200}
+{"id":"evt_015","ts":"2024-12-15T10:01:20Z","provider":"openai","model":"text-embedding-3-small","input_tokens":150,"output_tokens":0,"latency_ms":180}

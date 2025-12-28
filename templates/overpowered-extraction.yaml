@@ -1,0 +1,32 @@
+# Based on: https://www.kalmantic.com/posts/gpt5-model-selection-economics-extraction-tasks
+# "Why Premium Models Waste Money on Extraction Tasks"
+
+id: overpowered-extraction
+name: Overpowered Model for Simple Tasks
+version: "1.0"
+category: cost
+severity: warning
+layer: model
+
+match:
+  scope: callsite
+  conditions:
+    - field: model
+      op: in
+      value: ["gpt-4o", "gpt-4", "gpt-4-turbo", "claude-3-opus", "claude-3.5-sonnet"]
+    - field: avg_tokens
+      op: lt
+      value: 100
+
+output:
+  headline: "Using {{model}} for {{avg_tokens}}-token outputs"
+  evidence: "{{location}}: Consider gpt-4o-mini or claude-3-haiku for simple extraction tasks"
+
+defaults:
+  small_output_threshold: 100
+  premium_models:
+    - gpt-4o
+    - gpt-4
+    - gpt-4-turbo
+    - claude-3-opus
+    - claude-3.5-sonnet

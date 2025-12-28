@@ -1,0 +1,167 @@
+id: streaming-batch-selection
+name: Streaming vs Batch Pattern Selection Framework
+description: Choose optimal API pattern based on latency, cost, and UX requirements
+category: api_optimization
+confidence: 0.90
+success_count: 1456
+verified_environments: 78
+contributors:
+  - inference_squeeze
+  - ux_engineer
+  - api_architect
+last_updated: "2025-01-20"
+source: "Inference Squeeze Chapter 3 - Request Patterns"
+
+environment_match:
+  application_type: mixed
+  latency_requirements: variable
+  user_experience: critical
+  cost_sensitivity: high
+
+optimization:
+  technique: pattern_optimization
+  expected_ux_improvement: "30-50%"
+  expected_cost_optimization: "20-40%"
+  effort_estimate: "1 week"
+  risk_level: low
+
+decision_framework:
+  use_streaming_when:
+    - "User-facing interactive applications"
+    - "First-token latency matters more than total latency"
+    - "Long responses (>500 tokens)"
+    - "User expects real-time feedback"
+  use_batch_when:
+    - "Background processing"
+    - "API offers batch pricing discount (OpenAI: 50%)"
+    - "Latency tolerance >24 hours"
+    - "High volume, consistent workloads"
+  use_sync_when:
+    - "Simple queries, short responses"
+    - "Strict latency SLAs"
+    - "Integration constraints require sync"
+
+pattern_comparison:
+  streaming:
+    first_token_latency: "200-500ms"
+    total_latency: variable
+    cost_modifier: "1.0x"
+    ux_benefit: "High - perceived responsiveness"
+    implementation: "WebSocket or SSE"
+  synchronous:
+    first_token_latency: "N/A"
+    total_latency: "500-5000ms"
+    cost_modifier: "1.0x"
+    ux_benefit: "Medium - simple integration"
+    implementation: "REST API"
+  batch:
+    first_token_latency: "N/A"
+    total_latency: "minutes to 24 hours"
+    cost_modifier: "0.5x (OpenAI)"
+    ux_benefit: "Low - async only"
+    implementation: "Job queue + polling"
+
+economics:
+  baseline_calculation:
+    monthly_requests: 100000
+    avg_cost_per_request: 0.05
+    monthly_cost: 5000
+  projected_improvement:
+    batch_eligible_percentage: 0.40
+    batch_discount: 0.50
+    streaming_improvement: 0.0
+    new_monthly_cost: 4000
+    monthly_savings: 1000
+  implementation_cost:
+    engineering_hours: 40
+    total_cost: 8000
+
+implementation:
+  prerequisites:
+    - requirement: "WebSocket/SSE infrastructure"
+      validation: "Can handle streaming connections"
+    - requirement: "Job queue system"
+      validation: "Can process async batch jobs"
+  automated_steps:
+    - step_id: endpoint_audit
+      name: Audit Endpoint Requirements
+      executable: true
+      commands:
+        - "List all LLM-calling endpoints"
+        - "Categorize by latency requirement"
+        - "Identify batch-eligible workloads"
+      validation:
+        command: "Endpoint audit complete"
+        success_criteria: "all_endpoints_categorized"
+        rollback_command: "Continue with current patterns"
+    - step_id: pattern_assignment
+      name: Assign Patterns to Endpoints
+      executable: true
+      matrix:
+        real_time_chat: streaming
+        document_processing: batch
+        search_results: sync
+        bulk_analysis: batch
+        code_completion: streaming
+        content_moderation: sync_or_batch
+      validation:
+        command: "Validate pattern assignments"
+        success_criteria: "patterns_assigned AND no_conflicts"
+        rollback_command: "Revert to uniform pattern"
+    - step_id: streaming_implementation
+      name: Implement Streaming for Interactive Endpoints
+      executable: true
+      commands:
+        - "Add SSE/WebSocket support for chat endpoints"
+        - "Implement token-by-token rendering"
+        - "Handle connection lifecycle"
+      validation:
+        command: "Test streaming endpoints"
+        success_criteria: "first_token_latency < 500ms"
+        rollback_command: "Disable streaming"
+    - step_id: batch_implementation
+      name: Implement Batch for Background Workloads
+      executable: true
+      commands:
+        - "Queue async workloads for batch API"
+        - "Implement job status tracking"
+        - "Handle batch result retrieval"
+      validation:
+        command: "Test batch processing"
+        success_criteria: "batch_cost_savings > 40%"
+        rollback_command: "Revert to sync processing"
+
+monitoring:
+  key_metrics:
+    - metric: first_token_latency_p50
+      target: "<300ms"
+      alert_threshold: ">500ms"
+    - metric: batch_utilization_rate
+      target: ">60%"
+      alert_threshold: "<40%"
+    - metric: pattern_cost_efficiency
+      target: ">0.7"
+      alert_threshold: "<0.5"
+    - metric: streaming_connection_success_rate
+      target: ">99%"
+      alert_threshold: "<95%"
+  rollback_triggers:
+    - condition: "first_token_latency_p50 > 1000ms for 15 minutes"
+      action: investigate_streaming_issues
+    - condition: "batch_utilization_rate < 30% for 1 hour"
+      action: review_batch_eligibility
+
+results:
+  case_study:
+    environment: AI writing assistant
+    before:
+      all_sync: true
+      avg_time_to_first_word: "2.3s"
+      monthly_cost: 45000
+    after:
+      streaming_for_interactive: true
+      batch_for_background: true
+      avg_time_to_first_word: "0.4s"
+      monthly_cost: 31500
+      cost_reduction: "30%"
+      ux_improvement: "83% faster first response"

@@ -1,0 +1,180 @@
+id: peak-performance
+name: Peak Inference Performance Analysis
+version: "1.0"
+description: |
+  Analyzes code for inference performance optimization opportunities.
+  Focus areas: latency, throughput, cost efficiency, and achieving peak performance.
+
+# The analysis prompt sent to the LLM
+prompt: |
+  You are an expert at analyzing LLM inference code for PEAK PERFORMANCE optimization.
+
+  Your goal: Identify why this code may NOT be achieving peak inference performance.
+
+  ## FOCUS AREAS (in priority order)
+
+  ### 1. LATENCY
+  - Time to First Token (TTFT) optimization
+  - Streaming vs synchronous calls
+  - Network round-trip reduction
+  - Prompt size impact on latency
+  - Cold start detection
+
+  ### 2. THROUGHPUT
+  - Batching opportunities (multiple requests → single batch)
+  - Concurrent request patterns
+  - Queue/backpressure handling
+  - Connection pooling
+  - Rate limit handling
+
+  ### 3. COST EFFICIENCY
+  - Model selection for task complexity (GPT-4 for simple tasks = waste)
+  - Token usage optimization (prompt bloat detection)
+  - Caching opportunities (repeated similar prompts)
+  - Output token limits vs actual needs
+
+  ### 4. RELIABILITY FOR PERFORMANCE
+  - Retry patterns that don't hurt latency
+  - Fallback strategies (faster model as fallback)
+  - Timeout configurations
+  - Circuit breaker patterns
+
+  ## WHAT TO LOOK FOR
+
+  For each LLM API call, analyze:
+  - Is streaming enabled? (impacts TTFT)
+  - Is batching used for multiple calls? (impacts throughput)
+  - Is the model appropriate for task complexity? (impacts cost)
+  - Are there caching opportunities? (impacts all three)
+  - Is there retry logic that preserves latency SLAs?
+
+  ## OUTPUT FORMAT
+
+  ### PART 1: Identify LLM Callsites
+  For each call:
+  - line: The EXACT line number where the inference call is made (not client initialization)
+  - provider: openai, anthropic, google, together, fireworks, groq, mistral, cohere, replicate, aws_bedrock, azure, vllm, sglang, ollama, unknown
+  - model: The EXACT model name as specified in the code
+  - framework: langchain, llamaindex, dspy, or null
+  - patterns: {streaming, batching, retries, caching, fallback} - true/false
+  - confidence: 0.0 to 1.0
+  - reasoning: Brief explanation
+
+  ### CRITICAL RULES FOR MODEL EXTRACTION
+  1. Look at the model= parameter in the SAME function call
+  2. If model is a variable, trace it to find the actual string value
+  3. For embeddings calls, use the embedding model name (e.g., "text-embedding-3-small"), NOT a chat model
+  4. For DSPy: look at dspy.LM("provider/model") or dspy.context(lm=...) to find the model
+  5. Return the FULL model name exactly as written (e.g., "gpt-4o-mini" not "gpt-4", "claude-3-5-sonnet-20241022" not "claude")
+
+  ### CRITICAL: DO NOT FLAG THESE AS CALLSITES
+  - Client initialization: openai.OpenAI(), anthropic.Anthropic(), AsyncOpenAI(), etc.
+  - Import statements: from openai import OpenAI
+  - Type annotations or comments
+  - Variable assignments without actual API calls: model = "gpt-4o"
+  - SDK client creation without inference: client = OpenAI()
+
+  ### DSPY FRAMEWORK DETECTION
+  DSPy wraps LLM calls in module invocations. Flag these as callsites:
+  - dspy.Predict(signature)(question=...) - the invocation, not the Predict() creation
+  - dspy.ChainOfThought(signature)(question=...) - the invocation
+  - predictor(question=...) where predictor is a DSPy module
+  - compiled_program(input=...) after BootstrapFewShot compilation
+  - self.generate(...) inside a dspy.Module.forward() method
+
+  For DSPy, find the model from:
+  - dspy.LM("provider/model") at module level
+  - dspy.configure(lm=...)
+  - dspy.context(lm=dspy.LM("provider/model"))
+
+  ### PART 2: Performance Insights with Impact Estimation
+  Generate insights focused on PEAK PERFORMANCE with estimated impact:
+
+  Required fields:
+  - severity: MUST be one of: "critical", "warning", "info"
+  - category: MUST be one of: "latency", "throughput", "cost", "reliability"
+
+  Critical = blocking peak performance
+  Warning = leaving performance on the table
+  Info = optimization opportunity or positive pattern
+
+  Impact estimation fields (provide for actionable insights):
+  - layer: MUST be one of: "application", "model", "runtime", "infrastructure"
+    - application: Code patterns (caching, batching, streaming, retry logic)
+    - model: Model selection (GPT-4 vs GPT-3.5, Claude Opus vs Haiku)
+    - runtime: Inference engines (vLLM, sglang, TGI optimizations)
+    - infrastructure: Hosting (serverless vs dedicated, provider selection)
+  - impactType: MUST be one of: "cost", "latency", "throughput"
+  - estimatedImpactPercent: 0-100 (realistic estimate of improvement)
+  - effort: MUST be one of: "low", "medium", "high"
+    - low: Config change or few lines of code
+    - medium: Requires refactoring or new integration
+    - high: Architectural change or new infrastructure
+
+  Impact estimation guidelines:
+  - Model downgrade (GPT-4 → GPT-3.5): ~95% cost reduction
+  - Enable streaming: ~70% perceived latency reduction
+  - Add batching: ~60% throughput improvement
+  - Add caching: ~40% cost reduction (depends on hit rate)
+  - Connection pooling: ~20% latency reduction
+  - vLLM deployment: ~300% throughput improvement
+  - Dedicated GPU hosting: ~60% cost reduction vs API
+
+  Return ONLY valid JSON:
+  {
+    "callsites": [...],
+    "insights": [
+      {
+        "severity": "critical",
+        "category": "latency",
+        "headline": "Synchronous calls blocking TTFT optimization",
+        "evidence": "callLlm at line 42 uses synchronous API - streaming would reduce perceived latency by 60-80%",
+        "location": "src/llm.ts:42",
+        "recommendation": "Enable streaming with stream: true parameter",
+        "impact": {
+          "layer": "application",
+          "impactType": "latency",
+          "estimatedImpactPercent": 70,
+          "effort": "low"
+        }
+      },
+      {
+        "severity": "warning",
+        "category": "cost",
+        "headline": "GPT-4 used for simple yes/no validation",
+        "evidence": "validateInput() at line 89 uses GPT-4 for binary classification",
+        "location": "src/validate.ts:89",
+        "recommendation": "Switch to GPT-3.5-turbo or GPT-4o-mini for simple validation",
+        "impact": {
+          "layer": "model",
+          "impactType": "cost",
+          "estimatedImpactPercent": 97,
+          "effort": "low"
+        }
+      }
+    ]
+  }
+
+  If no issues found, return empty arrays: {"callsites": [], "insights": []}
+
+# Categories this prompt focuses on
+categories:
+  - latency
+  - throughput
+  - cost
+  - reliability
+
+# Default thresholds (can be overridden)
+defaults:
+  expensive_models:
+    - gpt-4
+    - gpt-4o
+    - gpt-4-turbo
+    - claude-3-opus
+    - claude-3-sonnet
+  cheap_models:
+    - gpt-3.5-turbo
+    - gpt-4o-mini
+    - claude-3-haiku
+  latency_critical_threshold_ms: 1000
+  batch_opportunity_threshold: 3

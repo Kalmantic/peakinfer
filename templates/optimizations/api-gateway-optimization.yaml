@@ -1,0 +1,81 @@
+id: api-gateway-optimization
+name: API Gateway Traffic Optimization
+description: Optimize API gateway for AI inference traffic patterns
+category: application_optimization
+confidence: 0.90
+success_count: 1234
+verified_environments: 58
+contributors:
+  - gateway_specialist
+  - traffic_engineer
+last_updated: "2024-12-25"
+
+environment_match:
+  gateway_type:
+    - kong
+    - nginx
+    - envoy
+  daily_requests: ">100K"
+  inference_traffic_percent: ">50%"
+
+optimization:
+  technique: gateway_optimization
+  expected_latency_improvement: "20-40%"
+  expected_cost_reduction: "15-25%"
+  effort_estimate: "1-2 weeks"
+  risk_level: low
+
+economics:
+  baseline_calculation:
+    gateway_overhead_ms: 50
+  projected_improvement:
+    optimized_overhead_ms: 20
+    latency_reduction_percent: 60
+  implementation_cost:
+    engineering_hours: 60
+    total_cost: 12000
+
+implementation:
+  prerequisites:
+    - requirement: "Gateway configuration access"
+    - requirement: "Traffic analytics"
+  automated_steps:
+    - step_id: traffic_analysis
+      name: Traffic Pattern Analysis
+      executable: true
+      commands:
+        - "python scripts/analyze_gateway_traffic.py"
+        - "python scripts/identify_optimization_opportunities.py"
+      validation:
+        command: "python scripts/validate_analysis.py"
+        success_criteria: "patterns_identified"
+    - step_id: optimization
+      name: Gateway Optimization
+      executable: true
+      commands:
+        - "python scripts/configure_connection_pooling.py"
+        - "python scripts/enable_request_coalescing.py"
+        - "python scripts/optimize_routing.py"
+      validation:
+        command: "python scripts/benchmark_gateway.py"
+        success_criteria: "latency_reduction > 0.2"
+        rollback_command: "python scripts/revert_gateway_config.py"
+
+monitoring:
+  key_metrics:
+    - metric: gateway_latency_p95
+      target: "<30ms"
+      alert_threshold: ">50ms"
+    - metric: connection_pool_utilization
+      target: "60-80%"
+      alert_threshold: ">95%"
+  rollback_triggers:
+    - condition: "error_rate > 1% for 5 minutes"
+      action: automatic_rollback
+
+results:
+  recent_implementations:
+    - environment: ai_api_gateway
+      baseline_latency_ms: 55
+      optimized_latency_ms: 22
+      latency_reduction_percent: 60

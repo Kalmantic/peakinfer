@@ -1,0 +1,21 @@
+id: untested-fallback
+name: Untested Fallback Detection
+version: "1.0"
+category: reliability
+severity: critical
+layer: api
+
+match:
+  scope: joined
+  conditions:
+    - field: codeOnly
+      op: has_pattern
+      pattern: fallback
+      count_gt: 0
+
+output:
+  headline: "Fallback code has never executed in production"
+  evidence: "{{count}} fallback paths with 0 runtime events"
+
+defaults:
+  min_fallbacks: 1

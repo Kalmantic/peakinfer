@@ -1,0 +1,28 @@
+# Based on: https://www.kalmantic.com/posts/why-max-tokens-defaults-draining-budget
+# "Why Max Tokens Defaults Are Draining Your Budget"
+
+id: token-underutilization
+name: Token Budget Underutilization
+version: "1.0"
+category: waste
+severity: info
+layer: model
+
+match:
+  scope: callsite
+  conditions:
+    - field: usage.tokens_out
+      op: exists
+    - field: avg_tokens
+      op: lt
+      value: 200
+
+output:
+  headline: "Low output utilization at {{location}}"
+  evidence: "Averaging {{avg_tokens}} output tokens. Review max_tokens setting to avoid over-allocation."
+
+defaults:
+  low_output_threshold: 200
+
+# Note: Full detection requires max_tokens in runtime events
+# Currently detects suspiciously low output which may indicate over-allocation

@@ -1,0 +1,24 @@
+# Based on: https://www.kalmantic.com/posts/system-prompt-optimization-stop-paying-redundant-instructions
+# "Stop Paying 40x More for Redundant AI Instructions"
+
+id: prompt-bloat
+name: Prompt Bloat Detection
+version: "1.0"
+category: cost
+severity: warning
+layer: model
+
+match:
+  scope: callsite
+  conditions:
+    - field: usage.tokens_in
+      op: ratio_gt
+      compare_to: usage.tokens_out
+      value: 20
+
+output:
+  headline: "{{ratio}}x more input than output tokens"
+  evidence: "{{location}}: {{tokens_in}} tokens in → {{tokens_out}} tokens out. Consider prompt optimization."
+
+defaults:
+  input_output_ratio_threshold: 20

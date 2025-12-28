@@ -1,0 +1,76 @@
+id: comprehensive-apm
+name: Comprehensive Application Performance Monitoring
+description: Implement end-to-end APM for AI inference workloads
+category: monitoring
+confidence: 0.92
+success_count: 1567
+verified_environments: 72
+contributors:
+  - observability_engineer
+  - sre_specialist
+last_updated: "2024-12-24"
+
+environment_match:
+  observability_maturity: low
+  production_traffic: true
+  incident_frequency: ">2/month"
+
+optimization:
+  technique: comprehensive_apm
+  expected_cost_reduction: "10-20%"
+  effort_estimate: "2-3 weeks"
+  risk_level: low
+
+economics:
+  baseline_calculation:
+    incident_cost_monthly: 15000
+  projected_improvement:
+    incident_reduction_percent: 50
+    monthly_savings: 7500
+  implementation_cost:
+    engineering_hours: 120
+    total_cost: 24000
+
+implementation:
+  prerequisites:
+    - requirement: "APM tool access (Datadog/NewRelic/etc)"
+    - requirement: "Instrumentation capability"
+  automated_steps:
+    - step_id: instrumentation
+      name: Instrumentation Setup
+      executable: true
+      commands:
+        - "python scripts/setup_apm_agent.py"
+        - "python scripts/instrument_inference_calls.py"
+        - "python scripts/configure_custom_metrics.py"
+      validation:
+        command: "python scripts/verify_instrumentation.py"
+        success_criteria: "coverage > 0.95"
+    - step_id: dashboards
+      name: Dashboard Configuration
+      executable: true
+      commands:
+        - "python scripts/create_inference_dashboard.py"
+        - "python scripts/setup_alerts.py"
+      validation:
+        command: "python scripts/test_alerting.py"
+        success_criteria: "alerts_functional"
+
+monitoring:
+  key_metrics:
+    - metric: instrumentation_coverage
+      target: ">0.95"
+      alert_threshold: "<0.8"
+    - metric: metric_cardinality
+      target: "<100K"
+      alert_threshold: ">500K"
+  rollback_triggers:
+    - condition: "APM overhead > 5% latency impact"
+      action: reduce_sampling
+
+results:
+  recent_implementations:
+    - environment: production_api
+      baseline_mttr_hours: 4
+      optimized_mttr_hours: 1.5
+      improvement_percent: 62.5

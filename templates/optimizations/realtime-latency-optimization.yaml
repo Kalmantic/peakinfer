@@ -1,0 +1,74 @@
+id: realtime-latency-optimization
+name: Real-time Latency Optimization
+description: Optimize inference for real-time applications with strict latency requirements
+category: application_optimization
+confidence: 0.90
+success_count: 1456
+verified_environments: 67
+contributors:
+  - latency_specialist
+  - realtime_engineer
+last_updated: "2025-01-05"
+
+environment_match:
+  latency_requirement: "<50ms"
+  use_case:
+    - chat
+    - autocomplete
+    - real_time_translation
+
+optimization:
+  technique: latency_optimization
+  expected_latency_improvement: "50-70%"
+  effort_estimate: "2-3 weeks"
+  risk_level: medium
+
+economics:
+  implementation_cost:
+    engineering_hours: 120
+    total_cost: 24000
+
+implementation:
+  prerequisites:
+    - requirement: "Profiling tools available"
+    - requirement: "Quantization support"
+  automated_steps:
+    - step_id: latency_profiling
+      name: Latency Profiling
+      executable: true
+      commands:
+        - "python scripts/profile_inference_latency.py"
+        - "python scripts/identify_latency_bottlenecks.py"
+      validation:
+        command: "python scripts/validate_profile.py"
+        success_criteria: "bottlenecks_identified"
+    - step_id: optimization_application
+      name: Apply Latency Optimizations
+      executable: true
+      commands:
+        - "python scripts/enable_speculative_decoding.py"
+        - "python scripts/optimize_batch_size.py --target-latency 40"
+        - "python scripts/enable_kv_cache_quantization.py"
+      validation:
+        command: "python scripts/benchmark_latency.py"
+        success_criteria: "p95_latency < 50ms"
+        rollback_command: "python scripts/revert_latency_config.py"
+
+monitoring:
+  key_metrics:
+    - metric: latency_p50
+      target: "<30ms"
+      alert_threshold: ">40ms"
+    - metric: latency_p99
+      target: "<50ms"
+      alert_threshold: ">75ms"
+  rollback_triggers:
+    - condition: "latency_p99 > 100ms for 5 minutes"
+      action: automatic_rollback
+
+results:
+  recent_implementations:
+    - environment: chatbot_api
+      baseline_p95_ms: 120
+      optimized_p95_ms: 42
+      latency_reduction_percent: 65

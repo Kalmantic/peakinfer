@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.DS_Store
+.peakinfer/
+*.log
+
+# Internal docs (not for public repo)
+design/
+DESIGN.md
+CLAUDE.md
+EVAL-FRAMEWORK-DESIGN.md
+.env
+
+# Evaluation fixtures and config (internal)
+evals/
+config/

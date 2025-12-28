@@ -1,0 +1,1 @@
+[{"id":"1","ts":"2024-01-01T00:00:00Z","provider":"anthropic","model":"claude-3-sonnet-20240229","input_tokens":150,"output_tokens":60,"latency_ms":350},{"id":"2","ts":"2024-01-01T00:01:00Z","provider":"anthropic","model":"claude-3-sonnet-20240229","input_tokens":180,"output_tokens":90,"latency_ms":400}]

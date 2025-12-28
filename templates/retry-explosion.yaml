@@ -1,0 +1,28 @@
+# Based on: https://www.kalmantic.com/posts/ai-retry-logic-error-handling-multiplies-costs
+# "How Bad Error Handling Turns $10 Failures into $1000 Bills"
+
+id: retry-explosion
+name: Retry Storm Detection
+version: "1.0"
+category: cost
+severity: critical
+layer: api
+
+match:
+  scope: callsite
+  conditions:
+    - field: usage.calls
+      op: gt
+      value: 10
+    - field: usage.latency_p99
+      op: ratio_gt
+      compare_to: usage.latency_p50
+      value: 5
+
+output:
+  headline: "Possible retry storm at {{location}}"
+  evidence: "{{calls}} calls with p99/p50 ratio of {{ratio}}x - check retry logic"
+
+defaults:
+  min_calls: 10
+  latency_ratio_threshold: 5

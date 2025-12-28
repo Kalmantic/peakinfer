@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/Kalmantic/peakinfer_templates/schema/insight.schema.json",
+  "title": "PeakInfer Insight Template",
+  "description": "Schema for insight detection templates",
+  "type": "object",
+  "required": ["id", "version", "name", "category", "severity", "match", "output"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Unique identifier (kebab-case)"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Template version (semver major.minor)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of what this insight detects"
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "title": { "type": "string" }
+      },
+      "description": "Attribution to blog post, research, etc."
+    },
+    "category": {
+      "type": "string",
+      "enum": ["cost", "drift", "performance", "waste", "reliability", "latency", "throughput"],
+      "description": "Primary category for grouping"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["critical", "warning", "info"],
+      "description": "Impact severity"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Searchable tags"
+    },
+    "match": {
+      "type": "object",
+      "required": ["scope", "conditions"],
+      "properties": {
+        "scope": {
+          "type": "string",
+          "enum": ["callsite", "joined", "global", "envelope"],
+          "description": "What data context to evaluate against"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["field", "op"],
+            "properties": {
+              "field": { "type": "string" },
+              "op": {
+                "type": "string",
+                "enum": ["eq", "neq", "gt", "lt", "gte", "lte", "exists", "in", "ratio_gt", "ratio_lt", "has_pattern"]
+              },
+              "value": {},
+              "compare_to": { "type": "string" },
+              "pattern": { "type": "string" },
+              "count_gt": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["headline", "evidence"],
+      "properties": {
+        "headline": {
+          "type": "string",
+          "description": "Short summary with {{variables}}"
+        },
+        "evidence": {
+          "type": "string",
+          "description": "Supporting details with {{variables}}"
+        }
+      }
+    },
+    "recommends": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "optimization": { "type": "string" },
+          "relevance": { "type": "number", "minimum": 0, "maximum": 1 },
+          "reason": { "type": "string" }
+        }
+      },
+      "description": "Links to optimization templates"
+    },
+    "defaults": {
+      "type": "object",
+      "description": "Default threshold values"
+    },
+    "author": { "type": "string" },
+    "created": { "type": "string", "format": "date" },
+    "updated": { "type": "string", "format": "date" }
+  }
+}
