@@ -132,7 +132,7 @@ export async function fetchHeliconeEvents(
       );
     }
 
-    const data: HeliconeResponse = await response.json();
+    const data = await response.json() as HeliconeResponse;
 
     if (data.error) {
       throw new ConnectorError(data.error, 'helicone');

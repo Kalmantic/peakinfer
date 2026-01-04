@@ -222,22 +222,21 @@ program
           }
 
           // Benchmark comparison (v1.9.5)
-          if (options.benchmark && results.inferenceMap?.inference_points) {
+          // Note: Requires runtime events with latency data to compare against benchmarks
+          if (options.benchmark && results.inferenceMap?.callsites) {
             import('./benchmarks/index.js').then(({ compareToBenchmark, formatBenchmarkComparison }) => {
               console.log('\n' + '─'.repeat(60));
               console.log('\nBENCHMARK COMPARISON (InferenceMAX)');
               console.log('');
 
               let hasComparisons = false;
-              for (const point of results.inferenceMap.inference_points) {
-                if (point.model && point.latency_profile?.p95_ms) {
+              for (const point of results.inferenceMap!.callsites) {
+                // Static analysis provides model info; latency requires runtime events
+                if (point.model) {
                   const comparison = compareToBenchmark(
                     point.id,
                     point.model,
-                    {
-                      p95_latency_ms: point.latency_profile.p95_ms,
-                      ttft_ms: point.latency_profile.ttft_ms,
-                    }
+                    {} // Latency data comes from runtime events
                   );
                   if (comparison) {
                     hasComparisons = true;
