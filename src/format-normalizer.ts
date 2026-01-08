@@ -120,13 +120,31 @@ const FORMAT_SIGNATURES: Record<string, {
       /generation/i,
       /langfuse/i,
       /traceId/,
+      /startTime/,
+      /completionStartTime/,
     ],
     structuralCheck: (data) => {
       if (typeof data !== 'object' || data === null) return false;
       const obj = data as Record<string, unknown>;
-      // Langfuse exports have type: 'GENERATION' or observations array
-      return 'type' in obj && (obj.type === 'GENERATION' || obj.type === 'SPAN') ||
-             'observations' in obj || 'traceId' in obj;
+      // Langfuse exports have type: 'GENERATION' or 'SPAN' with startTime, or observations array
+      // Check for type field with generation/span values
+      if ('type' in obj && (obj.type === 'GENERATION' || obj.type === 'SPAN')) {
+        return true;
+      }
+      // Check for observations array (trace export)
+      if ('observations' in obj) {
+        return true;
+      }
+      // Check for traceId with startTime (individual observation export)
+      if ('traceId' in obj && 'startTime' in obj) {
+        return true;
+      }
+      // Check for model + usage.input/output pattern (Langfuse generation)
+      if ('model' in obj && 'usage' in obj && typeof obj.usage === 'object' && obj.usage !== null) {
+        const usage = obj.usage as Record<string, unknown>;
+        return 'input' in usage || 'output' in usage;
+      }
+      return false;
     },
     confidence: 0.90,
   },
@@ -148,18 +166,35 @@ const FORMAT_SIGNATURES: Record<string, {
   helicone: {
     patterns: [
       /helicone/i,
-      /helicone_request_id/,
-      /helicone_response_id/,
-      /helicone_properties/,
+      /request_id/,
+      /response_status/,
+      /prompt_tokens/,
+      /completion_tokens/,
+      /latency_ms/,
+      /request_path/,
     ],
     structuralCheck: (data) => {
       if (typeof data !== 'object' || data === null) return false;
       const obj = data as Record<string, unknown>;
-      // Helicone-specific fields - must have helicone_ prefixed fields
-      return 'helicone_request_id' in obj || 'helicone_response_id' in obj ||
-             'helicone_properties' in obj || 'helicone' in obj;
+      // Helicone export format: request_id, created_at, model, provider, latency_ms
+      // Check for helicone-prefixed fields (API response format)
+      if ('helicone_request_id' in obj || 'helicone_response_id' in obj ||
+          'helicone_properties' in obj || 'helicone' in obj) {
+        return true;
+      }
+      // Check for standard Helicone export format (request_id + latency_ms + prompt_tokens)
+      if ('request_id' in obj && 'latency_ms' in obj) {
+        return true;
+      }
+      // Check for Helicone export with provider + model + prompt_tokens/completion_tokens
+      if ('provider' in obj && 'model' in obj &&
+          ('prompt_tokens' in obj || 'completion_tokens' in obj) &&
+          'created_at' in obj) {
+        return true;
+      }
+      return false;
     },
-    confidence: 0.85,
+    confidence: 0.90,
   },
 };
 
@@ -397,11 +432,19 @@ const PREDEFINED_MAPPINGS: Record<string, FieldMapping[]> = {
     },
     {
       target: 'latency_ms',
-      source_path: '(endTime - startTime)',
+      source_path: 'iso_diff(endTime, startTime)',
       extraction_type: 'computed',
-      transform: 'duration_to_ms',
+      transform: 'none',
       confidence: 0.9,
-      evidence: 'Langfuse computed from start/end time',
+      evidence: 'Langfuse computed from start/end ISO timestamps',
+    },
+    {
+      target: 'streaming',
+      source_path: 'completionStartTime',
+      extraction_type: 'direct',
+      transform: 'to_boolean',
+      confidence: 0.85,
+      evidence: 'Langfuse streaming detected by completionStartTime presence',
     },
   ],
   litellm: [
@@ -465,7 +508,7 @@ const PREDEFINED_MAPPINGS: Record<string, FieldMapping[]> = {
   helicone: [
     {
       target: 'id',
-      source_path: 'helicone_request_id',
+      source_path: 'request_id',
       extraction_type: 'direct',
       transform: 'none',
       confidence: 0.95,
@@ -476,7 +519,7 @@ const PREDEFINED_MAPPINGS: Record<string, FieldMapping[]> = {
       source_path: 'created_at',
       extraction_type: 'direct',
       transform: 'none',  // Helicone uses ISO format
-      confidence: 0.9,
+      confidence: 0.95,
       evidence: 'Helicone created_at timestamp',
     },
     {
@@ -484,7 +527,7 @@ const PREDEFINED_MAPPINGS: Record<string, FieldMapping[]> = {
       source_path: 'provider',
       extraction_type: 'direct',
       transform: 'provider_normalize',
-      confidence: 0.9,
+      confidence: 0.95,
       evidence: 'Helicone provider field',
     },
     {
@@ -500,7 +543,7 @@ const PREDEFINED_MAPPINGS: Record<string, FieldMapping[]> = {
       source_path: 'prompt_tokens',
       extraction_type: 'direct',
       transform: 'parse_int',
-      confidence: 0.9,
+      confidence: 0.95,
       evidence: 'Helicone prompt_tokens',
     },
     {
@@ -508,16 +551,24 @@ const PREDEFINED_MAPPINGS: Record<string, FieldMapping[]> = {
       source_path: 'completion_tokens',
       extraction_type: 'direct',
       transform: 'parse_int',
-      confidence: 0.9,
+      confidence: 0.95,
       evidence: 'Helicone completion_tokens',
     },
     {
       target: 'latency_ms',
       source_path: 'latency_ms',
       extraction_type: 'direct',
-      transform: 'none',
+      transform: 'parse_int',
       confidence: 1.0,
       evidence: 'Helicone latency_ms field',
+    },
+    {
+      target: 'streaming',
+      source_path: 'request_body.stream',
+      extraction_type: 'jsonpath',
+      transform: 'none',
+      confidence: 0.9,
+      evidence: 'Helicone streaming flag from request body',
     },
   ],
 };
@@ -700,9 +751,9 @@ export function detectFormat(
  * Detect non-JSON formats (CSV, TSV, text logs).
  */
 function detectNonJSONFormat(
-  content: string,
+  _content: string,
   lines: string[],
-  filename?: string,
+  _filename?: string,
 ): FormatDetectionResult {
   // Check for CSV
   const firstLine = lines[0];
@@ -1029,14 +1080,43 @@ function applyTransform(value: unknown, transform: FieldMapping['transform']): u
     case 'provider_normalize': {
       const str = String(value).toLowerCase();
       // Normalize common provider variations
-      if (str.includes('openai')) return 'openai';
-      if (str.includes('anthropic')) return 'anthropic';
-      if (str.includes('google')) return 'google';
+      if (str.includes('gpt') || str.includes('openai')) return 'openai';
+      if (str.includes('claude') || str.includes('anthropic')) return 'anthropic';
+      if (str.includes('gemini') || str.includes('google') || str.includes('palm')) return 'google';
       if (str.includes('azure')) return 'azure_openai';
       if (str.includes('bedrock')) return 'bedrock';
       if (str.includes('together')) return 'together';
       if (str.includes('groq')) return 'groq';
+      if (str.includes('mistral')) return 'mistral';
+      if (str.includes('llama') || str.includes('meta')) return 'meta';
+      if (str.includes('cohere')) return 'cohere';
+      if (str.includes('deepseek')) return 'deepseek';
+      if (str.includes('fireworks')) return 'fireworks';
       return str;
+    }
+
+    case 'to_boolean': {
+      // Convert to boolean - presence of non-null/undefined value = true
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'boolean') return value;
+      if (typeof value === 'string') {
+        const lower = value.toLowerCase();
+        return lower === 'true' || lower === '1' || lower === 'yes';
+      }
+      return !!value;
+    }
+
+    case 'iso_diff_to_ms': {
+      // Value should be an object with {start, end} ISO timestamps
+      if (typeof value === 'object' && value !== null) {
+        const obj = value as { start?: string; end?: string };
+        if (obj.start && obj.end) {
+          const startMs = new Date(obj.start).getTime();
+          const endMs = new Date(obj.end).getTime();
+          return Math.max(0, endMs - startMs);
+        }
+      }
+      return 0;
     }
 
     default:
@@ -1070,6 +1150,36 @@ function extractValue(obj: unknown, path: string): unknown {
 }
 
 /**
+ * Check if content is JSONL (newline-delimited JSON)
+ */
+function isJSONLContent(content: string): boolean {
+  const lines = content.trim().split('\n');
+  if (lines.length < 1) return false;
+
+  // Check if multiple lines and each non-empty line is valid JSON
+  const nonEmptyLines = lines.filter(l => l.trim());
+  if (nonEmptyLines.length === 0) return false;
+
+  // If only one line and it starts with [ or is a valid array, it's not JSONL
+  if (nonEmptyLines.length === 1) {
+    const trimmed = nonEmptyLines[0].trim();
+    if (trimmed.startsWith('[')) return false;
+  }
+
+  // Check that each line is valid JSON object
+  return nonEmptyLines.every(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return true;
+    try {
+      const parsed = JSON.parse(trimmed);
+      return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed);
+    } catch {
+      return false;
+    }
+  });
+}
+
+/**
  * Extract InferenceEvents from normalized data using field mappings.
  */
 export function extractEvents(
@@ -1086,7 +1196,7 @@ export function extractEvents(
     const formatType = normalization.detection.format_type;
 
     if (formatType === 'jsonl') {
-      records = content.trim().split('\n').map(line => JSON.parse(line));
+      records = content.trim().split('\n').filter(l => l.trim()).map(line => JSON.parse(line));
     } else if (formatType === 'json_array') {
       records = JSON.parse(content);
     } else if (formatType === 'csv' || formatType === 'tsv') {
@@ -1100,9 +1210,22 @@ export function extractEvents(
         return obj;
       });
     } else {
-      // For complex formats (OTEL, Jaeger, etc.), parse and flatten
-      const data = JSON.parse(content);
-      records = flattenComplexFormat(data, normalization.detection.format_type);
+      // For complex formats (OTEL, Jaeger, Langfuse, etc.)
+      // First check if content is JSONL (common for Langfuse exports)
+      if (isJSONLContent(content)) {
+        // Parse as JSONL and flatten each record
+        const lines = content.trim().split('\n').filter(l => l.trim());
+        records = [];
+        for (const line of lines) {
+          const parsed = JSON.parse(line);
+          const flattened = flattenComplexFormat(parsed, formatType);
+          records.push(...flattened);
+        }
+      } else {
+        // Parse as single JSON document and flatten
+        const data = JSON.parse(content);
+        records = flattenComplexFormat(data, formatType);
+      }
     }
   } catch (error) {
     errors.push(`Failed to parse content: ${error instanceof Error ? error.message : String(error)}`);
@@ -1149,7 +1272,7 @@ export function extractEvents(
 }
 
 /**
- * Flatten complex nested formats (OTEL, Jaeger, Zipkin) into individual records.
+ * Flatten complex nested formats (OTEL, Jaeger, Zipkin, Langfuse, Helicone) into individual records.
  */
 function flattenComplexFormat(data: unknown, formatType: FormatType): unknown[] {
   if (formatType === 'otel') {
@@ -1159,6 +1282,10 @@ function flattenComplexFormat(data: unknown, formatType: FormatType): unknown[] 
   } else if (formatType === 'zipkin') {
     // Zipkin is already an array of spans
     return Array.isArray(data) ? data : [];
+  } else if (formatType === 'langfuse') {
+    return flattenLangfuse(data);
+  } else if (formatType === 'helicone') {
+    return flattenHelicone(data);
   }
 
   // For unknown formats, try to handle arrays or wrap single object
@@ -1211,20 +1338,146 @@ function flattenJaeger(data: unknown): unknown[] {
 }
 
 /**
+ * Flatten Langfuse data into individual observations (GENERATION type only).
+ * Handles multiple Langfuse export formats:
+ * - Single observation objects
+ * - Array of observations
+ * - Trace objects with observations array
+ * - JSONL with individual observations
+ */
+function flattenLangfuse(data: unknown): unknown[] {
+  const records: unknown[] = [];
+
+  // If it's an array, process each item
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      const flattened = flattenLangfuseItem(item);
+      records.push(...flattened);
+    }
+    return records;
+  }
+
+  // Single object
+  return flattenLangfuseItem(data);
+}
+
+function flattenLangfuseItem(item: unknown): unknown[] {
+  if (typeof item !== 'object' || item === null) return [];
+
+  const obj = item as Record<string, unknown>;
+
+  // Check if it's a trace with observations array
+  if ('observations' in obj && Array.isArray(obj.observations)) {
+    // Filter to only GENERATION types
+    return (obj.observations as Array<Record<string, unknown>>).filter(
+      obs => obs.type === 'GENERATION'
+    );
+  }
+
+  // Check if it's a direct observation
+  if ('type' in obj) {
+    // Only include GENERATION type (LLM calls)
+    if (obj.type === 'GENERATION') {
+      return [obj];
+    }
+    // Skip SPAN, EVENT types
+    return [];
+  }
+
+  // Check if it has model and usage (Langfuse generation without explicit type)
+  if ('model' in obj && 'usage' in obj && 'startTime' in obj) {
+    return [obj];
+  }
+
+  return [obj];
+}
+
+/**
+ * Flatten Helicone data into individual request records.
+ * Handles multiple Helicone export formats:
+ * - Single request objects
+ * - Array of requests
+ * - Response wrapper with data array
+ */
+function flattenHelicone(data: unknown): unknown[] {
+  // If it's an array, use directly
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (typeof data !== 'object' || data === null) return [];
+
+  const obj = data as Record<string, unknown>;
+
+  // Check for Helicone API response format: { data: [...] }
+  if ('data' in obj && Array.isArray(obj.data)) {
+    return obj.data;
+  }
+
+  // Single request object
+  if ('request_id' in obj || 'created_at' in obj) {
+    return [obj];
+  }
+
+  return [obj];
+}
+
+/**
  * Compute a derived value from an expression.
  */
 function computeValue(record: Record<string, unknown>, expression: string): number | undefined {
   // Simple expression parser for common patterns
-  // e.g., "(endTimeUnixNano - startTimeUnixNano) / 1000000"
 
-  const match = expression.match(/\((\w+)\s*-\s*(\w+)\)\s*\/\s*(\d+)/);
-  if (match) {
-    const [, endField, startField, divisor] = match;
+  // Handle iso_diff(endField, startField) - compute milliseconds between two ISO timestamps
+  const isoDiffMatch = expression.match(/iso_diff\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)/);
+  if (isoDiffMatch) {
+    const [, endField, startField] = isoDiffMatch;
+    const endValue = record[endField];
+    const startValue = record[startField];
+
+    if (typeof endValue === 'string' && typeof startValue === 'string') {
+      const endMs = new Date(endValue).getTime();
+      const startMs = new Date(startValue).getTime();
+      if (!isNaN(endMs) && !isNaN(startMs)) {
+        return Math.max(0, endMs - startMs);
+      }
+    }
+    return undefined;
+  }
+
+  // Handle (endField - startField) / divisor - for nanosecond timestamps
+  const divisionMatch = expression.match(/\((\w+)\s*-\s*(\w+)\)\s*\/\s*(\d+)/);
+  if (divisionMatch) {
+    const [, endField, startField, divisor] = divisionMatch;
     const endValue = Number(record[endField]);
     const startValue = Number(record[startField]);
 
     if (!isNaN(endValue) && !isNaN(startValue)) {
       return (endValue - startValue) / Number(divisor);
+    }
+  }
+
+  // Handle simple subtraction (endField - startField) - for ISO timestamps or numbers
+  const subtractMatch = expression.match(/\((\w+)\s*-\s*(\w+)\)/);
+  if (subtractMatch) {
+    const [, endField, startField] = subtractMatch;
+    const endValue = record[endField];
+    const startValue = record[startField];
+
+    // Try ISO timestamps first
+    if (typeof endValue === 'string' && typeof startValue === 'string') {
+      const endMs = new Date(endValue).getTime();
+      const startMs = new Date(startValue).getTime();
+      if (!isNaN(endMs) && !isNaN(startMs)) {
+        return Math.max(0, endMs - startMs);
+      }
+    }
+
+    // Fall back to numeric subtraction
+    const endNum = Number(endValue);
+    const startNum = Number(startValue);
+    if (!isNaN(endNum) && !isNaN(startNum)) {
+      return endNum - startNum;
     }
   }
 

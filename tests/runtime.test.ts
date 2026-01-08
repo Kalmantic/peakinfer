@@ -162,6 +162,42 @@ describe('runtime parser', () => {
     });
   });
 
+  describe('Langfuse format parsing', () => {
+    it('parses Langfuse JSONL format with --format langfuse', async () => {
+      // Langfuse export format
+      const content = [
+        '{"id":"gen-abc123","type":"GENERATION","name":"chat-completion","model":"gpt-4","startTime":"2024-01-15T10:00:00.000Z","endTime":"2024-01-15T10:00:02.500Z","usage":{"input":150,"output":85,"total":235},"traceId":"trace-001","level":"DEFAULT"}',
+        '{"id":"gen-def456","type":"GENERATION","name":"summarize","model":"claude-3-sonnet-20240229","startTime":"2024-01-15T10:01:00.000Z","endTime":"2024-01-15T10:01:01.800Z","usage":{"input":500,"output":120,"total":620},"traceId":"trace-002","level":"DEFAULT"}',
+      ].join('\n');
+
+      const path = join(FIXTURES_DIR, 'langfuse.jsonl');
+      writeFileSync(path, content);
+
+      const events = await parseEvents(path, { format_hint: 'langfuse' });
+      expect(events.length).toBe(2);
+      expect(events[0].id).toBe('gen-abc123');
+      expect(events[0].model).toBe('gpt-4');
+      expect(events[0].input_tokens).toBe(150);
+      expect(events[0].output_tokens).toBe(85);
+      expect(events[0].latency_ms).toBe(2500); // endTime - startTime
+      expect(events[0].provider).toBe('openai'); // normalized from model
+      expect(events[1].provider).toBe('anthropic'); // normalized from model
+    });
+
+    it('auto-detects Langfuse format from structure', async () => {
+      const content = [
+        '{"id":"gen-001","type":"GENERATION","model":"gpt-4","startTime":"2024-01-15T10:00:00.000Z","endTime":"2024-01-15T10:00:01.000Z","usage":{"input":100,"output":50,"total":150},"traceId":"trace-001"}',
+      ].join('\n');
+
+      const path = join(FIXTURES_DIR, 'langfuse-auto.jsonl');
+      writeFileSync(path, content);
+
+      const events = await parseEvents(path);
+      expect(events.length).toBe(1);
+      expect(events[0].model).toBe('gpt-4');
+    });
+  });
+
   describe('aggregation', () => {
     it('aggregates by provider', () => {
       const events = [
