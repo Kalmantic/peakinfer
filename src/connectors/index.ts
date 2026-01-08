@@ -2,7 +2,7 @@
  * Runtime Data Connectors
  *
  * Unified interface for fetching LLM runtime data from various sources.
- * Supports: Helicone, LangSmith
+ * Supports: Helicone, Langfuse
  *
  * Usage:
  *   const result = await fetchRuntimeData({
@@ -13,7 +13,7 @@
  */
 
 import { fetchHeliconeEvents } from './helicone.js';
-import { fetchLangSmithTraces } from './langsmith.js';
+import { fetchLangfuseTraces } from './langfuse.js';
 import {
   ConnectorConfig,
   ConnectorResult,
@@ -22,7 +22,7 @@ import {
   ConnectorSummary,
 } from './types.js';
 
-export type RuntimeSource = 'helicone' | 'langsmith';
+export type RuntimeSource = 'helicone' | 'langfuse';
 
 export interface FetchRuntimeOptions extends Omit<ConnectorConfig, 'apiKey'> {
   source: RuntimeSource;
@@ -38,11 +38,11 @@ export async function fetchRuntimeData(options: FetchRuntimeOptions): Promise<Co
   switch (source) {
     case 'helicone':
       return fetchHeliconeEvents(config);
-    case 'langsmith':
-      return fetchLangSmithTraces(config);
+    case 'langfuse':
+      return fetchLangfuseTraces(config);
     default:
       throw new ConnectorError(
-        `Unknown runtime source: ${source}. Supported sources: helicone, langsmith`,
+        `Unknown runtime source: ${source}. Supported sources: helicone, langfuse`,
         source as RuntimeSource
       );
   }
@@ -54,7 +54,7 @@ export async function fetchRuntimeData(options: FetchRuntimeOptions): Promise<Co
 export function getApiKeyFromEnv(source: RuntimeSource): string | undefined {
   const envVarMap: Record<RuntimeSource, string[]> = {
     helicone: ['HELICONE_API_KEY', 'HELICONE_KEY'],
-    langsmith: ['LANGSMITH_API_KEY', 'LANGCHAIN_API_KEY'],
+    langfuse: ['LANGFUSE_PUBLIC_KEY', 'LANGFUSE_API_KEY'],
   };
 
   const envVars = envVarMap[source] || [];
@@ -69,7 +69,7 @@ export function getApiKeyFromEnv(source: RuntimeSource): string | undefined {
  * Validate that the source is supported
  */
 export function isValidSource(source: string): source is RuntimeSource {
-  return source === 'helicone' || source === 'langsmith';
+  return source === 'helicone' || source === 'langfuse';
 }
 
 /**
@@ -78,7 +78,7 @@ export function isValidSource(source: string): source is RuntimeSource {
 export function getSourceDescription(source: RuntimeSource): string {
   const descriptions: Record<RuntimeSource, string> = {
     helicone: 'Helicone LLM Observability',
-    langsmith: 'LangSmith Tracing',
+    langfuse: 'Langfuse LLM Observability',
   };
   return descriptions[source] || source;
 }

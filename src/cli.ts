@@ -59,7 +59,7 @@ program
   .option('--cached', 'view previous analysis (offline, no API key needed)')
   .option('--verbose', 'show detailed task progress')
   // Format detection options (PRD §6.4)
-  .option('--format <type>', 'specify runtime format: jsonl, json, csv, otel, jaeger, zipkin, langsmith, litellm')
+  .option('--format <type>', 'specify runtime format: jsonl, json, csv, otel, jaeger, zipkin, langfuse, litellm')
   .option('--map <mappings...>', 'field mappings: --map latency_ms=duration model=model_name')
   .option('--events-map <mappings...>', 'alias for --map (field mappings for non-standard event formats)')
   .option('--lenient', 'accept low-confidence field mappings')
@@ -68,7 +68,7 @@ program
   // Fix suggestions (v1.8)
   .option('--fixes', 'show code fix suggestions for issues')
   // Runtime connectors (v1.9.5)
-  .option('--runtime <source>', 'runtime data source: helicone, langsmith')
+  .option('--runtime <source>', 'runtime data source: helicone, langfuse')
   .option('--runtime-key <key>', 'API key for runtime source (or use env var)')
   .option('--runtime-days <days>', 'days of runtime data to fetch', '7')
   // Benchmark comparison (v1.9.5)
@@ -306,15 +306,18 @@ program
         const { fetchRuntimeData, getApiKeyFromEnv, isValidSource } = await import('./connectors/index.js');
 
         if (!isValidSource(options.runtime)) {
-          console.error(`Error: Unknown runtime source: ${options.runtime}. Supported: helicone, langsmith`);
+          console.error(`Error: Unknown runtime source: ${options.runtime}. Supported: helicone, langfuse`);
           process.exit(1);
         }
 
         const apiKey = options.runtimeKey || getApiKeyFromEnv(options.runtime);
         if (!apiKey) {
-          const envVarName = options.runtime === 'helicone' ? 'HELICONE_API_KEY' : 'LANGSMITH_API_KEY';
+          const envVarName = options.runtime === 'helicone' ? 'HELICONE_API_KEY' : 'LANGFUSE_PUBLIC_KEY';
           console.error(`Error: API key required for --runtime ${options.runtime}`);
           console.error(`Provide via --runtime-key or set ${envVarName} environment variable`);
+          if (options.runtime === 'langfuse') {
+            console.error(`Note: Langfuse also requires LANGFUSE_SECRET_KEY to be set`);
+          }
           process.exit(1);
         }
 
@@ -436,7 +439,7 @@ analyze modes:
 
 runtime connectors (v1.9.5):
   peakinfer analyze . --runtime helicone              # fetch from Helicone
-  peakinfer analyze . --runtime langsmith             # fetch from LangSmith
+  peakinfer analyze . --runtime langfuse              # fetch from Langfuse
   peakinfer analyze . --runtime helicone --runtime-days 30  # last 30 days
 
 benchmarks (v1.9.5):

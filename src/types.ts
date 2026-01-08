@@ -465,7 +465,7 @@ export const FormatType = z.enum([
   'otel',            // OpenTelemetry OTLP traces/spans
   'jaeger',          // Jaeger distributed tracing format
   'zipkin',          // Zipkin tracing format
-  'langsmith',       // LangSmith trace exports
+  'langfuse',        // Langfuse LLM observability exports
   'helicone',        // Helicone proxy logs
   'wandb',           // Weights & Biases inference logs
   'litellm',         // LiteLLM proxy event logs

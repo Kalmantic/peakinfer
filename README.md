@@ -201,7 +201,7 @@ peakinfer analyze . --fixes --benchmark --html --open
 | **Runtime Data** | |
 | `--events <file>` | Path to runtime events file (JSONL) |
 | `--events-url <url>` | URL to fetch runtime events |
-| `--runtime <source>` | Fetch from: `helicone`, `langsmith` |
+| `--runtime <source>` | Fetch from: `helicone`, `langfuse` |
 | `--runtime-key <key>` | API key for runtime source |
 | `--runtime-days <n>` | Days of runtime data (default: 7) |
 | **Comparison** | |
@@ -255,11 +255,11 @@ peakinfer analyze ./src --events events.jsonl
 # From Helicone
 peakinfer analyze ./src --runtime helicone --runtime-key $HELICONE_KEY
 
-# From LangSmith
-peakinfer analyze ./src --runtime langsmith --runtime-key $LANGSMITH_KEY
+# From Langfuse
+peakinfer analyze ./src --runtime langfuse --runtime-key $LANGFUSE_PUBLIC_KEY
 ```
 
-Supported formats: JSONL, JSON, CSV, OpenTelemetry, Jaeger, Zipkin, LangSmith, LiteLLM, Helicone.
+Supported formats: JSONL, JSON, CSV, OpenTelemetry, Jaeger, Zipkin, Langfuse, LiteLLM, Helicone.
 
 ---
 

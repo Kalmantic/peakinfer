@@ -114,17 +114,19 @@ const FORMAT_SIGNATURES: Record<string, {
     },
     confidence: 0.95,
   },
-  langsmith: {
+  langfuse: {
     patterns: [
-      /run_id/,
-      /run_type/,
-      /langsmith/i,
-      /langchain/i,
+      /observation/i,
+      /generation/i,
+      /langfuse/i,
+      /traceId/,
     ],
     structuralCheck: (data) => {
       if (typeof data !== 'object' || data === null) return false;
       const obj = data as Record<string, unknown>;
-      return 'run_id' in obj || 'runs' in obj;
+      // Langfuse exports have type: 'GENERATION' or observations array
+      return 'type' in obj && (obj.type === 'GENERATION' || obj.type === 'SPAN') ||
+             'observations' in obj || 'traceId' in obj;
     },
     confidence: 0.90,
   },
@@ -344,62 +346,62 @@ const PREDEFINED_MAPPINGS: Record<string, FieldMapping[]> = {
       evidence: 'Zipkin duration field (microseconds -> ms)',
     },
   ],
-  langsmith: [
+  langfuse: [
     {
       target: 'id',
-      source_path: 'run_id',
+      source_path: 'id',
       extraction_type: 'direct',
       transform: 'none',
       confidence: 0.95,
-      evidence: 'LangSmith run ID',
+      evidence: 'Langfuse observation ID',
     },
     {
       target: 'ts',
-      source_path: 'start_time',
+      source_path: 'startTime',
       extraction_type: 'direct',
       transform: 'none',  // Already ISO format
       confidence: 0.95,
-      evidence: 'LangSmith start timestamp',
+      evidence: 'Langfuse start timestamp',
     },
     {
       target: 'provider',
-      source_path: 'extra.invocation_params.model_provider',
-      extraction_type: 'jsonpath',
+      source_path: 'model',
+      extraction_type: 'direct',
       transform: 'provider_normalize',
       confidence: 0.8,
-      evidence: 'LangSmith invocation params provider',
+      evidence: 'Langfuse model field (extract provider)',
     },
     {
       target: 'model',
-      source_path: 'extra.invocation_params.model',
-      extraction_type: 'jsonpath',
+      source_path: 'model',
+      extraction_type: 'direct',
       transform: 'none',
-      confidence: 0.85,
-      evidence: 'LangSmith invocation params model',
+      confidence: 0.95,
+      evidence: 'Langfuse model field',
     },
     {
       target: 'input_tokens',
-      source_path: 'token_usage.prompt_tokens',
+      source_path: 'usage.input',
       extraction_type: 'jsonpath',
       transform: 'parse_int',
       confidence: 0.9,
-      evidence: 'LangSmith token usage prompt_tokens',
+      evidence: 'Langfuse usage input tokens',
     },
     {
       target: 'output_tokens',
-      source_path: 'token_usage.completion_tokens',
+      source_path: 'usage.output',
       extraction_type: 'jsonpath',
       transform: 'parse_int',
       confidence: 0.9,
-      evidence: 'LangSmith token usage completion_tokens',
+      evidence: 'Langfuse usage output tokens',
     },
     {
       target: 'latency_ms',
-      source_path: 'latency',
-      extraction_type: 'direct',
+      source_path: '(endTime - startTime)',
+      extraction_type: 'computed',
       transform: 'duration_to_ms',
       confidence: 0.9,
-      evidence: 'LangSmith latency field',
+      evidence: 'Langfuse computed from start/end time',
     },
   ],
   litellm: [

@@ -2,7 +2,7 @@
  * Shared types for runtime data connectors
  *
  * These types define the normalized format for runtime events
- * from various sources (Helicone, LangSmith, etc.)
+ * from various sources (Helicone, Langfuse, etc.)
  */
 
 export interface NormalizedEvent {
@@ -60,7 +60,7 @@ export interface ConnectorResult {
   events: NormalizedEvent[];
   summary: ConnectorSummary;
   metadata: {
-    source: 'helicone' | 'langsmith';
+    source: 'helicone' | 'langfuse';
     fetched_at: string;
     total_fetched: number;
     truncated: boolean;
@@ -83,7 +83,7 @@ export interface ConnectorConfig {
 export class ConnectorError extends Error {
   constructor(
     message: string,
-    public readonly source: 'helicone' | 'langsmith',
+    public readonly source: 'helicone' | 'langfuse',
     public readonly statusCode?: number,
     public readonly code?: string
   ) {
