@@ -45,14 +45,8 @@ jobs:
         uses: Kalmantic/peakinfer-action@main
         with:
           path: './src'
-          inline-comments: 'true'
-          fail-on-regression: 'false'
-          # Pass the event type so action knows if this is a command
-          event-type: ${{ github.event_name }}
-          comment-body: ${{ github.event.comment.body || '' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          peakinfer-token: ${{ secrets.PEAKINFER_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # Optional: Upload artifacts
       - name: Upload Analysis
