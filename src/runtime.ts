@@ -279,13 +279,43 @@ export async function parseEventsWithMetadata(
         };
       }
     } catch (error) {
-      // Direct parse failed - will try format normalization
-      warnings.push(`Direct parse failed: ${error instanceof Error ? error.message : String(error)}`);
+      // If it's a validation error (missing required fields) for standard formats,
+      // check if format detection suggests this is a known complex format that needs normalization
+      if (error instanceof Error && (
+        error.message.includes('Missing or invalid') ||
+        error.message.includes('Expected object')
+      )) {
+        // For .jsonl files, check if this is a known complex format (Langfuse, Helicone, etc.)
+        // Standard JSONL files with missing fields should throw validation errors
+        if (ext === '.jsonl' || ext === '.ndjson') {
+          const detection = detectFormat(content, path);
+          // Only allow normalization for known complex formats, not for "custom_json" or "unknown"
+          const knownComplexFormats = ['langfuse', 'helicone', 'otel', 'jaeger', 'zipkin', 'wandb', 'litellm', 'portkey'];
+          if (detection.requires_agent && knownComplexFormats.includes(detection.format_type)) {
+            // Known complex format detected - let normalization handle it
+            warnings.push(`Direct parse failed: ${error instanceof Error ? error.message : String(error)}`);
+          } else {
+            // Standard JSONL format with validation error - throw it
+            throw error;
+          }
+        } else if (ext === '.json' || ext === '.csv' || ext === '.tsv') {
+          // For other standard formats, throw validation errors
+          throw error;
+        } else {
+          // Unknown extension - let normalization try
+          warnings.push(`Direct parse failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      } else {
+        // Direct parse failed - will try format normalization
+        warnings.push(`Direct parse failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
   }
 
   // Step 2: Detect format and check if agent normalization is needed
   const detection = detectFormat(content, path);
+
+  // Step 3: Use format normalizer for complex formats or when direct parse failed
 
   // If user provided strict mode and we need agent, fail early
   if (options.strict && detection.requires_agent) {
@@ -303,7 +333,7 @@ export async function parseEventsWithMetadata(
     );
   }
 
-  // Step 3: Use format normalizer for complex formats
+  // Step 4: Use format normalizer for complex formats
   if (detection.requires_agent || options.format_hint) {
     const { events, normalization, errors } = await normalizeRuntimeEvents(content, options);
 
@@ -320,7 +350,7 @@ export async function parseEventsWithMetadata(
     };
   }
 
-  // Step 4: Final fallback - try auto-detection
+  // Step 5: Final fallback - try auto-detection
   let events: InferenceEvent[];
 
   if (content.trim().startsWith('[')) {
