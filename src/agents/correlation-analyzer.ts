@@ -206,6 +206,11 @@ function computeBasicCorrelation(
     }
   }
 
+  // Limit to max 15 as per template constraint
+  if (driftSignals.length > 15) {
+    driftSignals.splice(15);
+  }
+
   return {
     insights: [],
     driftSignals,
@@ -298,13 +303,24 @@ export const CorrelationAnalyzerAgent: BaseAgent<CorrelationAnalyzerInput, Corre
         return 'mismatch';
       };
 
-      const driftSignals: DriftSignal[] = (parsed.drift_signals || []).map(ds => ({
-        type: mapDriftType(ds.type),
-        provider: ds.code_details?.provider || ds.runtime_details?.provider,
-        model: ds.code_details?.model || ds.runtime_details?.model,
-        callsiteId: ds.code_location ? ds.code_location.split(':')[0] : undefined,
-        message: ds.evidence,
-      }));
+      // Limit drift signals to max 15 as per template constraint
+      // Sort by severity (critical > warning > info) and limit to 15
+      const severityOrder = { critical: 0, warning: 1, info: 2 };
+      const allDriftSignals = (parsed.drift_signals || [])
+        .map(ds => ({
+          driftSignal: {
+            type: mapDriftType(ds.type),
+            provider: ds.code_details?.provider || ds.runtime_details?.provider,
+            model: ds.code_details?.model || ds.runtime_details?.model,
+            callsiteId: ds.code_location ? ds.code_location.split(':')[0] : undefined,
+            message: ds.evidence,
+          } as DriftSignal,
+          severity: ds.severity,
+        }))
+        .sort((a, b) => (severityOrder[a.severity as keyof typeof severityOrder] ?? 3) - (severityOrder[b.severity as keyof typeof severityOrder] ?? 3))
+        .slice(0, 15);
+      
+      const driftSignals: DriftSignal[] = allDriftSignals.map(item => item.driftSignal);
 
       // Convert to insights
       const insights: Insight[] = (parsed.drift_signals || []).map((ds, idx) => ({

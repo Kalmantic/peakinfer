@@ -17,7 +17,7 @@ All notable changes to PeakInfer will be documented in this file.
 - Drift detection between code and runtime behavior
 - 12 insight templates
 - 31 optimization templates
-- Runtime event correlation (JSONL, OTEL, Jaeger, Zipkin, LangSmith, LiteLLM)
+- Runtime event correlation (JSONL, OTEL, Jaeger, Zipkin, Langfuse, LiteLLM)
 - Historical comparison and baseline tracking
 - HTML/PDF report generation
 

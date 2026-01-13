@@ -465,7 +465,7 @@ export const FormatType = z.enum([
   'otel',            // OpenTelemetry OTLP traces/spans
   'jaeger',          // Jaeger distributed tracing format
   'zipkin',          // Zipkin tracing format
-  'langsmith',       // LangSmith trace exports
+  'langfuse',        // Langfuse LLM observability exports
   'helicone',        // Helicone proxy logs
   'wandb',           // Weights & Biases inference logs
   'litellm',         // LiteLLM proxy event logs
@@ -502,6 +502,8 @@ export const TransformType = z.enum([
   'parse_float',     // String to float
   'lowercase',       // Lowercase string
   'provider_normalize', // Normalize provider names (e.g., "OpenAI" -> "openai")
+  'to_boolean',      // Convert truthy/falsy values to boolean
+  'iso_diff_to_ms',  // Compute milliseconds difference between two ISO timestamps
 ]);
 
 /**

@@ -125,7 +125,7 @@ describe('PR Comment Generation', () => {
     const comment = generatePRComment(result);
 
     expect(comment).toContain('## PeakInfer Analysis');
-    expect(comment).toContain('1 inference points');
+    expect(comment).toContain('**1** inference points');
     expect(comment).toContain('CRITICAL');
     expect(comment).toContain('Expensive model');
     expect(comment).toContain('src/chat.ts:42');

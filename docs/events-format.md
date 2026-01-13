@@ -100,7 +100,7 @@ PeakInfer can parse exports from observability platforms:
 | OpenTelemetry | OTLP traces/spans |
 | Jaeger | Distributed tracing format |
 | Zipkin | Tracing format |
-| LangSmith | Trace exports |
+| Langfuse | LLM observability exports |
 | Helicone | Proxy logs |
 | LiteLLM | Proxy event logs |
 | Portkey | Gateway logs |

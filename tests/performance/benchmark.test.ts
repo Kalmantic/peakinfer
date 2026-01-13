@@ -15,9 +15,9 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { performance } from 'perf_hooks';
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
 import { join } from 'path';
-import { scan, type ScanResult } from '../../src/scanner.js';
-import { parseRuntimeEvents, type RuntimeEvent } from '../../src/runtime.js';
-import { computeRuntimeSummary } from '../../src/runtime.js';
+import { scan } from '../../src/scanner.js';
+import { parseEvents, aggregate } from '../../src/runtime.js';
+import type { InferenceEvent } from '../../src/types.js';
 
 const TEMP_DIR = join(__dirname, '.perf-test-temp');
 
@@ -79,10 +79,10 @@ def agent_${i}(prompt: str):
   }
 }
 
-function createRuntimeEvents(count: number): RuntimeEvent[] {
-  const events: RuntimeEvent[] = [];
+function createRuntimeEvents(count: number): InferenceEvent[] {
+  const events: InferenceEvent[] = [];
   const models = ['gpt-4o', 'gpt-4o-mini', 'claude-3-5-sonnet-20241022'];
-  const providers = ['openai', 'openai', 'anthropic'];
+  const providers: ('openai' | 'anthropic')[] = ['openai', 'openai', 'anthropic'];
 
   for (let i = 0; i < count; i++) {
     const idx = i % models.length;
@@ -145,15 +145,17 @@ describe('Performance Benchmarks', () => {
   });
 
   describe('Runtime Event Processing Performance', () => {
-    it('parses 1000 events within target time', () => {
+    it('parses 1000 events within target time', async () => {
       const events = createRuntimeEvents(1000);
       const jsonl = events.map(e => JSON.stringify(e)).join('\n');
+      const tempPath = join(TEMP_DIR, 'test-events.jsonl');
+      writeFileSync(tempPath, jsonl);
 
       const start = performance.now();
-      const parsed = parseRuntimeEvents(jsonl, 'jsonl');
+      const parsed = await parseEvents(tempPath);
       const duration = performance.now() - start;
 
-      expect(parsed.events.length).toBe(1000);
+      expect(parsed.length).toBe(1000);
       expect(duration).toBeLessThan(TARGETS.parse_events);
     });
 
@@ -161,7 +163,7 @@ describe('Performance Benchmarks', () => {
       const events = createRuntimeEvents(1000);
 
       const start = performance.now();
-      const summary = computeRuntimeSummary(events);
+      const summary = aggregate(events);
       const duration = performance.now() - start;
 
       expect(summary.totalEvents).toBe(1000);
@@ -170,18 +172,20 @@ describe('Performance Benchmarks', () => {
   });
 
   describe('Stress Tests', () => {
-    it('handles 10,000 events without memory issues', () => {
+    it('handles 10,000 events without memory issues', async () => {
       const events = createRuntimeEvents(10000);
       const jsonl = events.map(e => JSON.stringify(e)).join('\n');
+      const tempPath = join(TEMP_DIR, 'test-events-large.jsonl');
+      writeFileSync(tempPath, jsonl);
 
       const memBefore = process.memoryUsage().heapUsed;
-      const parsed = parseRuntimeEvents(jsonl, 'jsonl');
-      const summary = computeRuntimeSummary(parsed.events);
+      const parsed = await parseEvents(tempPath);
+      const summary = aggregate(parsed);
       const memAfter = process.memoryUsage().heapUsed;
 
       const memIncreaseMB = (memAfter - memBefore) / 1024 / 1024;
 
-      expect(parsed.events.length).toBe(10000);
+      expect(parsed.length).toBe(10000);
       expect(summary.totalEvents).toBe(10000);
       expect(memIncreaseMB).toBeLessThan(100); // Should use < 100MB for 10k events
     });
