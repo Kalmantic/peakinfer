@@ -4,6 +4,8 @@
  * @packageDocumentation
  */
 
+console.log('hello world');
+
 // Version
 export { VERSION, VERSION_DISPLAY } from './version.js';
 
