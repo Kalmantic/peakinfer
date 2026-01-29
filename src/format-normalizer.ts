@@ -52,6 +52,28 @@ const LLM_MODEL = 'claude-sonnet-4-20250514';
 // Required fields for InferenceEvent
 const REQUIRED_FIELDS = ['id', 'ts', 'provider', 'model', 'input_tokens', 'output_tokens', 'latency_ms'];
 
+// Alternative field names from NormalizedEvent (MCP server format)
+const MCP_FIELD_ALIASES: Record<string, string> = {
+  'ts': 'timestamp',
+  'input_tokens': 'prompt_tokens',
+  'output_tokens': 'completion_tokens',
+};
+
+/**
+ * Check if an object has all required fields, supporting both
+ * InferenceEvent and NormalizedEvent (MCP) field names.
+ */
+function hasRequiredEventFields(obj: Record<string, unknown>): boolean {
+  for (const field of REQUIRED_FIELDS) {
+    const hasField = field in obj;
+    const hasAlias = MCP_FIELD_ALIASES[field] ? MCP_FIELD_ALIASES[field] in obj : false;
+    if (!hasField && !hasAlias) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // =============================================================================
 // FORMAT SIGNATURES
 // =============================================================================
@@ -603,9 +625,8 @@ export function detectFormat(
   // If it's a JSON array, check for InferenceEvent schema first
   if (Array.isArray(parsedAsWhole) && parsedAsWhole.length > 0) {
     const first = parsedAsWhole[0] as Record<string, unknown>;
-    const hasRequiredFields = REQUIRED_FIELDS.every(f => f in first);
 
-    if (hasRequiredFields) {
+    if (hasRequiredEventFields(first)) {
       return {
         format_type: 'json_array',
         confidence: 1.0,
@@ -637,10 +658,8 @@ export function detectFormat(
         try {
           const firstEvent = JSON.parse(firstLine);
 
-          // Check if JSONL matches InferenceEvent schema
-          const hasRequiredFields = REQUIRED_FIELDS.every(f => f in firstEvent);
-
-          if (hasRequiredFields) {
+          // Check if JSONL matches InferenceEvent schema (or MCP NormalizedEvent schema)
+          if (hasRequiredEventFields(firstEvent)) {
             return {
               format_type: 'jsonl',
               confidence: 1.0,
@@ -697,12 +716,11 @@ export function detectFormat(
     return detectNonJSONFormat(content, lines, filename);
   }
 
-  // Check if it's a JSON array with InferenceEvent schema
+  // Check if it's a JSON array with InferenceEvent schema (or MCP NormalizedEvent schema)
   if (Array.isArray(parsedData) && parsedData.length > 0) {
     const first = parsedData[0] as Record<string, unknown>;
-    const hasRequiredFields = REQUIRED_FIELDS.every(f => f in first);
 
-    if (hasRequiredFields) {
+    if (hasRequiredEventFields(first)) {
       return {
         format_type: 'json_array',
         confidence: 1.0,
@@ -1609,6 +1627,11 @@ export async function normalizeRuntimeEvents(
 /**
  * Validate and convert raw data to InferenceEvent.
  * Used for direct-parse formats (JSONL, JSON array).
+ *
+ * Supports both InferenceEvent and NormalizedEvent (MCP) field names:
+ * - ts / timestamp
+ * - input_tokens / prompt_tokens
+ * - output_tokens / completion_tokens
  */
 function validateAndConvertEvent(data: unknown, recordNum: number): InferenceEvent {
   if (typeof data !== 'object' || data === null) {
@@ -1618,13 +1641,24 @@ function validateAndConvertEvent(data: unknown, recordNum: number): InferenceEve
   const obj = data as Record<string, unknown>;
   const errors: string[] = [];
 
-  // Required fields
+  // Required fields - support both InferenceEvent and NormalizedEvent (MCP) field names
   if (typeof obj.id !== 'string') errors.push("Missing 'id'");
-  if (typeof obj.ts !== 'string') errors.push("Missing 'ts'");
+
+  // ts (InferenceEvent) or timestamp (NormalizedEvent from MCP)
+  const tsValue = obj.ts ?? obj.timestamp;
+  if (typeof tsValue !== 'string') errors.push("Missing 'ts'");
+
   if (typeof obj.provider !== 'string') errors.push("Missing 'provider'");
   if (typeof obj.model !== 'string') errors.push("Missing 'model'");
-  if (typeof obj.input_tokens !== 'number') errors.push("Missing 'input_tokens'");
-  if (typeof obj.output_tokens !== 'number') errors.push("Missing 'output_tokens'");
+
+  // input_tokens (InferenceEvent) or prompt_tokens (NormalizedEvent from MCP)
+  const inputTokens = obj.input_tokens ?? obj.prompt_tokens;
+  if (typeof inputTokens !== 'number') errors.push("Missing 'input_tokens'");
+
+  // output_tokens (InferenceEvent) or completion_tokens (NormalizedEvent from MCP)
+  const outputTokens = obj.output_tokens ?? obj.completion_tokens;
+  if (typeof outputTokens !== 'number') errors.push("Missing 'output_tokens'");
+
   if (typeof obj.latency_ms !== 'number') errors.push("Missing 'latency_ms'");
 
   if (errors.length > 0) {
@@ -1633,11 +1667,11 @@ function validateAndConvertEvent(data: unknown, recordNum: number): InferenceEve
 
   return {
     id: obj.id as string,
-    ts: obj.ts as string,
+    ts: tsValue as string,
     provider: obj.provider as InferenceEvent['provider'],
     model: obj.model as string,
-    input_tokens: obj.input_tokens as number,
-    output_tokens: obj.output_tokens as number,
+    input_tokens: inputTokens as number,
+    output_tokens: outputTokens as number,
     latency_ms: obj.latency_ms as number,
     // Optional fields
     intent: typeof obj.intent === 'string' ? obj.intent : undefined,

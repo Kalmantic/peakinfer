@@ -25,41 +25,48 @@ function validateEvent(data: unknown, lineNum: number): InferenceEvent {
   const obj = data as Record<string, unknown>;
   const errors: string[] = [];
 
-  // Required fields
+  // Required fields - support both InferenceEvent and NormalizedEvent (MCP) field names
+  // id is the same in both formats
   if (typeof obj.id !== 'string') {
-    errors.push(`Missing or invalid 'id' field`);
+    errors.push(`missing or invalid 'id' field`);
   }
-  if (typeof obj.ts !== 'string') {
-    errors.push(`Missing or invalid 'ts' field`);
+  // ts (InferenceEvent) or timestamp (NormalizedEvent from MCP)
+  const tsValue = obj.ts ?? obj.timestamp;
+  if (typeof tsValue !== 'string') {
+    errors.push(`missing or invalid 'ts' field`);
   }
   if (typeof obj.provider !== 'string') {
-    errors.push(`Missing or invalid 'provider' field`);
+    errors.push(`missing or invalid 'provider' field`);
   }
   if (typeof obj.model !== 'string') {
-    errors.push(`Missing or invalid 'model' field`);
+    errors.push(`missing or invalid 'model' field`);
   }
-  if (typeof obj.input_tokens !== 'number') {
-    errors.push(`Missing or invalid 'input_tokens' field`);
+  // input_tokens (InferenceEvent) or prompt_tokens (NormalizedEvent from MCP)
+  const inputTokens = obj.input_tokens ?? obj.prompt_tokens;
+  if (typeof inputTokens !== 'number') {
+    errors.push(`missing or invalid 'input_tokens' field`);
   }
-  if (typeof obj.output_tokens !== 'number') {
-    errors.push(`Missing or invalid 'output_tokens' field`);
+  // output_tokens (InferenceEvent) or completion_tokens (NormalizedEvent from MCP)
+  const outputTokens = obj.output_tokens ?? obj.completion_tokens;
+  if (typeof outputTokens !== 'number') {
+    errors.push(`missing or invalid 'output_tokens' field`);
   }
   if (typeof obj.latency_ms !== 'number') {
-    errors.push(`Missing or invalid 'latency_ms' field`);
+    errors.push(`missing or invalid 'latency_ms' field`);
   }
 
   if (errors.length > 0) {
-    throw new Error(`Line ${lineNum}: ${errors.join(', ')}`);
+    throw new Error(`line ${lineNum}: ${errors.join(', ')}`);
   }
 
   // Build event with optional fields
   const event: InferenceEvent = {
     id: obj.id as string,
-    ts: obj.ts as string,
+    ts: tsValue as string,
     provider: obj.provider as InferenceEvent['provider'],
     model: obj.model as string,
-    input_tokens: obj.input_tokens as number,
-    output_tokens: obj.output_tokens as number,
+    input_tokens: inputTokens as number,
+    output_tokens: outputTokens as number,
     latency_ms: obj.latency_ms as number,
     intent: obj.intent as string | undefined,
     callsite_id: obj.callsite_id as string | undefined,
@@ -282,7 +289,8 @@ export async function parseEventsWithMetadata(
       // If it's a validation error (missing required fields) for standard formats,
       // check if format detection suggests this is a known complex format that needs normalization
       if (error instanceof Error && (
-        error.message.includes('Missing or invalid') ||
+        error.message.toLowerCase().includes('missing or invalid') ||
+        error.message.toLowerCase().includes('missing \'') ||
         error.message.includes('Expected object')
       )) {
         // For .jsonl files, check if this is a known complex format (Langfuse, Helicone, etc.)

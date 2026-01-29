@@ -862,9 +862,17 @@ export function createRenderer(opts: RendererOptions = {}) {
     }).start();
   }
 
-  function stopSpinner(): void {
+  function stopSpinner(showSuccess = true): void {
     if (spinner) {
-      spinner.stop();
+      if (showSuccess && currentPhase) {
+        // Show success checkmark when completing a phase
+        spinner.stopAndPersist({
+          symbol: chalk.hex(COLORS.success)('✓'),
+          text: `${currentPhase}`,
+        });
+      } else {
+        spinner.stop();
+      }
       spinner = null;
     }
   }
@@ -977,30 +985,28 @@ export function createRenderer(opts: RendererOptions = {}) {
         generating: PHASE.GENERATING,
       }[data.phase];
 
-      // If percent provided, this is a progress update (not completion)
+      // If percent provided, this is a progress update with percentage
       // Update spinner if available, otherwise just skip (can't show progress bar in non-TTY)
       if (data.percent !== undefined) {
         if (isTTY && spinner) {
           updateSpinnerProgress(phaseLabel, data.percent, data.currentFile, data.detail);
         }
-        return; // Don't fall through to completion logic for progress updates
+        return;
       }
 
-      // Completion display (no percent = phase complete)
-      if (spinner) {
-        // Use ora's succeed for nice checkmark
-        spinner.stopAndPersist({
-          symbol: chalk.hex(COLORS.success)('✓'),
-          text: `${phaseLabel}... ${chalk.dim(data.detail || 'done')}`,
-        });
-        spinner = null;
+      // No percent provided - this is a status update (NOT completion)
+      // Update spinner text but keep it running (don't stop it!)
+      // The spinner is only stopped by renderTaskComplete, renderResults, or explicit stopSpinner()
+      if (isTTY && spinner) {
+        // Update spinner text with the status detail, keep spinner animation running
+        spinner.text = data.detail
+          ? `${phaseLabel}... ${chalk.dim(data.detail)}`
+          : `${phaseLabel}...`;
       } else if (opts.verbose) {
-        // Verbose: show with duration-style detail
-        console.log(`  ${phaseNumber}/${totalPhases} ${phaseLabel} ${dim(`(${data.detail || 'done'})`)}`);
-      } else {
-        // Non-verbose non-TTY: clean completion
-        console.log(`${phaseLabel}... ${dim(data.detail || 'done')}`);
+        // Verbose non-TTY: show status update
+        console.log(`  ${phaseNumber}/${totalPhases} ${phaseLabel} ${dim(`(${data.detail || '...'})`)}`);
       }
+      // Non-verbose non-TTY: skip intermediate status updates (only show final results)
     },
 
     renderPartial(warnings: string[]): void {
@@ -1010,11 +1016,6 @@ export function createRenderer(opts: RendererOptions = {}) {
 
     renderResults(results: AgentResults): void {
       stopSpinner();
-
-      // Clear any remaining progress line
-      if (currentPhase) {
-        process.stdout.write('\r' + ' '.repeat(60) + '\r');
-      }
       console.log('');
 
       // Check for zero state

@@ -29,11 +29,20 @@ const DEFAULT_IGNORES = [
   'venv/**',
   '.env/**',
   'env/**',
+  '*_env/**',      // Python virtual environments (e.g., browser_use_env)
+  '*_venv/**',     // Python virtual environments
+  '*-env/**',      // Python virtual environments
+  '*-venv/**',     // Python virtual environments
+  'virtualenv/**',
   'build/**',
   'target/**',
   '.next/**',
   '.nuxt/**',
   'coverage/**',
+  '.cache/**',
+  '.tox/**',
+  '.eggs/**',
+  '*.egg-info/**',
 ];
 
 // v1.9.5: Files to skip for cost optimization

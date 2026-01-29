@@ -68,9 +68,10 @@ program
   // Fix suggestions (v1.8)
   .option('--fixes', 'show code fix suggestions for issues')
   // Runtime connectors (v1.9.5)
-  .option('--runtime <source>', 'runtime data source: helicone, langfuse')
+  .option('--runtime <source>', 'runtime data source: helicone, langfuse, posthog')
   .option('--runtime-key <key>', 'API key for runtime source (or use env var)')
   .option('--runtime-days <days>', 'days of runtime data to fetch', '7')
+  .option('--runtime-project <id>', 'project ID for runtime source (PostHog only, or use POSTHOG_PROJECT_ID)')
   // Benchmark comparison (v1.9.5)
   .option('--benchmark', 'compare to InferenceMAX benchmarks')
   // Cost estimation options (v1.9.3)
@@ -105,6 +106,7 @@ program
     runtime?: string;
     runtimeKey?: string;
     runtimeDays?: string;
+    runtimeProject?: string;
     // Benchmark comparison (v1.9.5)
     benchmark?: boolean;
     // Cost estimation options (v1.9.3)
@@ -303,22 +305,38 @@ program
       let runtimeResult: { events: unknown[]; summary: unknown } | undefined;
 
       if (options.runtime) {
-        const { fetchRuntimeData, getApiKeyFromEnv, isValidSource } = await import('./connectors/index.js');
+        const { fetchRuntimeData, getApiKeyFromEnv, getProjectIdFromEnv, isValidSource } = await import('./connectors/index.js');
 
         if (!isValidSource(options.runtime)) {
-          console.error(`Error: Unknown runtime source: ${options.runtime}. Supported: helicone, langfuse`);
+          console.error(`Error: Unknown runtime source: ${options.runtime}. Supported: helicone, langfuse, posthog`);
           process.exit(1);
         }
 
         const apiKey = options.runtimeKey || getApiKeyFromEnv(options.runtime);
         if (!apiKey) {
-          const envVarName = options.runtime === 'helicone' ? 'HELICONE_API_KEY' : 'LANGFUSE_PUBLIC_KEY';
+          const envVarMap: Record<string, string> = {
+            helicone: 'HELICONE_API_KEY',
+            langfuse: 'LANGFUSE_PUBLIC_KEY',
+            posthog: 'POSTHOG_API_KEY',
+          };
+          const envVarName = envVarMap[options.runtime] || 'API_KEY';
           console.error(`Error: API key required for --runtime ${options.runtime}`);
           console.error(`Provide via --runtime-key or set ${envVarName} environment variable`);
           if (options.runtime === 'langfuse') {
             console.error(`Note: Langfuse also requires LANGFUSE_SECRET_KEY to be set`);
           }
           process.exit(1);
+        }
+
+        // PostHog requires a project ID
+        let projectId: string | undefined;
+        if (options.runtime === 'posthog') {
+          projectId = options.runtimeProject || getProjectIdFromEnv();
+          if (!projectId) {
+            console.error(`Error: Project ID required for --runtime posthog`);
+            console.error(`Provide via --runtime-project or set POSTHOG_PROJECT_ID environment variable`);
+            process.exit(1);
+          }
         }
 
         try {
@@ -333,6 +351,7 @@ program
           runtimeResult = await fetchRuntimeData({
             source: options.runtime,
             apiKey,
+            projectId,
             startDate: startDate.toISOString(),
             limit: 1000,
           });
@@ -341,11 +360,47 @@ program
             console.log(`Fetched ${runtimeResult.events.length} events from ${options.runtime}`);
           }
 
+          // Warn if no LLM events were found
+          if (runtimeResult.events.length === 0) {
+            console.warn(`Warning: No LLM events found in ${options.runtime}.`);
+            console.warn(`Tip: Make sure your events use LLM-related names (llm_generation, chat_completion, etc.)`);
+            console.warn(`     or include properties like 'model', 'prompt_tokens', 'latency_ms'.`);
+            if (options.runtime === 'posthog') {
+              console.warn(`     You can also specify custom event names with --events-map event_names=my_event`);
+            }
+          }
+
           // Write events to a temp file for the agent
+          // Convert NormalizedEvent to InferenceEvent format (field name mapping)
           const { tmpdir } = await import('os');
           const { join } = await import('path');
           const tempFile = join(tmpdir(), `peakinfer-runtime-${Date.now()}.jsonl`);
-          const eventsJsonl = (runtimeResult.events as unknown[]).map(e => JSON.stringify(e)).join('\n');
+
+          // Map connector's NormalizedEvent fields to InferenceEvent fields
+          const convertedEvents = (runtimeResult.events as Array<{
+            id: string;
+            timestamp: string;
+            model: string;
+            provider: string;
+            latency_ms: number;
+            prompt_tokens?: number;
+            completion_tokens?: number;
+            total_tokens?: number;
+            streaming?: boolean;
+            cost_usd?: number;
+            success?: boolean;
+          }>).map(e => ({
+            id: e.id,
+            ts: e.timestamp,           // timestamp -> ts
+            provider: e.provider,
+            model: e.model,
+            input_tokens: e.prompt_tokens || 0,      // prompt_tokens -> input_tokens
+            output_tokens: e.completion_tokens || 0, // completion_tokens -> output_tokens
+            latency_ms: e.latency_ms,
+            streaming: e.streaming,
+          }));
+
+          const eventsJsonl = convertedEvents.map(e => JSON.stringify(e)).join('\n');
           writeFileSync(tempFile, eventsJsonl);
           runtimeEventsFile = tempFile;
         } catch (error) {
@@ -440,6 +495,7 @@ analyze modes:
 runtime connectors (v1.9.5):
   peakinfer analyze . --runtime helicone              # fetch from Helicone
   peakinfer analyze . --runtime langfuse              # fetch from Langfuse
+  peakinfer analyze . --runtime posthog               # fetch from PostHog (requires POSTHOG_PROJECT_ID)
   peakinfer analyze . --runtime helicone --runtime-days 30  # last 30 days
 
 benchmarks (v1.9.5):

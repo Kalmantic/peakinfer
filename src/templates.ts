@@ -137,9 +137,19 @@ function loadBundledTemplates(): InsightTemplate[] {
   return templates;
 }
 
+// Helper to create fetch with timeout
+function fetchWithTimeout(url: string, timeoutMs: number = 5000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  return fetch(url, { signal: controller.signal }).finally(() => {
+    clearTimeout(timeoutId);
+  });
+}
+
 async function fetchManifest(): Promise<Manifest | null> {
   try {
-    const response = await fetch(MANIFEST_URL);
+    const response = await fetchWithTimeout(MANIFEST_URL, 5000);
     if (!response.ok) return null;
     return await response.json() as Manifest;
   } catch {
@@ -151,7 +161,7 @@ async function fetchTemplate(templatePath: string): Promise<string | null> {
   try {
     // Templates are now in insights/{category}/{name}.yaml
     const url = `${TEMPLATES_REPO}/insights/${templatePath}`;
-    const response = await fetch(url);
+    const response = await fetchWithTimeout(url, 5000);
     if (!response.ok) return null;
     return await response.text();
   } catch {

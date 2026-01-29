@@ -60,7 +60,7 @@ export interface ConnectorResult {
   events: NormalizedEvent[];
   summary: ConnectorSummary;
   metadata: {
-    source: 'helicone' | 'langfuse';
+    source: 'helicone' | 'langfuse' | 'posthog';
     fetched_at: string;
     total_fetched: number;
     truncated: boolean;
@@ -83,7 +83,7 @@ export interface ConnectorConfig {
 export class ConnectorError extends Error {
   constructor(
     message: string,
-    public readonly source: 'helicone' | 'langfuse',
+    public readonly source: 'helicone' | 'langfuse' | 'posthog',
     public readonly statusCode?: number,
     public readonly code?: string
   ) {
