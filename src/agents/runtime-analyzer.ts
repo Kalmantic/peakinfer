@@ -98,6 +98,84 @@ function extractTextFromMessages(messages: SDKMessage[]): string {
   return text;
 }
 
+/**
+ * Robustly extract JSON from LLM response text.
+ * Handles markdown code blocks, multiple JSON objects, and malformed responses.
+ */
+function extractJsonFromText(text: string): string | null {
+  // Try 1: Extract from ```json ... ``` code blocks
+  const jsonCodeBlockMatch = text.match(/```json\s*([\s\S]*?)```/);
+  if (jsonCodeBlockMatch) {
+    const content = jsonCodeBlockMatch[1].trim();
+    if (content.startsWith('{')) {
+      return content;
+    }
+  }
+
+  // Try 2: Extract from ``` ... ``` code blocks (generic)
+  const codeBlockMatch = text.match(/```\s*([\s\S]*?)```/);
+  if (codeBlockMatch) {
+    const content = codeBlockMatch[1].trim();
+    if (content.startsWith('{')) {
+      return content;
+    }
+  }
+
+  // Try 3: Find balanced JSON object using bracket counting
+  const firstBrace = text.indexOf('{');
+  if (firstBrace === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = firstBrace; i < text.length; i++) {
+    const char = text[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === '\\' && inString) {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) continue;
+
+    if (char === '{') depth++;
+    else if (char === '}') {
+      depth--;
+      if (depth === 0) {
+        return text.slice(firstBrace, i + 1);
+      }
+    }
+  }
+
+  // Fallback: try direct parse of first JSON-like block
+  const greedyMatch = text.match(/\{[\s\S]*?\}/);
+  return greedyMatch ? greedyMatch[0] : null;
+}
+
+/**
+ * Safely parse JSON with detailed error logging
+ */
+function safeJsonParse<T>(jsonString: string, context: string): T | null {
+  try {
+    return JSON.parse(jsonString) as T;
+  } catch (error) {
+    console.warn(`[${context}] JSON parse failed. First 200 chars of input:`, jsonString.substring(0, 200));
+    console.warn(`[${context}] Error:`, error);
+    return null;
+  }
+}
+
 function buildRuntimeContext(
   events: InferenceEvent[],
   runtimeSummary: RuntimeSummary,
@@ -205,12 +283,13 @@ export const RuntimeAnalyzerAgent: BaseAgent<RuntimeAnalyzerInput, RuntimeAnalyz
 
     try {
       // Use Claude Agent SDK query() function
+      // Use 'default' permission mode to get direct JSON responses instead of plan mode
       const agentQuery = query({
-        prompt: `${promptConfig.prompt}\n\n${runtimeContext}`,
+        prompt: `${promptConfig.prompt}\n\n${runtimeContext}\n\nIMPORTANT: Respond ONLY with the JSON object. Do not include any explanatory text, markdown formatting, or code blocks. Start your response with { and end with }.`,
         options: {
           model: 'claude-sonnet-4-20250514',
           tools: [],
-          permissionMode: 'plan',
+          permissionMode: 'default',
           cwd: process.cwd(),
         },
       });
@@ -223,17 +302,26 @@ export const RuntimeAnalyzerAgent: BaseAgent<RuntimeAnalyzerInput, RuntimeAnalyz
 
       // Extract JSON from response
       const text = extractTextFromMessages(messages);
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const jsonString = extractJsonFromText(text);
 
-      if (!jsonMatch) {
+      if (!jsonString) {
         console.warn('[runtime-analyzer] No JSON in LLM response, using fallback');
+        console.warn('[runtime-analyzer] Raw response (first 500 chars):', text.substring(0, 500));
         return {
           result: buildFallbackResult(input.events, input.runtimeSummary),
           toolsUsed,
         };
       }
 
-      const parsed = JSON.parse(jsonMatch[0]) as LLMRuntimeAnalysisResult;
+      const parsed = safeJsonParse<LLMRuntimeAnalysisResult>(jsonString, 'runtime-analyzer');
+
+      if (!parsed) {
+        console.warn('[runtime-analyzer] Failed to parse JSON, using fallback');
+        return {
+          result: buildFallbackResult(input.events, input.runtimeSummary),
+          toolsUsed,
+        };
+      }
 
       // Convert to output format
       const insights: Insight[] = parsed.insights.map((i, idx) => ({
